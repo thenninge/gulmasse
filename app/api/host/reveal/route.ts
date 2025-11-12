@@ -6,8 +6,8 @@ export async function POST(request: Request) {
   try {
     assertHost(request);
     const up = await supabase
-      .from('app_state')
-      .upsert({ key: 'reveal_results', bool_value: true });
+      .from<any>('app_state')
+      .upsert({ key: 'reveal_results', bool_value: true } as any);
     if (up.error) throw up.error;
     return NextResponse.json({ ok: true });
   } catch (e: any) {

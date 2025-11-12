@@ -201,6 +201,8 @@ export default function Home() {
   const lockLogins = () => hostPost("/api/host/lock-logins");
   const unlockLogins = () => hostPost("/api/host/unlock-logins");
 
+  const [profileSaved, setProfileSaved] = useState(false);
+
   function goToLogin() {
     try {
       localStorage.removeItem("pin");
@@ -356,11 +358,15 @@ export default function Home() {
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={async () => {
                     if (pin.length === 4) {
-                      await fetch("/api/pin/profile", {
+                      const res = await fetch("/api/pin/profile", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ pin, nickname: nickname || undefined }),
-                      }).catch(() => {});
+                      }).catch(() => null);
+                      if (res && res.ok) {
+                        setProfileSaved(true);
+                        setTimeout(() => setProfileSaved(false), 2000);
+                      }
                     }
                   }}
                 >
@@ -373,6 +379,9 @@ export default function Home() {
                   Fortsett til lobby
                 </button>
               </div>
+              {profileSaved && (
+                <div className="text-xs text-emerald-700">Detaljer lagret!</div>
+              )}
             </div>
           </section>
         )}

@@ -23,9 +23,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Participant not active' }, { status: 400 });
     }
 
+    // Find currently selected participant (last pick)
+    const pickRes = await supabase
+      .from('picks')
+      .select('pin')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (pickRes.error && pickRes.error.code !== 'PGRST116') throw pickRes.error;
+    const recipientPin = (pickRes.data as any)?.pin as string | undefined;
+    if (!recipientPin) {
+      return NextResponse.json({ error: 'No selected participant to receive points' }, { status: 400 });
+    }
+
     const round = await getCurrentRound();
     const { error } = await (supabase
-      .from('votes') as any).upsert({ pin, round, value }, { onConflict: 'round,pin' });
+      .from('votes') as any).upsert({ pin, round, value, recipient_pin: recipientPin }, { onConflict: 'round,pin' });
     if (error) throw error;
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {

@@ -31,6 +31,7 @@ export default function Home() {
   const [picks, setPicks] = useState<string[]>([]);
   const [loginsLocked, setLoginsLocked] = useState(false);
   const [userGiven, setUserGiven] = useState<Record<string, number>>({});
+  const [userReceived, setUserReceived] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
   const selected = useMemo(() => {
@@ -62,6 +63,11 @@ export default function Home() {
         givenMap[u.pin] = u.total || 0;
       });
       setUserGiven(givenMap);
+      const recvMap: Record<string, number> = {};
+      (data.userReceived || []).forEach((u: { pin: string; total: number }) => {
+        recvMap[u.pin] = u.total || 0;
+      });
+      setUserReceived(recvMap);
     } catch {
       // noop
     } finally {
@@ -527,7 +533,7 @@ export default function Home() {
                     const name = (p.nickname || "").trim() || "Uten navn";
                     const given = userGiven[p.pin] ?? 0;
                     const rank = idx + 1;
-                    const received = 0; // Placeholder until received-points tracking is added
+                    const received = userReceived[p.pin] ?? 0;
                     const beerName = (p.beer_name || "").trim() || "—";
                     return (
                       <li

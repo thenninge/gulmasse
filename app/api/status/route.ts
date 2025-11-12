@@ -66,6 +66,23 @@ export async function GET() {
       total: totalsMap[p.pin] ?? 0,
     }));
 
+    // Aggregate total received points per user (across all rounds)
+    const votesRecvRes = await supabase
+      .from('votes')
+      .select('recipient_pin,value');
+    if (votesRecvRes.error) throw votesRecvRes.error;
+    const recvMap: Record<string, number> = {};
+    for (const r of (votesRecvRes.data as any[]) || []) {
+      const k = String((r as any).recipient_pin || '');
+      if (!k) continue;
+      const v = Number((r as any).value) || 0;
+      recvMap[k] = (recvMap[k] ?? 0) + v;
+    }
+    const userReceived = participants.map((p) => ({
+      pin: p.pin,
+      total: recvMap[p.pin] ?? 0,
+    }));
+
     // Picks history (order by created_at)
     const picksRes = await supabase
       .from('picks')
@@ -89,6 +106,7 @@ export async function GET() {
       picks,
       loginsLocked,
       userGiven,
+      userReceived,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

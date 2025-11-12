@@ -34,6 +34,8 @@ export default function Home() {
   const [userReceived, setUserReceived] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
+  const [sortKey, setSortKey] = useState<"rank" | "received" | "name" | "beer" | "given">("received");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const selected = useMemo(() => {
     const pinSel = picks.length > 0 ? picks[picks.length - 1] : null;
     if (!pinSel) return null;
@@ -524,11 +526,73 @@ export default function Home() {
                 </p>
               </div>
               <div className="mt-2 grid grid-cols-5 gap-2 px-3 py-2 text-xs font-medium text-zinc-600">
-                <div>Rang</div>
-                <div>Poeng fått</div>
-                <div>Navn</div>
-                <div>Ølnavn</div>
-                <div className="text-right">Poeng gitt</div>
+                <button
+                  className="text-left"
+                  onClick={() => {
+                    if (sortKey === "rank") {
+                      // toggle rank defaults to received desc
+                      setSortKey("received");
+                      setSortDir("desc");
+                    } else {
+                      setSortKey("rank");
+                      setSortDir("desc");
+                    }
+                  }}
+                >
+                  Rang
+                </button>
+                <button
+                  className="text-left"
+                  onClick={() => {
+                    if (sortKey === "received") {
+                      setSortDir(sortDir === "desc" ? "asc" : "desc");
+                    } else {
+                      setSortKey("received");
+                      setSortDir("desc");
+                    }
+                  }}
+                >
+                  Poeng fått {sortKey === "received" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+                </button>
+                <button
+                  className="text-left"
+                  onClick={() => {
+                    if (sortKey === "name") {
+                      setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    } else {
+                      setSortKey("name");
+                      setSortDir("asc");
+                    }
+                  }}
+                >
+                  Navn {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </button>
+                <button
+                  className="text-left"
+                  onClick={() => {
+                    if (sortKey === "beer") {
+                      setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    } else {
+                      setSortKey("beer");
+                      setSortDir("asc");
+                    }
+                  }}
+                >
+                  Ølnavn {sortKey === "beer" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </button>
+                <button
+                  className="text-right"
+                  onClick={() => {
+                    if (sortKey === "given") {
+                      setSortDir(sortDir === "desc" ? "asc" : "desc");
+                    } else {
+                      setSortKey("given");
+                      setSortDir("desc");
+                    }
+                  }}
+                >
+                  Poeng gitt {sortKey === "given" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+                </button>
               </div>
               <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
                 {participants.length === 0 && (
@@ -536,7 +600,41 @@ export default function Home() {
                 )}
                 {participants
                   .slice()
-                  .sort((a, b) => (userGiven[b.pin] ?? 0) - (userGiven[a.pin] ?? 0))
+                  .sort((a, b) => {
+                    const aName = (a.nickname || "").trim();
+                    const bName = (b.nickname || "").trim();
+                    const aBeer = (a.beer_name || "").trim();
+                    const bBeer = (b.beer_name || "").trim();
+                    const aGiven = userGiven[a.pin] ?? 0;
+                    const bGiven = userGiven[b.pin] ?? 0;
+                    const aRecv = userReceived[a.pin] ?? 0;
+                    const bRecv = userReceived[b.pin] ?? 0;
+                    const dir = sortDir === "asc" ? 1 : -1;
+                    if (sortKey === "received") {
+                      if (aRecv !== bRecv) return (aRecv - bRecv) * dir;
+                      if (aGiven !== bGiven) return (aGiven - bGiven) * -1; // tie-break by given desc
+                      return aName.localeCompare(bName);
+                    }
+                    if (sortKey === "given") {
+                      if (aGiven !== bGiven) return (aGiven - bGiven) * dir;
+                      if (aRecv !== bRecv) return (aRecv - bRecv) * -1; // tie-break by received desc
+                      return aName.localeCompare(bName);
+                    }
+                    if (sortKey === "name") {
+                      const cmp = aName.localeCompare(bName);
+                      if (cmp !== 0) return cmp * (sortDir === "asc" ? 1 : -1);
+                      return (aRecv - bRecv) * -1;
+                    }
+                    if (sortKey === "beer") {
+                      const cmp = aBeer.localeCompare(bBeer);
+                      if (cmp !== 0) return cmp * (sortDir === "asc" ? 1 : -1);
+                      return (aRecv - bRecv) * -1;
+                    }
+                    // rank default: received desc
+                    if (aRecv !== bRecv) return (aRecv - bRecv) * -1;
+                    if (aGiven !== bGiven) return (aGiven - bGiven) * -1;
+                    return aName.localeCompare(bName);
+                  })
                   .map((p, idx) => {
                     const name = (p.nickname || "").trim() || "Uten navn";
                     const given = userGiven[p.pin] ?? 0;

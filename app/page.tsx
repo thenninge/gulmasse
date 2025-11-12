@@ -523,6 +523,13 @@ export default function Home() {
                   Runde {round} {statusLoading ? "…" : ""}
                 </p>
               </div>
+              <div className="mt-2 grid grid-cols-5 gap-2 px-3 py-2 text-xs font-medium text-zinc-600">
+                <div>Rang</div>
+                <div>Poeng fått</div>
+                <div>Navn</div>
+                <div>Ølnavn</div>
+                <div className="text-right">Poeng gitt</div>
+              </div>
               <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
                 {participants.length === 0 && (
                   <li className="px-3 py-2 text-sm text-zinc-500">Ingen deltakere</li>

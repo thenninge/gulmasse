@@ -152,6 +152,19 @@ export default function Home() {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [fetchStatus]);
+  
+  // Drop hat on voter view when selected changes; keep until leaving voting
+  useEffect(() => {
+    if (view === "voting" && selected) {
+      setHatDrop(true);
+    }
+  }, [view, selected?.pin]);
+  // Clear hat when leaving voting
+  useEffect(() => {
+    if (view !== "voting") {
+      setHatDrop(false);
+    }
+  }, [view]);
 
   async function login() {
     setError(null);
@@ -274,6 +287,7 @@ export default function Home() {
   const drumRef = useRef<number | null>(null);
   const [showBeerImage, setShowBeerImage] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
+  const [hatDrop, setHatDrop] = useState(false);
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -954,7 +968,15 @@ export default function Home() {
                         />
                       </button>
                     )}
-                    <div className="min-w-0 text-center">
+                  <div className="relative min-w-0 text-center">
+                    {hatDrop && (
+                      <img
+                        src="/img/mcga.png"
+                        alt=""
+                        className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-[4.5rem] w-[4.5rem] md:h-[5.25rem] md:w-[5.25rem]"
+                        style={{ top: "-84px" } as any}
+                      />
+                    )}
                       <div className="text-2xl md:text-3xl font-bold text-zinc-900 truncate">
                         {selected.name}
                       </div>
@@ -987,27 +1009,7 @@ export default function Home() {
                   </div>
                 </div>
                 {/* Alle kan spinne lokalt her – påvirker ikke den offisielle utvelgelsen */}
-                <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
-                  <div className="mb-2 text-center text-sm text-zinc-600">Spinn hjulet mens du venter</div>
-                  <PickerWheel
-                    participants={participants
-                      .filter(p => p.active)
-                      .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: picks.includes(p.pin) }))}
-                    onPick={(picked) => {
-                      const match = participants.find(x => x.pin === picked.id);
-                      setLastPicked({
-                        name: (match?.nickname || "").trim() || picked.name,
-                        beerName: (match?.beer_name || "").trim() || undefined,
-                      });
-                      playFanfare();
-                      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-                        // @ts-ignore
-                        navigator.vibrate?.(30);
-                      }
-                    }}
-                    spinDurationMs={2500}
-                  />
-                </div>
+                {/* (Fjernet lokal spinner i votering) */}
                 {showBeerImage && selected.image && (
                   <div
                     role="dialog"
@@ -1137,26 +1139,39 @@ export default function Home() {
                 participants={participants
                   .filter(p => p.active)
                   .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: picks.includes(p.pin) }))}
-                disabled={!isHost}
                 onPick={async (picked) => {
-                  // Persist picked on server so alle er i sync
-                  await fetch("/api/host/pick", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "x-host-pin": pin },
-                    body: JSON.stringify({ pin: picked.id }),
-                  }).catch(() => null);
-                  const match = participants.find(x => x.pin === picked.id);
+                  // Åpen persistering av pick for alle brukere
+                  let persistedPin: string | null = null;
+                  try {
+                    const res = await fetch("/api/pick", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ pin: picked.id }),
+                    });
+                    if (res.ok) {
+                      const j = await res.json().catch(() => ({}));
+                      if (typeof j?.pin === "string") {
+                        persistedPin = j.pin;
+                      }
+                    }
+                  } catch {
+                    // ignore; fallback below
+                  }
+                  const usePin = persistedPin || picked.id;
+                  const match = participants.find(x => x.pin === usePin);
                   setLastPicked({
                     name: (match?.nickname || "").trim() || picked.name,
                     beerName: (match?.beer_name || "").trim() || undefined,
                   });
                   playFanfare();
+                  setHatDrop(true);
                   setShowCelebration(true);
                   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
                     // @ts-ignore
                     navigator.vibrate?.([60, 40, 80]);
                   }
-                  setTimeout(() => setShowCelebration(false), 2200);
+                  setTimeout(() => { setShowCelebration(false); setHatDrop(false); }, 3000);
+                  // Oppdater status slik at "Ferdig dystet!" og Votering reflekterer valget
                   fetchStatus();
                 }}
               />
@@ -1186,10 +1201,20 @@ export default function Home() {
               </div>
               {showCelebration && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
-                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl">
+                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl relative">
                     <div className="text-xs uppercase tracking-wide text-emerald-700">Valgt</div>
-                    <div className="mt-1 text-2xl font-bold text-emerald-900">
-                      {lastPicked?.name || selected?.name}
+                    <div className="mt-1 relative">
+                      {hatDrop && (
+                        <img
+                          src="/img/mcga.png"
+                          alt=""
+                          className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
+                          style={{ top: "-80px" } as any}
+                        />
+                      )}
+                      <div className="text-2xl font-bold text-emerald-900">
+                        {lastPicked?.name || selected?.name}
+                      </div>
                     </div>
                     { (lastPicked?.beerName || selected?.beerName) ? (
                       <div className="text-lg text-emerald-800">
@@ -1214,16 +1239,6 @@ export default function Home() {
                       />
                     ))}
                   </div>
-                  <style jsx global>{`
-                    @keyframes confetti-fall {
-                      0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
-                      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-                    }
-                    .animate-confetti {
-                      animation-name: confetti-fall;
-                      animation-timing-function: linear;
-                    }
-                  `}</style>
                 </div>
               )}
             </div>

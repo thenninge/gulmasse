@@ -25,3 +25,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Animations used in picker and effects */
+@keyframes hatdrop {
+  0% { transform: translate(-50%, -120px) rotate(-10deg); opacity: 0; }
+  80% { transform: translate(-50%, 4px) rotate(2deg); opacity: 1; }
+  100% { transform: translate(-50%, 0) rotate(0deg); opacity: 1; }
+}
+.animate-hatdrop {
+  animation: hatdrop 900ms ease-out both;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.animate-confetti {
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+}

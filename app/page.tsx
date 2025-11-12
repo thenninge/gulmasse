@@ -1047,22 +1047,6 @@ export default function Home() {
                 )}
               </>
             )}
-            {isHost && (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={revealResults}
-                >
-                  Avslør
-                </button>
-                <button
-                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
-                  onClick={nextRound}
-                >
-                  Ny runde
-                </button>
-              </div>
-            )}
             <div className="grid grid-cols-3 gap-3">
               {[1, 2, 3, 4, 5, 6].map((n) => {
                 const isSel = (pendingVote ?? voted) === n;

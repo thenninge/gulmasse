@@ -1174,8 +1174,8 @@ export default function Home() {
                 <div className="mt-3 space-y-2">
                   {(() => {
                     const maxBar = Math.max(1, ...[1,2,3,4,5,6].map((n) => histogram[n] || 0));
-                    const innerHeightPx = 144; // ~= h-36
-                    const blockHeightPx = Math.max(6, Math.floor(innerHeightPx / maxBar) - 4); // leave small gap
+                    const innerHeightPx = 48; // reduce overall bar height to ~33%
+                    const blockHeightPx = Math.max(4, Math.floor(innerHeightPx / maxBar) - 2); // tighter gap
                     return (
                       <div className="flex items-end gap-3">
                         {[1,2,3,4,5,6].map((n) => {

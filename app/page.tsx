@@ -243,6 +243,57 @@ export default function Home() {
   const [isPicking, setIsPicking] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [lastPicked, setLastPicked] = useState<{ name: string; beerName?: string } | null>(null);
+  const [wheelAngle, setWheelAngle] = useState(0);
+  const [wheelNames, setWheelNames] = useState<Array<{ pin: string; name: string }>>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const drumRef = useRef<number | null>(null);
+
+  function getAudio(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    if (!audioCtxRef.current) {
+      try {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      } catch {
+        audioCtxRef.current = null;
+      }
+    }
+    return audioCtxRef.current;
+  }
+
+  function playBeep(freq: number, durationMs: number, gainLevel = 0.06) {
+    const ctx = getAudio();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.value = gainLevel;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    setTimeout(() => {
+      try { osc.stop(); } catch {}
+      try { osc.disconnect(); gain.disconnect(); } catch {}
+    }, durationMs);
+  }
+
+  function startDrumroll() {
+    stopDrumroll();
+    drumRef.current = window.setInterval(() => {
+      playBeep(120 + Math.random() * 80, 60, 0.05);
+    }, 120);
+  }
+  function stopDrumroll() {
+    if (drumRef.current) {
+      window.clearInterval(drumRef.current);
+      drumRef.current = null;
+    }
+  }
+  function playFanfare() {
+    // Simple three-tone fanfare
+    setTimeout(() => playBeep(523, 150, 0.08), 0);
+    setTimeout(() => playBeep(659, 180, 0.08), 180);
+    setTimeout(() => playBeep(784, 220, 0.08), 380);
+  }
 
   function goToLogin() {
     try {
@@ -786,7 +837,7 @@ export default function Home() {
                 Tilbake
               </button>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4 relative overflow-hidden">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4 relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-zinc-600">
                   Gjenstående:{" "}
@@ -802,6 +853,36 @@ export default function Home() {
                   Tilbakestill
                 </button>
               </div>
+              {/* Wheel */}
+              <div className="relative mx-auto h-64 w-64 md:h-72 md:w-72">
+                <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2">
+                  <div className="h-0 w-0 border-l-8 border-r-8 border-b-[14px] border-l-transparent border-r-transparent border-b-emerald-600" />
+                </div>
+                <div
+                  className="absolute inset-0 rounded-full border-2 border-emerald-200 bg-white transition-transform"
+                  style={{ transform: `rotate(${wheelAngle}deg)` }}
+                >
+                  {wheelNames.map((w, i) => {
+                    const N = Math.max(1, wheelNames.length);
+                    const step = 360 / N;
+                    const theta = i * step;
+                    const radius = 110; // px
+                    return (
+                      <div
+                        key={w.pin}
+                        className="absolute left-1/2 top-1/2 origin-center"
+                        style={{
+                          transform: `rotate(${theta}deg) translate(${radius}px) rotate(${-theta}deg)`,
+                        }}
+                      >
+                        <span className="inline-block max-w-[96px] truncate rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-[10px] md:text-xs">
+                          {w.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               <button
                 className={`mx-auto block w-full rounded-2xl px-6 py-5 text-white text-xl font-semibold active:opacity-90 disabled:opacity-50 transition
                 ${isHost ? (isPicking ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700") : "bg-zinc-400"}`}
@@ -809,6 +890,12 @@ export default function Home() {
                 onClick={async () => {
                   try {
                     setIsPicking(true);
+                    // lock current remaining list into wheel
+                    const remaining = participants
+                      .filter(p => p.active && !picks.includes(p.pin))
+                      .map(p => ({ pin: p.pin, name: (p.nickname || "").trim() || p.pin }));
+                    setWheelNames(remaining);
+                    startDrumroll();
                     const res = await fetch("/api/host/pick", { method: "POST", headers: { "x-host-pin": pin } });
                     if (res.ok) {
                       const data = await res.json().catch(() => null);
@@ -820,17 +907,46 @@ export default function Home() {
                           beerName: (p?.beer_name || "").trim() || undefined,
                         };
                         setLastPicked(latest);
+                        // animate wheel to chosen index
+                        const names = remaining.length > 0 ? remaining : wheelNames;
+                        const idx = Math.max(0, names.findIndex(n => n.pin === chosenPin));
+                        const N = Math.max(1, names.length);
+                        const step = 360 / N;
+                        const theta = idx * step; // segment angle
+                        const current = ((wheelAngle % 360) + 360) % 360;
+                        const deltaToAlign = ((360 - theta - current) + 360) % 360;
+                        const target = wheelAngle + deltaToAlign + 3 * 360; // at least 3 spins
+                        const duration = 2200;
+                        const start = performance.now();
+                        const startAngle = wheelAngle;
+                        function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
+                        function tick(now: number) {
+                          const t = Math.min(1, (now - start) / duration);
+                          const eased = easeOutCubic(t);
+                          setWheelAngle(startAngle + (target - startAngle) * eased);
+                          if (t < 1) {
+                            requestAnimationFrame(tick);
+                          } else {
+                            stopDrumroll();
+                            playFanfare();
+                            setShowCelebration(true);
+                            if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+                              // @ts-ignore
+                              navigator.vibrate?.([60, 40, 80]);
+                            }
+                            setTimeout(() => setShowCelebration(false), 2200);
+                            fetchStatus();
+                          }
+                        }
+                        requestAnimationFrame(tick);
                       } else if (selected) {
                         setLastPicked({ name: selected.name, beerName: selected.beerName });
+                        stopDrumroll();
+                        playFanfare();
+                        setShowCelebration(true);
+                        setTimeout(() => setShowCelebration(false), 2200);
+                        await fetchStatus();
                       }
-                      setShowCelebration(true);
-                      // Gentle haptic on supported devices
-                      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-                        // @ts-ignore
-                        navigator.vibrate?.(80);
-                      }
-                      setTimeout(() => setShowCelebration(false), 2200);
-                      await fetchStatus();
                     }
                   } finally {
                     setIsPicking(false);

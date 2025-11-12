@@ -5,9 +5,8 @@ import { supabase } from '@/lib/supabase';
 export async function POST(request: Request) {
   try {
     assertHost(request);
-    const { error } = await supabase
-      .from('app_state')
-      .upsert({ key: 'logins_locked', bool_value: false }, { onConflict: 'key' });
+    const { error } = await (supabase
+      .from('app_state') as any).upsert({ key: 'logins_locked', bool_value: false }, { onConflict: 'key' });
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e: any) {

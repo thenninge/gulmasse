@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
     const idx = Math.floor(Math.random() * candidates.length);
     const chosen = candidates[idx];
-    const ins = await supabase.from('picks').insert({ pin: chosen });
+    const ins = await (supabase.from('picks') as any).insert({ pin: chosen });
     if (ins.error) throw ins.error;
     return NextResponse.json({ ok: true, pin: chosen });
   } catch (e: any) {

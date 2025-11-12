@@ -9,13 +9,11 @@ export async function POST(request: Request) {
     const curr = await supabase.from('app_state').select('int_value').eq('key','current_round').maybeSingle();
     if (curr.error && curr.error.code !== 'PGRST116') throw curr.error;
     const nextRound = Number(curr.data?.int_value ?? 1) + 1;
-    const { error: err1 } = await supabase
-      .from('app_state')
-      .upsert({ key: 'current_round', int_value: nextRound }, { onConflict: 'key' });
+    const { error: err1 } = await (supabase
+      .from('app_state') as any).upsert({ key: 'current_round', int_value: nextRound }, { onConflict: 'key' });
     if (err1) throw err1;
-    const { error: err2 } = await supabase
-      .from('app_state')
-      .upsert({ key: 'reveal_results', bool_value: false }, { onConflict: 'key' });
+    const { error: err2 } = await (supabase
+      .from('app_state') as any).upsert({ key: 'reveal_results', bool_value: false }, { onConflict: 'key' });
     if (err2) throw err2;
     return NextResponse.json({ ok: true });
   } catch (e: any) {

@@ -545,7 +545,7 @@ export default function Home() {
                   Runde {round} {statusLoading ? "…" : ""}
                 </p>
               </div>
-              <div className="mt-2 grid [grid-template-columns:32px_40px_1.35fr_1fr_56px] gap-1 px-3 py-2 text-xs font-medium text-zinc-600">
+              <div className="mt-2 grid [grid-template-columns:28px_36px_1.1fr_1.3fr_56px] gap-1 px-3 py-2 text-xs font-medium text-zinc-600">
                 <button
                   className="text-left"
                   onClick={() => {
@@ -664,7 +664,7 @@ export default function Home() {
                     return (
                       <li
                         key={p.pin}
-                        className={`grid [grid-template-columns:32px_40px_1.35fr_1fr_56px] items-center gap-1 px-3 py-2 text-sm ${
+                        className={`grid [grid-template-columns:28px_36px_1.1fr_1.3fr_56px] items-center gap-1 px-3 py-2 text-sm ${
                           p.active ? "" : "text-zinc-400 bg-zinc-50"
                         }`}
                       >

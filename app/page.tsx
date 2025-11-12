@@ -355,7 +355,7 @@ export default function Home() {
             </div>
             {selected && (
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
-                Utvalgt: <span className="font-medium">{selected.name}</span>
+                Vi stemmer over..: <span className="font-medium">{selected.name}</span>
               </div>
             )}
             {isHost && (

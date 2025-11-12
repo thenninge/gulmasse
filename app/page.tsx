@@ -790,7 +790,7 @@ export default function Home() {
                 disabled={!isHost}
                 onClick={() => setView("picker")}
               >
-                Gå til Utvelger {isHost ? "" : "(host)"}
+                Find the chosen one {isHost ? "" : "(host)"}
               </button>
             </div>
           </section>

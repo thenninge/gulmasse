@@ -26,6 +26,13 @@ export default function Home() {
   const [userGiven, setUserGiven] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
+  const selected = useMemo(() => {
+    const pinSel = picks.length > 0 ? picks[picks.length - 1] : null;
+    if (!pinSel) return null;
+    const name =
+      (participants.find((x) => x.pin === pinSel)?.nickname || "").trim() || pinSel;
+    return { pin: pinSel, name };
+  }, [picks, participants]);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -346,6 +353,11 @@ export default function Home() {
                 Tilbake
               </button>
             </div>
+            {selected && (
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+                Utvalgt: <span className="font-medium">{selected.name}</span>
+              </div>
+            )}
             {isHost && (
               <div className="grid grid-cols-2 gap-3">
                 <button

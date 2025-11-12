@@ -1172,20 +1172,35 @@ export default function Home() {
               </div>
               {(reveal || (activeCount > 0 && votedCount >= activeCount)) ? (
                 <div className="mt-3 space-y-2">
-                  <div className="grid grid-cols-6 gap-2">
-                    {[1,2,3,4,5,6].map((n) => (
-                      <div key={n} className="text-center">
-                        <div className="text-xs text-zinc-500">{n}</div>
-                        <div className="mx-auto mt-1 h-2 w-full rounded bg-zinc-100">
-                          <div
-                            className="h-2 rounded bg-blue-600"
-                            style={{ width: `${Math.min(100, (histogram[n] || 0) * 20)}%` }}
-                          />
-                        </div>
-                        <div className="mt-1 text-xs">{histogram[n] || 0}</div>
+                  {(() => {
+                    const maxBar = Math.max(1, ...[1,2,3,4,5,6].map((n) => histogram[n] || 0));
+                    const innerHeightPx = 144; // ~= h-36
+                    const blockHeightPx = Math.max(6, Math.floor(innerHeightPx / maxBar) - 4); // leave small gap
+                    return (
+                      <div className="flex items-end gap-3">
+                        {[1,2,3,4,5,6].map((n) => {
+                          const count = histogram[n] || 0;
+                          return (
+                            <div key={n} className="flex flex-1 min-w-0 flex-col items-center">
+                              <div className="relative w-full rounded-md border border-zinc-200 bg-zinc-50 p-1" style={{ height: innerHeightPx }}>
+                                <div className="flex h-full w-full flex-col justify-end gap-1">
+                                  {Array.from({ length: count }).map((_, i) => (
+                                    <div
+                                      key={i}
+                                      className="w-full rounded-sm bg-blue-600"
+                                      style={{ height: blockHeightPx }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="mt-1 text-xs text-zinc-500">{n}</div>
+                              <div className="text-xs">{count}</div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                   <div className="text-sm text-zinc-700">
                     Snitt: <span className="font-medium">{average.toFixed(2)}</span> ({voteCount} stemmer)
                   </div>

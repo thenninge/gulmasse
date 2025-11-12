@@ -1620,9 +1620,6 @@ export default function Home() {
                   </button>
                 )}
               </div>
-              <div className="text-xs text-zinc-500">
-                Trekte: {picks.length > 0 ? picks.join(", ") : "—"}
-              </div>
               <div>
                 <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>
                 <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200">

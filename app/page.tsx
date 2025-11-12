@@ -763,9 +763,20 @@ export default function Home() {
                 </p>
                 <p className="text-xs text-zinc-500">
                   Runde {round} {statusLoading ? "…" : ""}
-                </p>
-              </div>
-              <div className="mt-2 flex justify-end">
+          </p>
+        </div>
+              <div className="mt-2 flex items-center justify-between">
+                {isHost ? (
+                  <button
+                    className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white active:opacity-90"
+                    onClick={async () => {
+                      await nextRound();
+                      fetchStatus();
+                    }}
+                  >
+                    Start ny runde
+                  </button>
+                ) : <span />}
                 <button
                   className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium active:bg-zinc-50"
                   onClick={() => setShowPodium(true)}
@@ -916,6 +927,7 @@ export default function Home() {
               <button
                 className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={() => setView("picker")}
+                disabled={pickedRound === round}
               >
                 Find the chosen one
               </button>
@@ -1030,7 +1042,7 @@ export default function Home() {
                     )}
                       <div className="text-2xl md:text-3xl font-bold text-zinc-900 truncate">
                         {selected.name}
-                      </div>
+        </div>
                       {selected.beerName ? (
                         <div className="mt-0.5 text-xl md:text-2xl text-zinc-700 truncate">
                           {selected.beerName}

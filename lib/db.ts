@@ -12,6 +12,7 @@ if (connectionString) {
     new Pool({
       connectionString,
       max: 5,
+      ssl: { rejectUnauthorized: false },
     });
   if (!globalForPool.pgPool) {
     globalForPool.pgPool = pool;

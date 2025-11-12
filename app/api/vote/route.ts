@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { pgPool } from '@/lib/db';
 import { voteBodySchema } from '@/lib/schemas';
+import { supabase } from '@/lib/supabase';
 
 async function getCurrentRound(): Promise<number> {
-  const res = await pgPool.query(
-    "SELECT int_value FROM app_state WHERE key = 'current_round'"
-  );
-  const round = res.rows[0]?.int_value ?? 1;
+  const res = await supabase.from('app_state').select('int_value').eq('key','current_round').maybeSingle();
+  if (res.error && res.error.code !== 'PGRST116') throw res.error;
+  const round = res.data?.int_value ?? 1;
   return Number(round);
 }
 
@@ -15,25 +14,20 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { pin, value } = voteBodySchema.parse(body);
 
-    const exists = await pgPool.query(
-      'SELECT active FROM participants WHERE pin = $1',
-      [pin]
-    );
-    if (exists.rowCount === 0) {
+    const exists = await supabase.from('participants').select('active').eq('pin', pin).maybeSingle();
+    if (exists.error && exists.error.code !== 'PGRST116') throw exists.error;
+    if (!exists.data) {
       return NextResponse.json({ error: 'PIN not found' }, { status: 404 });
     }
-    if (exists.rows[0].active !== true) {
+    if (exists.data.active !== true) {
       return NextResponse.json({ error: 'Participant not active' }, { status: 400 });
     }
 
     const round = await getCurrentRound();
-    await pgPool.query(
-      `INSERT INTO votes (pin, round, value)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (round, pin)
-       DO UPDATE SET value = EXCLUDED.value, created_at = NOW()`,
-      [pin, round, value]
-    );
+    const up = await supabase
+      .from('votes')
+      .upsert({ pin, round, value }, { onConflict: 'round,pin' });
+    if (up.error) throw up.error;
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {
     const msg = e?.issues ? 'Invalid request' : 'Server error';

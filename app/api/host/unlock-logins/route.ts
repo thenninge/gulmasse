@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
-import { pgPool } from '@/lib/db';
 import { assertHost } from '@/lib/host';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
     assertHost(request);
-    await pgPool.query(`
-      INSERT INTO app_state(key, bool_value) VALUES ('logins_locked', FALSE)
-      ON CONFLICT (key) DO UPDATE SET bool_value = EXCLUDED.bool_value
-    `);
+    const up = await supabase.from('app_state').upsert({ key: 'logins_locked', bool_value: false });
+    if (up.error) throw up.error;
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const code = e?.status || 500;

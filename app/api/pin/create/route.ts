@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { pgPool } from '@/lib/db';
 import { createPinBodySchema, pinSchema } from '@/lib/schemas';
+import { supabase } from '@/lib/supabase';
 
 async function isPinTaken(pin: string) {
-  const res = await pgPool.query('SELECT 1 FROM participants WHERE pin = $1', [pin]);
-  return res.rowCount > 0;
+  const res = await supabase.from('participants').select('pin').eq('pin', pin).maybeSingle();
+  if (res.error && res.error.code !== 'PGRST116') throw res.error; // 116 = not found on single()
+  return !!res.data;
 }
 
 function generateRandomPin(): string {
@@ -16,8 +17,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = createPinBodySchema.parse(body);
     // Check if logins are locked
-    const lock = await pgPool.query("SELECT bool_value FROM app_state WHERE key = 'logins_locked'");
-    if (lock.rows[0]?.bool_value === true) {
+    const lock = await supabase.from('app_state').select('bool_value').eq('key','logins_locked').maybeSingle();
+    if (lock.error && lock.error.code !== 'PGRST116') throw lock.error;
+    if (lock.data?.bool_value === true) {
       return NextResponse.json({ error: 'Logins are locked' }, { status: 423 });
     }
     let pin = parsed.pin ?? '';
@@ -40,10 +42,8 @@ export async function POST(request: Request) {
     }
 
     const nickname = parsed.nickname ?? null;
-    await pgPool.query(
-      'INSERT INTO participants(pin, nickname, active) VALUES ($1, $2, TRUE)',
-      [pin, nickname]
-    );
+    const ins = await supabase.from('participants').insert({ pin, nickname, active: true });
+    if (ins.error) throw ins.error;
     return NextResponse.json({ ok: true, pin });
   } catch (e: any) {
     const msg = e?.issues ? 'Invalid request' : 'Server error';

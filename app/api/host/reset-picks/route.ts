@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { pgPool } from '@/lib/db';
 import { assertHost } from '@/lib/host';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
     assertHost(request);
-    await pgPool.query('DELETE FROM picks');
+    const del = await supabase.from('picks').delete().neq('pin', ''); // delete all
+    if (del.error) throw del.error;
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const code = e?.status || 500;

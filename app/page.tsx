@@ -24,7 +24,7 @@ export default function Home() {
   const [picks, setPicks] = useState<string[]>([]);
   const [loginsLocked, setLoginsLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<number | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {

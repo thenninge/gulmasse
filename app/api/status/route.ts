@@ -47,6 +47,22 @@ export async function GET() {
     }
     const average = cnt > 0 ? Number((sum / cnt).toFixed(2)) : 0;
 
+    // Aggregate total given points per user (across all rounds)
+    const votesAllRes = await supabase
+      .from('votes')
+      .select('pin,value');
+    if (votesAllRes.error) throw votesAllRes.error;
+    const totalsMap: Record<string, number> = {};
+    for (const r of (votesAllRes.data as any[]) || []) {
+      const k = String(r.pin);
+      const v = Number(r.value) || 0;
+      totalsMap[k] = (totalsMap[k] ?? 0) + v;
+    }
+    const userGiven = participants.map((p) => ({
+      pin: p.pin,
+      total: totalsMap[p.pin] ?? 0,
+    }));
+
     // Picks history (order by created_at)
     const picksRes = await supabase
       .from('picks')
@@ -69,6 +85,7 @@ export async function GET() {
       round,
       picks,
       loginsLocked,
+      userGiven,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

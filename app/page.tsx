@@ -23,6 +23,7 @@ export default function Home() {
   const [average, setAverage] = useState(0);
   const [picks, setPicks] = useState<string[]>([]);
   const [loginsLocked, setLoginsLocked] = useState(false);
+  const [userGiven, setUserGiven] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
 
@@ -42,6 +43,11 @@ export default function Home() {
       setAverage(typeof data.votes?.average === "number" ? data.votes.average : 0);
       setPicks(data.picks || []);
       setLoginsLocked(data.loginsLocked === true);
+      const givenMap: Record<string, number> = {};
+      (data.userGiven || []).forEach((u: { pin: string; total: number }) => {
+        givenMap[u.pin] = u.total || 0;
+      });
+      setUserGiven(givenMap);
     } catch {
       // noop
     } finally {
@@ -186,6 +192,21 @@ export default function Home() {
     setView("login");
   }
 
+  async function logout() {
+    try {
+      if (pin.length === 4) {
+        await fetch("/api/pin/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin }),
+        }).catch(() => {});
+      }
+    } finally {
+      goToLogin();
+      fetchStatus();
+    }
+  }
+
   return (
     <div className="min-h-dvh w-full bg-white text-zinc-900">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
@@ -194,9 +215,9 @@ export default function Home() {
           {pin ? (
             <button
               className="text-sm text-blue-600 underline"
-              onClick={goToLogin}
+              onClick={logout}
             >
-              Innlogget
+              Logg ut
             </button>
           ) : (
             <button
@@ -269,26 +290,35 @@ export default function Home() {
                   Runde {round} {statusLoading ? "…" : ""}
                 </p>
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {participants.map((p) => {
-                  const name = (p.nickname || "").trim() || "Uten navn";
-                  return (
-                  <span
-                    key={p.pin}
-                    className={`rounded-full px-3 py-1 text-sm ${
-                      p.active
-                        ? "border border-zinc-300"
-                        : "border border-zinc-200 text-zinc-400 bg-zinc-50"
-                    }`}
-                  >
-                    {name}{p.active ? "" : " (passiv)"}
-                  </span>
-                  );
-                })}
+              <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200">
                 {participants.length === 0 && (
-                  <span className="text-sm text-zinc-500">Ingen deltakere</span>
+                  <li className="px-3 py-2 text-sm text-zinc-500">Ingen deltakere</li>
                 )}
-              </div>
+                {participants
+                  .slice()
+                  .sort((a, b) => (userGiven[b.pin] ?? 0) - (userGiven[a.pin] ?? 0))
+                  .map((p, idx) => {
+                    const name = (p.nickname || "").trim() || "Uten navn";
+                    const given = userGiven[p.pin] ?? 0;
+                    const rank = idx + 1;
+                    const received = "—";
+                    const theirContender = "—";
+                    return (
+                      <li
+                        key={p.pin}
+                        className={`grid grid-cols-5 items-center gap-2 px-3 py-2 text-sm ${
+                          p.active ? "" : "text-zinc-400 bg-zinc-50"
+                        }`}
+                      >
+                        <div className="col-span-1 tabular-nums">{rank}</div>
+                        <div className="col-span-1 tabular-nums">{received}</div>
+                        <div className="col-span-1 truncate">{name}</div>
+                        <div className="col-span-1 truncate">{theirContender}</div>
+                        <div className="col-span-1 tabular-nums text-right">{given}</div>
+                      </li>
+                    );
+                  })}
+              </ul>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button

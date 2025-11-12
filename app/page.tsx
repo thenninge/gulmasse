@@ -986,6 +986,28 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+                {/* Alle kan spinne lokalt her – påvirker ikke den offisielle utvelgelsen */}
+                <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
+                  <div className="mb-2 text-center text-sm text-zinc-600">Spinn hjulet mens du venter</div>
+                  <PickerWheel
+                    participants={participants
+                      .filter(p => p.active)
+                      .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: picks.includes(p.pin) }))}
+                    onPick={(picked) => {
+                      const match = participants.find(x => x.pin === picked.id);
+                      setLastPicked({
+                        name: (match?.nickname || "").trim() || picked.name,
+                        beerName: (match?.beer_name || "").trim() || undefined,
+                      });
+                      playFanfare();
+                      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+                        // @ts-ignore
+                        navigator.vibrate?.(30);
+                      }
+                    }}
+                    spinDurationMs={2500}
+                  />
+                </div>
                 {showBeerImage && selected.image && (
                   <div
                     role="dialog"
@@ -1101,13 +1123,14 @@ export default function Home() {
                     {Math.max(0, participants.filter(p=>p.active).length - picks.length)}
                   </span>
                 </div>
-                <button
-                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm active:bg-zinc-50 disabled:opacity-50"
-                  disabled={!isHost}
-                  onClick={resetPicks}
-                >
-                  Tilbakestill
-                </button>
+                {isHost && (
+                  <button
+                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm active:bg-zinc-50"
+                    onClick={resetPicks}
+                  >
+                    Tilbakestill
+                  </button>
+                )}
               </div>
               {/* PickerWheel component */}
               <PickerWheel

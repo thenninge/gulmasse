@@ -24,9 +24,8 @@ export async function POST(request: Request) {
     }
 
     const round = await getCurrentRound();
-    const { error } = await supabase
-      .from('votes')
-      .upsert({ pin, round, value }, { onConflict: 'round,pin' });
+    const { error } = await (supabase
+      .from('votes') as any).upsert({ pin, round, value }, { onConflict: 'round,pin' });
     if (error) throw error;
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {

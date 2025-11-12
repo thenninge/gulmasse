@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type View = "login" | "lobby" | "voting" | "picker";
 
@@ -21,8 +21,33 @@ export default function Home() {
   const [histogram, setHistogram] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
   const [voteCount, setVoteCount] = useState(0);
   const [average, setAverage] = useState(0);
+  const [picks, setPicks] = useState<string[]>([]);
+  const [loginsLocked, setLoginsLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<NodeJS.Timer | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setStatusLoading(true);
+      const res = await fetch("/api/status", { cache: "no-store" });
+      if (!res.ok) throw new Error("Status fetch failed");
+      const data = await res.json();
+      setParticipants(data.participants || []);
+      setActiveCount(data.activeCount || 0);
+      setVotedCount(data.votedCount || 0);
+      setRound(data.round || 1);
+      setReveal(data.reveal === true);
+      setHistogram(data.votes?.histogram || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+      setVoteCount(data.votes?.count || 0);
+      setAverage(typeof data.votes?.average === "number" ? data.votes.average : 0);
+      setPicks(data.picks || []);
+      setLoginsLocked(data.loginsLocked === true);
+    } catch {
+      // noop
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
 
   // read pin from localStorage on mount
   useEffect(() => {
@@ -35,26 +60,6 @@ export default function Home() {
 
   // polling status every 2s
   useEffect(() => {
-    async function fetchStatus() {
-      try {
-        setStatusLoading(true);
-        const res = await fetch("/api/status", { cache: "no-store" });
-        if (!res.ok) throw new Error("Status fetch failed");
-        const data = await res.json();
-        setParticipants(data.participants || []);
-        setActiveCount(data.activeCount || 0);
-        setVotedCount(data.votedCount || 0);
-        setRound(data.round || 1);
-        setReveal(data.reveal === true);
-        setHistogram(data.votes?.histogram || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
-        setVoteCount(data.votes?.count || 0);
-        setAverage(typeof data.votes?.average === "number" ? data.votes.average : 0);
-      } catch (e) {
-        // keep silent but allow UI to show minimal info
-      } finally {
-        setStatusLoading(false);
-      }
-    }
     // initial fetch
     fetchStatus();
     // interval
@@ -62,7 +67,7 @@ export default function Home() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, []);
+  }, [fetchStatus]);
 
   async function login() {
     setError(null);
@@ -130,10 +135,46 @@ export default function Home() {
         return;
       }
       setVoted(value);
+      fetchStatus();
     } catch {
       setError("Nettverksfeil");
     }
   }
+
+  // host helpers
+  async function hostPost(path: string) {
+    if (!isHost) {
+      setError("Host‑funksjon krever host‑PIN");
+      return null;
+    }
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "x-host-pin": pin },
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({ error: "Feil ved host‑kall" }));
+        setError(msg || "Feil ved host‑kall");
+        return null;
+      }
+      return await res.json().catch(() => ({}));
+    } catch {
+      setError("Nettverksfeil");
+      return null;
+    } finally {
+      fetchStatus();
+    }
+  }
+
+  const revealResults = () => hostPost("/api/host/reveal");
+  const nextRound = async () => {
+    const r = await hostPost("/api/host/next-round");
+    if (r) setVoted(null);
+  };
+  const pickOne = () => hostPost("/api/host/pick");
+  const resetPicks = () => hostPost("/api/host/reset-picks");
+  const lockLogins = () => hostPost("/api/host/lock-logins");
+  const unlockLogins = () => hostPost("/api/host/unlock-logins");
 
   return (
     <div className="min-h-dvh w-full bg-white text-zinc-900">
@@ -244,6 +285,22 @@ export default function Home() {
                 Tilbake
               </button>
             </div>
+            {isHost && (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={revealResults}
+                >
+                  Avslør
+                </button>
+                <button
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
+                  onClick={nextRound}
+                >
+                  Ny runde
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-3">
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <button
@@ -298,14 +355,48 @@ export default function Home() {
                 Tilbake
               </button>
             </div>
-            <button className="w-full rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90">
-              Velg (mock)
+            <button
+              className="w-full rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
+              disabled={!isHost}
+              onClick={pickOne}
+            >
+              Velg
             </button>
             <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
-              <p className="text-sm text-zinc-500">Trekte (mock): 1234, 5678</p>
-              <button className="mt-3 w-full rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50">
-                Tilbakestill utvalg (mock)
+              <p className="text-sm text-zinc-500">
+                Trekte: {picks.length > 0 ? picks.join(", ") : "—"}<br />
+                Gjenstår (blant aktive): {Math.max(0, activeCount - picks.length)}
+              </p>
+              <button
+                className="mt-3 w-full rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50 disabled:opacity-50"
+                disabled={!isHost}
+                onClick={resetPicks}
+              >
+                Tilbakestill utvalg
               </button>
+            </div>
+          </section>
+        )}
+
+        {view === "lobby" && isHost && (
+          <section className="mt-6 space-y-3">
+            <h3 className="text-sm font-medium text-zinc-600">Host</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {loginsLocked ? (
+                <button
+                  className="rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={unlockLogins}
+                >
+                  Åpne pålogging
+                </button>
+              ) : (
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={lockLogins}
+                >
+                  Lås pålogging
+                </button>
+              )}
             </div>
           </section>
         )}

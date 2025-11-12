@@ -299,9 +299,9 @@ export default function Home() {
             view === "user" ? (
               <button
                 className="text-sm text-blue-600 underline"
-                onClick={logout}
+                onClick={() => setView("lobby")}
               >
-                Logg ut
+                Skål!
               </button>
             ) : (
               <button

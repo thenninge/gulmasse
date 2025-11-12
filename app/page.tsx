@@ -24,7 +24,7 @@ export default function Home() {
   const [picks, setPicks] = useState<string[]>([]);
   const [loginsLocked, setLoginsLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollRef = useRef<NodeJS.Timer | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -63,9 +63,9 @@ export default function Home() {
     // initial fetch
     fetchStatus();
     // interval
-    pollRef.current = setInterval(fetchStatus, 2000);
+    pollRef.current = window.setInterval(fetchStatus, 2000);
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [fetchStatus]);
 

@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type View = "login" | "lobby" | "voting" | "picker";
+type View = "login" | "user" | "lobby" | "voting" | "picker";
 
 export default function Home() {
   const [view, setView] = useState<View>("login");
   const [pin, setPin] = useState("");
   const [nickname, setNickname] = useState("");
+  const [competitor, setCompetitor] = useState("");
+  const [beerType, setBeerType] = useState<string>("");
+  const [strength, setStrength] = useState<string>("");
   const [voted, setVoted] = useState<number | null>(null);
   const isHost = useMemo(() => pin === "0808", [pin]);
 
@@ -67,8 +70,14 @@ export default function Home() {
     const saved = localStorage.getItem("pin") || "";
     if (saved) {
       setPin(saved);
-      setView("lobby");
+      setView("user");
     }
+    const savedCompetitor = localStorage.getItem("competitor") || "";
+    const savedType = localStorage.getItem("beerType") || "";
+    const savedStrength = localStorage.getItem("strength") || "";
+    setCompetitor(savedCompetitor);
+    setBeerType(savedType);
+    setStrength(savedStrength);
   }, []);
 
   // polling status every 2s
@@ -100,7 +109,7 @@ export default function Home() {
         return;
       }
       localStorage.setItem("pin", pin);
-      setView("lobby");
+      setView("user");
     } catch {
       setError("Nettverksfeil");
     }
@@ -124,7 +133,7 @@ export default function Home() {
         return;
       }
       localStorage.setItem("pin", pin);
-      setView("lobby");
+      setView("user");
     } catch {
       setError("Nettverksfeil");
     }
@@ -192,9 +201,15 @@ export default function Home() {
   function goToLogin() {
     try {
       localStorage.removeItem("pin");
+      localStorage.removeItem("competitor");
+      localStorage.removeItem("beerType");
+      localStorage.removeItem("strength");
     } catch {}
     setPin("");
     setNickname("");
+    setCompetitor("");
+    setBeerType("");
+    setStrength("");
     setVoted(null);
     setView("login");
   }
@@ -242,6 +257,95 @@ export default function Home() {
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
+        )}
+
+        {view === "user" && (
+          <section className="space-y-5">
+            <h2 className="text-xl font-semibold">Bruker</h2>
+            <div className="space-y-4 rounded-2xl border border-zinc-200 p-4 shadow-sm">
+              <div>
+                <label className="mb-1 block text-sm text-zinc-600">Navn</label>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  placeholder="Ditt navn"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-zinc-600">Konkurrent</label>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  placeholder="Navn på konkurrent"
+                  value={competitor}
+                  onChange={(e) => {
+                    setCompetitor(e.target.value);
+                    localStorage.setItem("competitor", e.target.value);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-zinc-600">Type</label>
+                <select
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2 bg-white"
+                  value={beerType}
+                  onChange={(e) => {
+                    setBeerType(e.target.value);
+                    localStorage.setItem("beerType", e.target.value);
+                  }}
+                >
+                  <option value="">Velg type</option>
+                  <option value="Lys lager">Lys lager</option>
+                  <option value="Mørk lager">Mørk lager</option>
+                  <option value="IPA">IPA</option>
+                  <option value="Porter/Stout">Porter/Stout</option>
+                  <option value="Annet">Annet</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-zinc-600">Styrke</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                    inputMode="decimal"
+                    placeholder="5.0"
+                    value={strength}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, "");
+                      const parts = val.split(".");
+                      const normalized =
+                        parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 1)}` : parts[0];
+                      setStrength(normalized);
+                      localStorage.setItem("strength", normalized);
+                    }}
+                  />
+                  <span className="text-sm text-zinc-600">%</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={async () => {
+                    if (pin.length === 4) {
+                      await fetch("/api/pin/profile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ pin, nickname: nickname || undefined }),
+                      }).catch(() => {});
+                    }
+                  }}
+                >
+                  Lagre
+                </button>
+                <button
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
+                  onClick={() => setView("lobby")}
+                >
+                  Fortsett til lobby
+                </button>
+              </div>
+            </div>
+          </section>
         )}
 
         {view === "login" && (

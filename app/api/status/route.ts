@@ -11,9 +11,9 @@ export async function GET() {
     if (roundRes.error) throw roundRes.error;
     if (revealRes.error) throw revealRes.error;
     if (lockRes.error) throw lockRes.error;
-    const round = Number(roundRes.data?.int_value ?? 1);
-    const reveal = revealRes.data?.bool_value === true;
-    const loginsLocked = lockRes.data?.bool_value === true;
+    const round = Number((roundRes.data as any)?.int_value ?? 1);
+    const reveal = (revealRes.data as any)?.bool_value === true;
+    const loginsLocked = (lockRes.data as any)?.bool_value === true;
 
     // Participants
     const participantsRes = await supabase
@@ -21,7 +21,7 @@ export async function GET() {
       .select('pin,nickname,active')
       .order('created_at', { ascending: true });
     if (participantsRes.error) throw participantsRes.error;
-    const participants = participantsRes.data || [];
+    const participants = ((participantsRes.data as any[]) || []) as Array<{ pin: string; nickname: string | null; active: boolean }>;
 
     const activePins = participants.filter((p) => p.active).map((p) => p.pin);
     const activeCount = activePins.length;
@@ -32,7 +32,7 @@ export async function GET() {
       .select('pin,value')
       .eq('round', round);
     if (votesRes.error) throw votesRes.error;
-    const voteRows = votesRes.data || [];
+    const voteRows = ((votesRes.data as any[]) || []) as Array<{ pin: string; value: number }>;
     const votedPins = voteRows.map((v) => v.pin as string);
     const votedCount = voteRows.filter((v) => activePins.includes(v.pin as string)).length;
 
@@ -53,7 +53,7 @@ export async function GET() {
       .select('pin')
       .order('created_at', { ascending: true });
     if (picksRes.error) throw picksRes.error;
-    const picks = (picksRes.data || []).map((r) => r.pin as string);
+    const picks = (((picksRes.data as any[]) || []) as Array<{ pin: string }>).map((r) => r.pin as string);
 
     return NextResponse.json({
       participants,

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!exists.data) {
       return NextResponse.json({ error: 'PIN not found' }, { status: 404 });
     }
-    if (exists.data.active !== true) {
+    if ((exists.data as any).active !== true) {
       return NextResponse.json({ error: 'Participant not active' }, { status: 400 });
     }
 

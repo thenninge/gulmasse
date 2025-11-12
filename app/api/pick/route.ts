@@ -4,6 +4,17 @@ import { supabase } from '@/lib/supabase';
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
+    // current round
+    const roundRes = await supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle();
+    if (roundRes.error) throw roundRes.error;
+    const round = Number((roundRes.data as any)?.int_value ?? 1);
+    // block if already picked this round
+    const pickedRoundRes = await supabase.from('app_state').select('int_value').eq('key','picked_round').maybeSingle();
+    if (pickedRoundRes.error) throw pickedRoundRes.error;
+    const pickedRound = Number((pickedRoundRes.data as any)?.int_value ?? 0);
+    if (pickedRound === round) {
+      return NextResponse.json({ error: 'Already picked this round' }, { status: 409 });
+    }
     const requestedPin = typeof (body as any)?.pin === 'string' ? (body as any).pin : undefined;
 
     // Active participants
@@ -37,6 +48,8 @@ export async function POST(request: Request) {
 
     const ins = await (supabase.from('picks') as any).insert({ pin: chosen });
     if (ins.error) throw ins.error;
+    const up = await (supabase.from('app_state') as any).upsert({ key: 'picked_round', int_value: round }, { onConflict: 'key' });
+    if (up.error) throw up.error;
     return NextResponse.json({ ok: true, pin: chosen });
   } catch (e: any) {
     const code = e?.status || 500;

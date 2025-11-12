@@ -39,6 +39,7 @@ export default function Home() {
   const [sortKey, setSortKey] = useState<"rank" | "received" | "name" | "beer" | "given">("received");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [revealedRound, setRevealedRound] = useState(0);
+  const [pickedRound, setPickedRound] = useState(0);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
 
   // Rank is always based on "poeng fått" (received), independent of current sort
@@ -121,6 +122,7 @@ export default function Home() {
       });
       setUserReceived(recvMap);
       setRevealedRound(data.revealedRound || 0);
+      setPickedRound(data.pickedRound || 0);
       // build pair totals map: from -> to -> total
       const pMap: Record<string, Record<string, number>> = {};
       (data.pairTotals || []).forEach((pt: { from: string; to: string; total: number }) => {
@@ -1312,6 +1314,7 @@ export default function Home() {
               </div>
               {/* PickerWheel component */}
               <PickerWheel
+                disabled={pickedRound === round}
                 participants={participants
                   .filter(p => p.active)
                   .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: picks.includes(p.pin) }))}
@@ -1429,6 +1432,11 @@ export default function Home() {
                       />
                     ))}
                   </div>
+                </div>
+              )}
+              {pickedRound === round && (
+                <div className="pt-2 text-center text-sm text-zinc-600">
+                  Denne runden er valgt. Vent til neste runde eller bruk "Legg tilbake".
                 </div>
               )}
             </div>

@@ -113,9 +113,22 @@ export async function GET() {
         const v = Number(r.value) || 0;
         pairAgg.set(key, (pairAgg.get(key) ?? 0) + v);
       }
+      // subtract pair offsets baseline if present
+      const pairOffsetsRes = await supabase.from('app_state').select('text_value').eq('key','pair_offsets').maybeSingle();
+      if (pairOffsetsRes.error && (pairOffsetsRes.error as any).code !== 'PGRST116') throw pairOffsetsRes.error;
+      let offsets: Record<string, number> = {};
+      try {
+        const txt = (pairOffsetsRes.data as any)?.text_value || '{}';
+        const parsed = JSON.parse(txt);
+        if (parsed && typeof parsed === 'object') offsets = parsed as Record<string, number>;
+      } catch {
+        offsets = {};
+      }
       for (const [k, total] of pairAgg.entries()) {
         const [from, to] = k.split('|');
-        pairTotals.push({ from, to, total });
+        const baseline = Number(offsets[k] ?? 0);
+        const adj = Math.max(0, total - baseline);
+        if (adj > 0) pairTotals.push({ from, to, total: adj });
       }
     }
 

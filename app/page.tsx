@@ -278,18 +278,6 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-zinc-600">Produsent</label>
-                <input
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
-                  placeholder="Produsent"
-                  value={producer}
-                  onChange={(e) => {
-                    setProducer(e.target.value);
-                    localStorage.setItem("producer", e.target.value);
-                  }}
-                />
-              </div>
-              <div>
                 <label className="mb-1 block text-sm text-zinc-600">Konkurrent</label>
                 <input
                   className="w-full rounded-xl border border-zinc-300 px-4 py-2"
@@ -298,6 +286,18 @@ export default function Home() {
                   onChange={(e) => {
                     setCompetitor(e.target.value);
                     localStorage.setItem("competitor", e.target.value);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-zinc-600">Produsent</label>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  placeholder="Produsent"
+                  value={producer}
+                  onChange={(e) => {
+                    setProducer(e.target.value);
+                    localStorage.setItem("producer", e.target.value);
                   }}
                 />
               </div>

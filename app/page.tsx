@@ -176,12 +176,36 @@ export default function Home() {
   const lockLogins = () => hostPost("/api/host/lock-logins");
   const unlockLogins = () => hostPost("/api/host/unlock-logins");
 
+  function goToLogin() {
+    try {
+      localStorage.removeItem("pin");
+    } catch {}
+    setPin("");
+    setNickname("");
+    setVoted(null);
+    setView("login");
+  }
+
   return (
     <div className="min-h-dvh w-full bg-white text-zinc-900">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold">Christmas Beer Competition '25!</h1>
-          <div className="text-sm text-zinc-500">{pin ? "Innlogget" : "Ikke innlogget"}</div>
+          {pin ? (
+            <button
+              className="text-sm text-blue-600 underline"
+              onClick={goToLogin}
+            >
+              Innlogget
+            </button>
+          ) : (
+            <button
+              className="text-sm text-blue-600 underline"
+              onClick={() => setView("login")}
+            >
+              Ikke innlogget
+            </button>
+          )}
         </div>
       </header>
 

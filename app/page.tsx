@@ -37,9 +37,10 @@ export default function Home() {
   const selected = useMemo(() => {
     const pinSel = picks.length > 0 ? picks[picks.length - 1] : null;
     if (!pinSel) return null;
-    const name =
-      (participants.find((x) => x.pin === pinSel)?.nickname || "").trim() || pinSel;
-    return { pin: pinSel, name };
+    const p = participants.find((x) => x.pin === pinSel);
+    const name = (p?.nickname || "").trim() || pinSel;
+    const beerName = (p?.beer_name || "").trim();
+    return { pin: pinSel, name, beerName };
   }, [picks, participants]);
 
   const fetchStatus = useCallback(async () => {
@@ -579,8 +580,12 @@ export default function Home() {
               </button>
             </div>
             {selected && (
-              <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm">
-                Vi stemmer over..: <span className="font-medium">{selected.name}</span>
+              <div className="rounded-xl border border-zinc-200 bg-white px-4 py-4 text-center">
+                <div className="text-xs uppercase tracking-wide text-zinc-500">Vi stemmer over:</div>
+                <div className="mt-1 text-2xl md:text-3xl font-bold text-zinc-900">{selected.name}</div>
+                {selected.beerName ? (
+                  <div className="mt-0.5 text-xl md:text-2xl text-zinc-700">“{selected.beerName}”</div>
+                ) : null}
               </div>
             )}
             {isHost && (

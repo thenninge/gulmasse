@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 export async function POST(request: Request) {
   try {
     assertHost(request);
+    const body = await request.json().catch(() => ({}));
+    const requestedPin = typeof (body as any)?.pin === 'string' ? (body as any).pin : undefined;
     const participantsRes = await supabase
       .from('participants')
       .select('pin')
@@ -19,8 +21,13 @@ export async function POST(request: Request) {
     if (candidates.length === 0) {
       return NextResponse.json({ error: 'No candidates left' }, { status: 409 });
     }
-    const idx = Math.floor(Math.random() * candidates.length);
-    const chosen = candidates[idx];
+    let chosen = candidates[0];
+    if (requestedPin && candidates.includes(requestedPin)) {
+      chosen = requestedPin;
+    } else {
+      const idx = Math.floor(Math.random() * candidates.length);
+      chosen = candidates[idx];
+    }
     const ins = await (supabase.from('picks') as any).insert({ pin: chosen });
     if (ins.error) throw ins.error;
     return NextResponse.json({ ok: true, pin: chosen });

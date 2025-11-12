@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     if (!res.data) {
       return NextResponse.json({ error: 'PIN not found' }, { status: 404 });
     }
-    const upd = await supabase.from('participants').update({ active: true }).eq('pin', pin);
+    const upd = await (supabase.from('participants') as any).update({ active: true }).eq('pin', pin);
     if (upd.error) throw upd.error;
     return NextResponse.json({ ok: true });
   } catch (e: any) {

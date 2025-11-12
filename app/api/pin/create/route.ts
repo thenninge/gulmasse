@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const nickname = parsed.nickname ?? null;
-    const ins = await supabase.from('participants').insert({ pin, nickname, active: true });
+    const ins = await (supabase.from('participants') as any).insert({ pin, nickname, active: true });
     if (ins.error) throw ins.error;
     return NextResponse.json({ ok: true, pin });
   } catch (e: any) {

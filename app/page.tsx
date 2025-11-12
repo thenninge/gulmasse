@@ -237,9 +237,9 @@ export default function Home() {
           {pin ? (
             <button
               className="text-sm text-blue-600 underline"
-              onClick={logout}
+              onClick={() => setView("user")}
             >
-              Logg ut
+              Brukerside
             </button>
           ) : (
             <button

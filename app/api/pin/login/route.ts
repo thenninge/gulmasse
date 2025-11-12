@@ -9,7 +9,7 @@ export async function POST(request: Request) {
 
     const lock = await supabase.from('app_state').select('bool_value').eq('key','logins_locked').maybeSingle();
     if (lock.error && lock.error.code !== 'PGRST116') throw lock.error;
-    if (lock.data?.bool_value === true) {
+    if ((lock.data as any)?.bool_value === true) {
       return NextResponse.json({ error: 'Logins are locked' }, { status: 423 });
     }
 

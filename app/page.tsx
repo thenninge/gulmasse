@@ -40,6 +40,7 @@ export default function Home() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [revealedRound, setRevealedRound] = useState(0);
   const [pickedRound, setPickedRound] = useState(0);
+  const [roundStarted, setRoundStarted] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
 
   // Rank is always based on "poeng fått" (received), independent of current sort
@@ -123,6 +124,7 @@ export default function Home() {
       setUserReceived(recvMap);
       setRevealedRound(data.revealedRound || 0);
       setPickedRound(data.pickedRound || 0);
+      setRoundStarted(Boolean(data.roundStarted));
       // build pair totals map: from -> to -> total
       const pMap: Record<string, Record<string, number>> = {};
       (data.pairTotals || []).forEach((pt: { from: string; to: string; total: number }) => {
@@ -927,7 +929,7 @@ export default function Home() {
               <button
                 className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={() => setView("picker")}
-                disabled={pickedRound === round}
+                disabled={!roundStarted || pickedRound === round}
               >
                 Find the chosen one
               </button>

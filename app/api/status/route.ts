@@ -3,23 +3,26 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes] = await Promise.all([
+    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes, roundStartedRes] = await Promise.all([
       supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'reveal_results').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'logins_locked').maybeSingle(),
       supabase.from('app_state').select('int_value').eq('key', 'revealed_round').maybeSingle(),
       supabase.from('app_state').select('int_value').eq('key', 'picked_round').maybeSingle(),
+      supabase.from('app_state').select('bool_value').eq('key', 'round_started').maybeSingle(),
     ]);
     if (roundRes.error) throw roundRes.error;
     if (revealRes.error) throw revealRes.error;
     if (lockRes.error) throw lockRes.error;
     if (revealedRoundRes.error) throw revealedRoundRes.error;
     if (pickedRoundRes.error) throw pickedRoundRes.error;
+    if (roundStartedRes.error) throw roundStartedRes.error;
     const round = Number((roundRes.data as any)?.int_value ?? 1);
     const reveal = (revealRes.data as any)?.bool_value === true;
     const loginsLocked = (lockRes.data as any)?.bool_value === true;
     const revealedRound = Number((revealedRoundRes.data as any)?.int_value ?? 0);
     const pickedRound = Number((pickedRoundRes.data as any)?.int_value ?? 0);
+    const roundStarted = (roundStartedRes.data as any)?.bool_value === true;
 
     // Participants
     const participantsRes = await supabase
@@ -161,6 +164,7 @@ export async function GET() {
       userReceived,
       revealedRound,
       pickedRound,
+      roundStarted,
       pairTotals,
     });
   } catch (e: any) {

@@ -50,6 +50,8 @@ export async function POST(request: Request) {
     if (ins.error) throw ins.error;
     const up = await (supabase.from('app_state') as any).upsert({ key: 'picked_round', int_value: round }, { onConflict: 'key' });
     if (up.error) throw up.error;
+    // After first pick in round, we can set round_started=false to require explicit next-round next time
+    await (supabase.from('app_state') as any).upsert({ key: 'round_started', bool_value: false }, { onConflict: 'key' });
     return NextResponse.json({ ok: true, pin: chosen });
   } catch (e: any) {
     const code = e?.status || 500;

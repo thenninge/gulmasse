@@ -18,8 +18,9 @@ export async function POST(request: Request) {
     const last = rows[0] as any;
     const del = await supabase.from('picks').delete().eq('id', last.id);
     if (del.error) throw del.error;
-    // clear picked_round so next pick is allowed this round
+    // clear picked_round and mark round_started=true so pick is unlocked again
     await (supabase.from('app_state') as any).upsert({ key: 'picked_round', int_value: 0 }, { onConflict: 'key' });
+    await (supabase.from('app_state') as any).upsert({ key: 'round_started', bool_value: true }, { onConflict: 'key' });
     return NextResponse.json({ ok: true, pin: last.pin as string });
   } catch (e: any) {
     const code = e?.status || 500;

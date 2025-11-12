@@ -327,7 +327,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-md px-4 py-6 bg-white/85 rounded-2xl shadow-lg">
+      <main className="mx-auto mt-6 md:mt-8 max-w-md px-4 py-6 bg-white/85 rounded-2xl shadow-lg">
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}

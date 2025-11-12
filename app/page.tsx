@@ -291,7 +291,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-dvh w-full bg-white text-zinc-900">
+    <div className="min-h-dvh w-full bg-transparent text-zinc-900">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold">Christmas Beer Competition '25!</h1>

@@ -36,6 +36,26 @@ export default function Home() {
   const pollRef = useRef<number | null>(null);
   const [sortKey, setSortKey] = useState<"rank" | "received" | "name" | "beer" | "given">("received");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // Rank is always based on "poeng fått" (received), independent of current sort
+  const receivedRankMap = useMemo(() => {
+    const items = participants.map((p) => ({
+      pin: p.pin,
+      received: userReceived[p.pin] ?? 0,
+      given: userGiven[p.pin] ?? 0,
+      name: (p.nickname || "").trim(),
+    }));
+    items.sort((a, b) => {
+      if (a.received !== b.received) return b.received - a.received;
+      if (a.given !== b.given) return b.given - a.given;
+      return a.name.localeCompare(b.name);
+    });
+    const map: Record<string, number> = {};
+    items.forEach((item, idx) => {
+      map[item.pin] = idx + 1;
+    });
+    return map;
+  }, [participants, userReceived, userGiven]);
   const selected = useMemo(() => {
     const pinSel = picks.length > 0 ? picks[picks.length - 1] : null;
     if (!pinSel) return null;
@@ -638,7 +658,7 @@ export default function Home() {
                   .map((p, idx) => {
                     const name = (p.nickname || "").trim() || "Uten navn";
                     const given = userGiven[p.pin] ?? 0;
-                    const rank = idx + 1;
+                    const rank = receivedRankMap[p.pin] ?? idx + 1;
                     const received = userReceived[p.pin] ?? 0;
                     const beerName = (p.beer_name || "").trim() || "—";
                     return (

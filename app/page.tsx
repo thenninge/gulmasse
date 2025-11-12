@@ -245,12 +245,21 @@ export default function Home() {
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold">Christmas Beer Competition '25!</h1>
           {pin ? (
-            <button
-              className="text-sm text-blue-600 underline"
-              onClick={() => setView("user")}
-            >
-              Brukerside
-            </button>
+            view === "user" ? (
+              <button
+                className="text-sm text-blue-600 underline"
+                onClick={logout}
+              >
+                Logg ut
+              </button>
+            ) : (
+              <button
+                className="text-sm text-blue-600 underline"
+                onClick={() => setView("user")}
+              >
+                Brukerside
+              </button>
+            )
           ) : (
             <button
               className="text-sm text-blue-600 underline"
@@ -392,6 +401,14 @@ export default function Home() {
               {profileSaved && (
                 <div className="text-xs text-emerald-700">Detaljer lagret!</div>
               )}
+              <div className="pt-2">
+                <button
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={logout}
+                >
+                  Logg ut
+                </button>
+              </div>
             </div>
           </section>
         )}
@@ -627,7 +644,7 @@ export default function Home() {
                   Lås pålogging
                 </button>
               )}
-            </div>
+        </div>
           </section>
         )}
       </main>

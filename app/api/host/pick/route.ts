@@ -11,10 +11,10 @@ export async function POST(request: Request) {
       .eq('active', true)
       .order('created_at', { ascending: true });
     if (participantsRes.error) throw participantsRes.error;
-    const activePins = (participantsRes.data || []).map((p) => p.pin as string);
+    const activePins = ((participantsRes.data as any[]) || []).map((p: any) => p.pin as string);
     const pickedRes = await supabase.from('picks').select('pin').order('created_at', { ascending: true });
     if (pickedRes.error) throw pickedRes.error;
-    const alreadyPicked = new Set((pickedRes.data || []).map((r) => r.pin as string));
+    const alreadyPicked = new Set(((pickedRes.data as any[]) || []).map((r: any) => r.pin as string));
     const candidates = activePins.filter((p) => !alreadyPicked.has(p));
     if (candidates.length === 0) {
       return NextResponse.json({ error: 'No candidates left' }, { status: 409 });

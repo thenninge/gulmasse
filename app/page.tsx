@@ -1,64 +1,314 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type View = "login" | "lobby" | "voting" | "picker";
 
 export default function Home() {
+  const [view, setView] = useState<View>("login");
+  const [pin, setPin] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [voted, setVoted] = useState<number | null>(null);
+  const isHost = useMemo(() => pin === "0808", [pin]);
+
+  // status state from /api/status
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [participants, setParticipants] = useState<Array<{ pin: string; nickname: string | null; active: boolean }>>([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [votedCount, setVotedCount] = useState(0);
+  const [round, setRound] = useState(1);
+  const [reveal, setReveal] = useState(false);
+  const [histogram, setHistogram] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+  const [voteCount, setVoteCount] = useState(0);
+  const [average, setAverage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<NodeJS.Timer | null>(null);
+
+  // read pin from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("pin") || "";
+    if (saved) {
+      setPin(saved);
+      setView("lobby");
+    }
+  }, []);
+
+  // polling status every 2s
+  useEffect(() => {
+    async function fetchStatus() {
+      try {
+        setStatusLoading(true);
+        const res = await fetch("/api/status", { cache: "no-store" });
+        if (!res.ok) throw new Error("Status fetch failed");
+        const data = await res.json();
+        setParticipants(data.participants || []);
+        setActiveCount(data.activeCount || 0);
+        setVotedCount(data.votedCount || 0);
+        setRound(data.round || 1);
+        setReveal(data.reveal === true);
+        setHistogram(data.votes?.histogram || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+        setVoteCount(data.votes?.count || 0);
+        setAverage(typeof data.votes?.average === "number" ? data.votes.average : 0);
+      } catch (e) {
+        // keep silent but allow UI to show minimal info
+      } finally {
+        setStatusLoading(false);
+      }
+    }
+    // initial fetch
+    fetchStatus();
+    // interval
+    pollRef.current = setInterval(fetchStatus, 2000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  async function login() {
+    setError(null);
+    if (pin.length !== 4) {
+      setError("PIN må være 4 siffer");
+      return;
+    }
+    try {
+      const res = await fetch("/api/pin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({ error: "Feil ved innlogging" }));
+        setError(msg || "Feil ved innlogging");
+        return;
+      }
+      localStorage.setItem("pin", pin);
+      setView("lobby");
+    } catch {
+      setError("Nettverksfeil");
+    }
+  }
+
+  async function createPin() {
+    setError(null);
+    if (pin.length !== 4) {
+      setError("PIN må være 4 siffer");
+      return;
+    }
+    try {
+      const res = await fetch("/api/pin/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin, nickname: nickname || undefined }),
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({ error: "Feil ved opprettelse" }));
+        setError(msg || "Feil ved opprettelse");
+        return;
+      }
+      localStorage.setItem("pin", pin);
+      setView("lobby");
+    } catch {
+      setError("Nettverksfeil");
+    }
+  }
+
+  async function castVote(value: number) {
+    setError(null);
+    if (pin.length !== 4) {
+      setError("Du må være innlogget");
+      return;
+    }
+    try {
+      const res = await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin, value }),
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({ error: "Kunne ikke lagre stemme" }));
+        setError(msg || "Kunne ikke lagre stemme");
+        return;
+      }
+      setVoted(value);
+    } catch {
+      setError("Nettverksfeil");
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-dvh w-full bg-white text-zinc-900">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
+          <h1 className="text-lg font-semibold">Gulmasse</h1>
+          <div className="text-sm text-zinc-500">{pin ? `PIN: ${pin}` : "Ikke innlogget"}</div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </header>
+
+      <main className="mx-auto max-w-md px-4 py-6">
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {view === "login" && (
+          <section className="space-y-5">
+            <h2 className="text-xl font-semibold">Logg inn eller opprett PIN</h2>
+            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+              <label className="mb-2 block text-sm text-zinc-600">4-sifret PIN</label>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                placeholder="____"
+                className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-center text-2xl tracking-widest"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\\D/g, "").slice(0, 4))}
+              />
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <button
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
+                  onClick={login}
+                >
+                  Logg inn
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={createPin}
+                >
+                  Opprett PIN
+                </button>
+              </div>
+              <div className="mt-3">
+                <label className="mb-1 block text-sm text-zinc-600">Kallenavn (valgfritt)</label>
+                <input
+                  placeholder="Navn"
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {view === "lobby" && (
+          <section className="space-y-5">
+            <h2 className="text-xl font-semibold">Lobby</h2>
+            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-zinc-500">
+                  Aktive deltakere ({activeCount})
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Runde {round} {statusLoading ? "…" : ""}
+                </p>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {participants.filter(p => p.active).map((p) => (
+                  <span
+                    key={p.pin}
+                    className="rounded-full border border-zinc-300 px-3 py-1 text-sm"
+                  >
+                    {p.pin}{p.nickname ? ` • ${p.nickname}` : ""}
+                  </span>
+                ))}
+                {participants.filter(p => p.active).length === 0 && (
+                  <span className="text-sm text-zinc-500">Ingen aktive</span>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                className="rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90"
+                onClick={() => setView("voting")}
+              >
+                Gå til Voting
+              </button>
+              <button
+                className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
+                disabled={!isHost}
+                onClick={() => setView("picker")}
+              >
+                Gå til Utvelger {isHost ? "" : "(host)"}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {view === "voting" && (
+          <section className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Voting</h2>
+              <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
+                Tilbake
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  className={`h-16 rounded-xl text-2xl font-semibold ${
+                    voted === n ? "bg-blue-700 text-white" : "bg-zinc-100"
+                  }`}
+                  onClick={() => castVote(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+              <div className="text-sm text-zinc-600">
+                Status: {votedCount}/{activeCount} har stemt
+              </div>
+              {(reveal || (activeCount > 0 && votedCount >= activeCount)) ? (
+                <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-6 gap-2">
+                    {[1,2,3,4,5,6].map((n) => (
+                      <div key={n} className="text-center">
+                        <div className="text-xs text-zinc-500">{n}</div>
+                        <div className="mx-auto mt-1 h-2 w-full rounded bg-zinc-100">
+                          <div
+                            className="h-2 rounded bg-blue-600"
+                            style={{ width: `${Math.min(100, (histogram[n] || 0) * 20)}%` }}
+                          />
+                        </div>
+                        <div className="mt-1 text-xs">{histogram[n] || 0}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-sm text-zinc-700">
+                    Snitt: <span className="font-medium">{average.toFixed(2)}</span> ({voteCount} stemmer)
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 h-24 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500">
+                  Resultater vises når alle har stemt eller host avslører.
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {view === "picker" && (
+          <section className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Utvelger</h2>
+              <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
+                Tilbake
+              </button>
+            </div>
+            <button className="w-full rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90">
+              Velg (mock)
+            </button>
+            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+              <p className="text-sm text-zinc-500">Trekte (mock): 1234, 5678</p>
+              <button className="mt-3 w-full rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50">
+                Tilbakestill utvalg (mock)
+              </button>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

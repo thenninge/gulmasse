@@ -263,26 +263,30 @@ export default function Home() {
             <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-zinc-500">
-                  Aktive deltakere ({activeCount})
+                  Deltakere: {activeCount}/{participants.length} aktive
                 </p>
                 <p className="text-xs text-zinc-500">
                   Runde {round} {statusLoading ? "…" : ""}
                 </p>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {participants.filter(p => p.active).map((p) => {
+                {participants.map((p) => {
                   const name = (p.nickname || "").trim() || "Uten navn";
                   return (
                   <span
                     key={p.pin}
-                    className="rounded-full border border-zinc-300 px-3 py-1 text-sm"
+                    className={`rounded-full px-3 py-1 text-sm ${
+                      p.active
+                        ? "border border-zinc-300"
+                        : "border border-zinc-200 text-zinc-400 bg-zinc-50"
+                    }`}
                   >
-                    {name}
+                    {name}{p.active ? "" : " (passiv)"}
                   </span>
                   );
                 })}
-                {participants.filter(p => p.active).length === 0 && (
-                  <span className="text-sm text-zinc-500">Ingen aktive</span>
+                {participants.length === 0 && (
+                  <span className="text-sm text-zinc-500">Ingen deltakere</span>
                 )}
               </div>
             </div>

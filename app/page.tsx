@@ -240,6 +240,9 @@ export default function Home() {
   const unlockLogins = () => hostPost("/api/host/unlock-logins");
 
   const [profileSaved, setProfileSaved] = useState(false);
+  const [isPicking, setIsPicking] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [lastPicked, setLastPicked] = useState<{ name: string; beerName?: string } | null>(null);
 
   function goToLogin() {
     try {
@@ -783,28 +786,125 @@ export default function Home() {
                 Tilbake
               </button>
             </div>
-            <button
-              className="w-full rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
-              disabled={!isHost}
-              onClick={pickOne}
-            >
-              Velg
-            </button>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <p className="text-sm text-zinc-500">
-                Trekte: {picks.length > 0 ? picks.map((ppin) => {
-                  const name = (participants.find(x => x.pin === ppin)?.nickname || "").trim() || "Uten navn";
-                  return name;
-                }).join(", ") : "—"}<br />
-                Gjenstår (blant aktive): {Math.max(0, activeCount - picks.length)}
-              </p>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-zinc-600">
+                  Gjenstående:{" "}
+                  <span className="font-medium">
+                    {Math.max(0, participants.filter(p=>p.active).length - picks.length)}
+                  </span>
+                </div>
+                <button
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm active:bg-zinc-50 disabled:opacity-50"
+                  disabled={!isHost}
+                  onClick={resetPicks}
+                >
+                  Tilbakestill
+                </button>
+              </div>
               <button
-                className="mt-3 w-full rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50 disabled:opacity-50"
-                disabled={!isHost}
-                onClick={resetPicks}
+                className={`mx-auto block w-full rounded-2xl px-6 py-5 text-white text-xl font-semibold active:opacity-90 disabled:opacity-50 transition
+                ${isHost ? (isPicking ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700") : "bg-zinc-400"}`}
+                disabled={!isHost || isPicking}
+                onClick={async () => {
+                  try {
+                    setIsPicking(true);
+                    const res = await fetch("/api/host/pick", { method: "POST", headers: { "x-host-pin": pin } });
+                    if (res.ok) {
+                      const data = await res.json().catch(() => null);
+                      const chosenPin = data?.pin as string | undefined;
+                      if (chosenPin) {
+                        const p = participants.find(x => x.pin === chosenPin);
+                        const latest = {
+                          name: (p?.nickname || "").trim() || chosenPin,
+                          beerName: (p?.beer_name || "").trim() || undefined,
+                        };
+                        setLastPicked(latest);
+                      } else if (selected) {
+                        setLastPicked({ name: selected.name, beerName: selected.beerName });
+                      }
+                      setShowCelebration(true);
+                      // Gentle haptic on supported devices
+                      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+                        // @ts-ignore
+                        navigator.vibrate?.(80);
+                      }
+                      setTimeout(() => setShowCelebration(false), 2200);
+                      await fetchStatus();
+                    }
+                  } finally {
+                    setIsPicking(false);
+                  }
+                }}
               >
-                Tilbakestill utvalg
+                {isPicking ? "Trekker..." : "Velg"}
               </button>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs font-medium text-zinc-600 mb-1">Gjenstående deltakere</div>
+                  <div className="flex flex-wrap gap-2">
+                    {participants.filter(p=>p.active && !picks.includes(p.pin)).length === 0 && (
+                      <span className="text-xs text-zinc-400">Ingen</span>
+                    )}
+                    {participants.filter(p=>p.active && !picks.includes(p.pin)).map(p=>{
+                      const n = (p.nickname || "").trim() || p.pin;
+                      return <span key={p.pin} className="rounded-full border border-zinc-300 px-3 py-1 text-xs">{n}</span>;
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-zinc-600 mb-1">Ferdig dystet!</div>
+                  <div className="flex flex-wrap gap-2">
+                    {picks.length === 0 && <span className="text-xs text-zinc-400">Ingen</span>}
+                    {picks.map(ppin => {
+                      const n = (participants.find(x=>x.pin===ppin)?.nickname || "").trim() || ppin;
+                      return <span key={ppin} className="rounded-full border border-zinc-300 px-3 py-1 text-xs">{n}</span>;
+                    })}
+                  </div>
+                </div>
+              </div>
+              {showCelebration && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
+                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl">
+                    <div className="text-xs uppercase tracking-wide text-emerald-700">Valgt</div>
+                    <div className="mt-1 text-2xl font-bold text-emerald-900">
+                      {lastPicked?.name || selected?.name}
+                    </div>
+                    { (lastPicked?.beerName || selected?.beerName) ? (
+                      <div className="text-lg text-emerald-800">
+                        {(lastPicked?.beerName || selected?.beerName)}
+                      </div>
+                    ) : null}
+                  </div>
+                  {/* Simple confetti */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    {Array.from({ length: 80 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="absolute block h-2 w-2 animate-confetti rounded-[1px]"
+                        style={{
+                          left: `${Math.random() * 100}%`,
+                          top: `-${Math.random() * 20}%`,
+                          backgroundColor: ['#10b981', '#34d399', '#059669', '#6ee7b7'][i % 4],
+                          animationDelay: `${Math.random() * 0.6}s`,
+                          animationDuration: `${1.6 + Math.random() * 0.8}s`,
+                          transform: `rotate(${Math.random() * 360}deg)`
+                        } as any}
+                      />
+                    ))}
+                  </div>
+                  <style jsx global>{`
+                    @keyframes confetti-fall {
+                      0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+                      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+                    }
+                    .animate-confetti {
+                      animation-name: confetti-fall;
+                      animation-timing-function: linear;
+                    }
+                  `}</style>
+                </div>
+              )}
             </div>
           </section>
         )}

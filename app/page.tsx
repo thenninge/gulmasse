@@ -1170,44 +1170,61 @@ export default function Home() {
                   );
                 })}
               </div>
-              {(reveal || (activeCount > 0 && votedCount >= activeCount)) ? (
+              {(activeCount > 0 && votedCount >= activeCount) ? (
                 <div className="mt-3 space-y-2">
                   {(() => {
-                    const maxBar = Math.max(1, ...[1,2,3,4,5,6].map((n) => histogram[n] || 0));
-                    const innerHeightPx = 48; // reduce overall bar height to ~33%
-                    const blockHeightPx = Math.max(4, Math.floor(innerHeightPx / maxBar) - 2); // tighter gap
+                    const revealedValues = Object.values(revealedVotesMap || {});
+                    const revCount = revealedValues.length;
+                    const revHist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+                    for (const v of revealedValues) {
+                      if (v >= 1 && v <= 6) revHist[v] += 1;
+                    }
+                    const maxBar = Math.max(1, ...[1,2,3,4,5,6].map((n) => revHist[n] || 0));
+                    const innerHeightPx = 48; // compact bars
+                    const blockHeightPx = Math.max(4, Math.floor(innerHeightPx / maxBar) - 2);
+                    if (revCount === 0) {
+                      return (
+                        <div className="mt-2 h-24 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500">
+                          Ingen avslørte stemmer ennå.
+                        </div>
+                      );
+                    }
+                    const sum = revealedValues.reduce((a, b) => a + (Number(b) || 0), 0);
+                    const revAvg = revCount > 0 ? Number((sum / revCount).toFixed(2)) : 0;
                     return (
-                      <div className="flex items-end gap-3">
-                        {[1,2,3,4,5,6].map((n) => {
-                          const count = histogram[n] || 0;
-                          return (
-                            <div key={n} className="flex flex-1 min-w-0 flex-col items-center">
-                              <div className="relative w-full rounded-md border border-zinc-200 bg-zinc-50 p-1" style={{ height: innerHeightPx }}>
-                                <div className="flex h-full w-full flex-col justify-end gap-1">
-                                  {Array.from({ length: count }).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className="w-full rounded-sm bg-blue-600"
-                                      style={{ height: blockHeightPx }}
-                                    />
-                                  ))}
+                      <>
+                        <div className="flex items-end gap-3">
+                          {[1,2,3,4,5,6].map((n) => {
+                            const count = revHist[n] || 0;
+                            return (
+                              <div key={n} className="flex flex-1 min-w-0 flex-col items-center">
+                                <div className="relative w-full rounded-md border border-zinc-200 bg-zinc-50 p-1" style={{ height: innerHeightPx }}>
+                                  <div className="flex h-full w-full flex-col justify-end gap-1">
+                                    {Array.from({ length: count }).map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className="w-full rounded-sm bg-blue-600"
+                                        style={{ height: blockHeightPx }}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
+                                <div className="mt-1 text-xs text-zinc-500">{n}</div>
+                                <div className="text-xs">{count}</div>
                               </div>
-                              <div className="mt-1 text-xs text-zinc-500">{n}</div>
-                              <div className="text-xs">{count}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                        <div className="text-sm text-zinc-700">
+                          Snitt (av avslørte): <span className="font-medium">{revAvg.toFixed(2)}</span> ({revCount} avslørt{revCount === 1 ? "" : "e"})
+                        </div>
+                      </>
                     );
                   })()}
-                  <div className="text-sm text-zinc-700">
-                    Snitt: <span className="font-medium">{average.toFixed(2)}</span> ({voteCount} stemmer)
-                  </div>
                 </div>
               ) : (
                 <div className="mt-2 h-24 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500">
-                  Resultater vises når alle har stemt eller host avslører.
+                  Resultater vises når alle har stemt.
                 </div>
               )}
             </div>

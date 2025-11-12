@@ -315,6 +315,12 @@ export default function Home() {
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
   const [revealedVotesMap, setRevealedVotesMap] = useState<Record<string, number>>({});
+  const [showAdminConfirm, setShowAdminConfirm] = useState(false);
+  const adminConfirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
+  function confirmAdmin(action: () => void | Promise<void>) {
+    adminConfirmActionRef.current = action;
+    setShowAdminConfirm(true);
+  }
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -1537,55 +1543,61 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={revealResults}
+                  onClick={() => confirmAdmin(async () => { await revealResults(); })}
                   disabled={revealedRound === round}
                 >
                   Avslør resultater (én gang)
                 </button>
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
-                  onClick={nextRound}
+                  onClick={() => confirmAdmin(async () => { await nextRound(); })}
                 >
                   Ny runde
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={async () => {
-                    await fetch("/api/host/admin/reset-received", { method: "POST", headers: { "x-host-pin": pin } });
-                    fetchStatus();
-                  }}
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/admin/reset-received", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
                 >
                   Reset poeng fått = 0
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={async () => {
-                    await fetch("/api/host/admin/reset-given", { method: "POST", headers: { "x-host-pin": pin } });
-                    fetchStatus();
-                  }}
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/admin/reset-given", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
                 >
                   Reset poeng gitt = 0
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={async () => {
-                    await fetch("/api/host/admin/reset-round", { method: "POST", headers: { "x-host-pin": pin } });
-                    fetchStatus();
-                  }}
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/admin/reset-round", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
                 >
                   Reset rundenr = 0
                 </button>
                 {loginsLocked ? (
                   <button
                     className="rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
-                    onClick={unlockLogins}
+                    onClick={() => confirmAdmin(async () => { await unlockLogins(); })}
                   >
                     Åpne pålogging
                   </button>
                 ) : (
                   <button
                     className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                    onClick={lockLogins}
+                    onClick={() => confirmAdmin(async () => { await lockLogins(); })}
                   >
                     Lås pålogging
                   </button>
@@ -1606,14 +1618,16 @@ export default function Home() {
                         </div>
                         <button
                           className="rounded-md border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50"
-                          onClick={async () => {
-                            await fetch("/api/host/admin/delete-participant", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json", "x-host-pin": pin },
-                              body: JSON.stringify({ pin: p.pin }),
-                            });
-                            fetchStatus();
-                          }}
+                          onClick={() =>
+                            confirmAdmin(async () => {
+                              await fetch("/api/host/admin/delete-participant", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", "x-host-pin": pin },
+                                body: JSON.stringify({ pin: p.pin }),
+                              });
+                              fetchStatus();
+                            })
+                          }
                         >
                           Slett
                         </button>
@@ -1632,6 +1646,43 @@ export default function Home() {
               </button>
         </div>
           </section>
+        )}
+        {showAdminConfirm && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setShowAdminConfirm(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold">Er du sikker?</h3>
+              <p className="mt-2 text-sm text-zinc-700">Denne handlingen kan ikke angres.</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button
+                  className="rounded-lg border border-zinc-300 px-4 py-2 active:bg-zinc-50"
+                  onClick={() => setShowAdminConfirm(false)}
+                >
+                  Nei
+                </button>
+                <button
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-white active:opacity-90"
+                  onClick={async () => {
+                    try {
+                      await (adminConfirmActionRef.current?.() as any);
+                    } finally {
+                      setShowAdminConfirm(false);
+                      adminConfirmActionRef.current = null;
+                    }
+                  }}
+                >
+                  Ja
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

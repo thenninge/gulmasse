@@ -15,6 +15,9 @@ export async function POST(request: Request) {
     const { error: err2 } = await (supabase
       .from('app_state') as any).upsert({ key: 'reveal_results', bool_value: false }, { onConflict: 'key' });
     if (err2) throw err2;
+    const { error: err3 } = await (supabase
+      .from('app_state') as any).upsert({ key: 'revealed_round', int_value: 0 }, { onConflict: 'key' });
+    if (err3) throw err3;
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const code = e?.status || 500;

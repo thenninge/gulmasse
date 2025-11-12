@@ -3,17 +3,20 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const [roundRes, revealRes, lockRes] = await Promise.all([
+    const [roundRes, revealRes, lockRes, revealedRoundRes] = await Promise.all([
       supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'reveal_results').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'logins_locked').maybeSingle(),
+      supabase.from('app_state').select('int_value').eq('key', 'revealed_round').maybeSingle(),
     ]);
     if (roundRes.error) throw roundRes.error;
     if (revealRes.error) throw revealRes.error;
     if (lockRes.error) throw lockRes.error;
+    if (revealedRoundRes.error) throw revealedRoundRes.error;
     const round = Number((roundRes.data as any)?.int_value ?? 1);
     const reveal = (revealRes.data as any)?.bool_value === true;
     const loginsLocked = (lockRes.data as any)?.bool_value === true;
+    const revealedRound = Number((revealedRoundRes.data as any)?.int_value ?? 0);
 
     // Participants
     const participantsRes = await supabase
@@ -110,6 +113,7 @@ export async function GET() {
       loginsLocked,
       userGiven,
       userReceived,
+      revealedRound,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

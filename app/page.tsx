@@ -12,6 +12,7 @@ export default function Home() {
   const [competitor, setCompetitor] = useState("");
   const [producer, setProducer] = useState("");
   const [beerType, setBeerType] = useState<string>("");
+  const [customBeerType, setCustomBeerType] = useState<string>("");
   const [strength, setStrength] = useState<string>("");
   const [voted, setVoted] = useState<number | null>(null);
   const isHost = useMemo(() => pin === "0808", [pin]);
@@ -37,6 +38,7 @@ export default function Home() {
   const pollRef = useRef<number | null>(null);
   const [sortKey, setSortKey] = useState<"rank" | "received" | "name" | "beer" | "given">("received");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [revealedRound, setRevealedRound] = useState(0);
 
   // Rank is always based on "poeng fått" (received), independent of current sort
   const receivedRankMap = useMemo(() => {
@@ -66,6 +68,8 @@ export default function Home() {
       konrad: "/img/konrad.jpg",
       martin: "/img/martin.jpg",
       tomas: "/img/tomas.jpg",
+      roald: "/img/roald.png",
+      kathinka: "/img/kathinka.png",
     };
     return map[first] || null;
   }
@@ -109,6 +113,7 @@ export default function Home() {
         recvMap[u.pin] = u.total || 0;
       });
       setUserReceived(recvMap);
+      setRevealedRound(data.revealedRound || 0);
     } catch {
       // noop
     } finally {
@@ -128,10 +133,12 @@ export default function Home() {
     const savedCompetitor = localStorage.getItem("competitor") || "";
     const savedProducer = localStorage.getItem("producer") || "";
     const savedType = localStorage.getItem("beerType") || "";
+    const savedTypeCustom = localStorage.getItem("beerTypeCustom") || "";
     const savedStrength = localStorage.getItem("strength") || "";
     setCompetitor(savedCompetitor);
     setProducer(savedProducer);
     setBeerType(savedType);
+    setCustomBeerType(savedTypeCustom);
     setStrength(savedStrength);
   }, []);
 
@@ -266,6 +273,7 @@ export default function Home() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const drumRef = useRef<number | null>(null);
   const [showBeerImage, setShowBeerImage] = useState(false);
+  const [showPodium, setShowPodium] = useState(false);
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -366,6 +374,7 @@ export default function Home() {
       localStorage.removeItem("producer");
       localStorage.removeItem("beerType");
       localStorage.removeItem("strength");
+      localStorage.removeItem("beerTypeCustom");
     } catch {}
     setPin("");
     setNickname("");
@@ -373,6 +382,7 @@ export default function Home() {
     setProducer("");
     setBeerType("");
     setStrength("");
+    setCustomBeerType("");
     setVoted(null);
     setView("login");
   }
@@ -418,8 +428,20 @@ export default function Home() {
         localStorage.setItem("producer", p.producer || "");
       }
       if (p.beer_type !== undefined) {
-        setBeerType(p.beer_type || "");
-        localStorage.setItem("beerType", p.beer_type || "");
+        const known = new Set([
+          "Barleywine","Belgian Double","Belgian Quad","Belgian Tripple","Bock","Dobblebock","Double IPA","Home Brew","Imperial Stout","IPA","Julebrygg","Lager","Mjød","Other","Pilsner","Stout","Tripplebock","Nuclear Surprise"
+        ]);
+        const t = (p.beer_type || "").trim();
+        if (t && !known.has(t)) {
+          setBeerType("__custom__");
+          setCustomBeerType(t);
+          localStorage.setItem("beerType", "__custom__");
+          localStorage.setItem("beerTypeCustom", t);
+        } else {
+          setBeerType(t);
+          localStorage.setItem("beerType", t);
+          localStorage.removeItem("beerTypeCustom");
+        }
       }
       if (p.abv !== undefined && p.abv !== null) {
         const s = Number(p.abv).toFixed(1);
@@ -518,8 +540,13 @@ export default function Home() {
                   className="w-full rounded-xl border border-zinc-300 px-4 py-2 bg-white"
                   value={beerType}
                   onChange={(e) => {
-                    setBeerType(e.target.value);
-                    localStorage.setItem("beerType", e.target.value);
+                    const v = e.target.value;
+                    setBeerType(v);
+                    localStorage.setItem("beerType", v);
+                    if (v !== "__custom__") {
+                      setCustomBeerType("");
+                      localStorage.removeItem("beerTypeCustom");
+                    }
                   }}
                 >
                   <option value="">Velg type</option>
@@ -540,7 +567,23 @@ export default function Home() {
                   <option value="Pilsner">Pilsner</option>
                   <option value="Stout">Stout</option>
                   <option value="Tripplebock">Tripplebock</option>
+                  <option value="Nuclear Surprise">Nuclear Surprise</option>
+                  <option value="__custom__">Annet (skriv selv)</option>
                 </select>
+                {beerType === "__custom__" && (
+                  <div className="mt-2">
+                    <label className="mb-1 block text-xs text-zinc-500">Egen type</label>
+                    <input
+                      className="w-full rounded-xl border border-zinc-300 px-4 py-2 bg-white"
+                      placeholder="Skriv øltype"
+                      value={customBeerType}
+                      onChange={(e) => {
+                        setCustomBeerType(e.target.value);
+                        localStorage.setItem("beerTypeCustom", e.target.value);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-sm text-zinc-600">Styrke</label>
@@ -575,7 +618,7 @@ export default function Home() {
                           nickname: nickname || undefined,
                           beer_name: competitor || undefined,
                           producer: producer || undefined,
-                          beer_type: beerType || undefined,
+                          beer_type: (beerType === "__custom__" ? (customBeerType || undefined) : (beerType || undefined)),
                           abv: strength ? Number(strength) : undefined,
                         }),
                       }).catch(() => null);
@@ -662,6 +705,14 @@ export default function Home() {
                 <p className="text-xs text-zinc-500">
                   Runde {round} {statusLoading ? "…" : ""}
                 </p>
+              </div>
+              <div className="mt-2 flex justify-end">
+                <button
+                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium active:bg-zinc-50"
+                  onClick={() => setShowPodium(true)}
+                >
+                  Podium
+                </button>
               </div>
               <div className="mt-2 grid [grid-template-columns:28px_36px_1.2fr_1.4fr_56px] gap-1 px-3 py-2 text-xs font-medium text-zinc-600">
                 <button
@@ -814,10 +865,74 @@ export default function Home() {
           </section>
         )}
 
+        {/* Podium modal */}
+        {showPodium && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setShowPodium(false)}
+          >
+            <div
+              className="relative w-full max-w-md rounded-2xl bg-white p-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="absolute right-3 top-3 rounded-md bg-white/90 px-2 py-1 text-sm shadow"
+                onClick={() => setShowPodium(false)}
+                aria-label="Lukk"
+              >
+                ✕
+              </button>
+              <h3 className="mb-4 text-center text-lg font-semibold">Podium</h3>
+              {(() => {
+                const items = participants.map((p) => ({
+                  pin: p.pin,
+                  name: (p.nickname || "").trim() || p.pin,
+                  beer: (p.beer_name || "").trim(),
+                  received: userReceived[p.pin] ?? 0,
+                  given: userGiven[p.pin] ?? 0,
+                }));
+                items.sort((a, b) => {
+                  if (a.received !== b.received) return b.received - a.received;
+                  if (a.given !== b.given) return b.given - a.given;
+                  return a.name.localeCompare(b.name);
+                });
+                const top = items.slice(0, 3);
+                const maxVal = Math.max(1, ...top.map((t) => t.received));
+                return (
+                  <div className="grid grid-cols-3 items-end gap-3">
+                    {top.map((t, i) => {
+                      const height = 60 + (t.received / maxVal) * 80; // 60-140px
+                      // order: 2nd, 1st, 3rd visually (left, center, right)
+                      const orderClass = i === 0 ? "order-2" : i === 1 ? "order-1" : "order-3";
+                      const crown = i === 0 ? " 👑" : "";
+                      return (
+                        <div key={t.pin} className={`flex flex-col items-center ${orderClass}`}>
+                          <div
+                            className="w-full rounded-t-lg bg-emerald-600 text-white"
+                            style={{ height }}
+                            title={`${t.received} pts`}
+                          />
+                          <div className="mt-2 truncate text-center text-sm font-medium">
+                            {t.name}{crown}
+                          </div>
+                          <div className="truncate text-center text-xs text-zinc-600">{t.beer || "—"}</div>
+                          <div className="text-xs text-zinc-700">{t.received} pts</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
         {view === "voting" && (
           <section className="space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Voting</h2>
+              <h2 className="text-xl font-semibold">Votering</h2>
               <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
                 Tilbake
               </button>
@@ -917,17 +1032,26 @@ export default function Home() {
               </div>
             )}
             <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <button
-                  key={n}
-                  className={`h-16 rounded-xl text-2xl font-semibold ${
-                    voted === n ? "bg-blue-700 text-white" : "bg-zinc-100"
-                  }`}
-                  onClick={() => castVote(n)}
-                >
-                  {n}
-                </button>
-              ))}
+              {[1, 2, 3, 4, 5, 6].map((n) => {
+                const isSel = voted === n;
+                return (
+                  <button
+                    key={n}
+                    className={`flex h-20 items-center justify-center rounded-xl border ${
+                      isSel ? "border-blue-700 ring-2 ring-blue-400" : "border-zinc-200"
+                    } bg-white active:opacity-90`}
+                    onClick={() => castVote(n)}
+                    aria-label={`Gi ${n} poeng`}
+                  >
+                    <img
+                      src={`/img/${n}.png`}
+                      alt={`${n}`}
+                      className="h-16 w-16 object-contain"
+                    />
+                    <span className="sr-only">{n}</span>
+                  </button>
+                );
+              })}
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-sm text-zinc-600">
@@ -1111,8 +1235,9 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={revealResults}
+                  disabled={revealedRound === round}
                 >
-                  Avslør resultater
+                  Avslør resultater (én gang)
                 </button>
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"

@@ -295,11 +295,23 @@ export default function Home() {
                   }}
                 >
                   <option value="">Velg type</option>
-                  <option value="Lys lager">Lys lager</option>
-                  <option value="Mørk lager">Mørk lager</option>
+                  <option value="Barleywine">Barleywine</option>
+                  <option value="Belgian Double">Belgian Double</option>
+                  <option value="Belgian Quad">Belgian Quad</option>
+                  <option value="Belgian Tripple">Belgian Tripple</option>
+                  <option value="Bock">Bock</option>
+                  <option value="Dobblebock">Dobblebock</option>
+                  <option value="Double IPA">Double IPA</option>
+                  <option value="Home Brew">Home Brew</option>
+                  <option value="Imperial Stout">Imperial Stout</option>
                   <option value="IPA">IPA</option>
-                  <option value="Porter/Stout">Porter/Stout</option>
-                  <option value="Annet">Annet</option>
+                  <option value="Julebrygg">Julebrygg</option>
+                  <option value="Lager">Lager</option>
+                  <option value="Mjød">Mjød</option>
+                  <option value="Other">Other</option>
+                  <option value="Pilsner">Pilsner</option>
+                  <option value="Stout">Stout</option>
+                  <option value="Tripplebock">Tripplebock</option>
                 </select>
               </div>
               <div>

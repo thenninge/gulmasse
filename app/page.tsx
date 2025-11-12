@@ -57,13 +57,30 @@ export default function Home() {
     });
     return map;
   }, [participants, userReceived, userGiven]);
+  function beerImageForName(name: string): string | null {
+    const key = (name || "").toLowerCase().trim();
+    const first = key.split(/\s+/)[0] || key;
+    const map: Record<string, string> = {
+      adam: "/img/adam.png",
+      eirik: "/img/eirik.png",
+      konrad: "/img/konrad.jpg",
+      martin: "/img/martin.jpg",
+      tomas: "/img/tomas.jpg",
+    };
+    return map[first] || null;
+  }
+
   const selected = useMemo(() => {
     const pinSel = picks.length > 0 ? picks[picks.length - 1] : null;
     if (!pinSel) return null;
     const p = participants.find((x) => x.pin === pinSel);
     const name = (p?.nickname || "").trim() || pinSel;
     const beerName = (p?.beer_name || "").trim();
-    return { pin: pinSel, name, beerName };
+    const producer = (p?.producer || "").trim();
+    const abv = p?.abv != null ? Number(p.abv) : undefined;
+    const beerType = (p?.beer_type || "").trim();
+    const image = beerImageForName(name);
+    return { pin: pinSel, name, beerName, producer, beerType, abv, image };
   }, [picks, participants]);
 
   const fetchStatus = useCallback(async () => {
@@ -248,6 +265,7 @@ export default function Home() {
   const [wheelNames, setWheelNames] = useState<Array<{ pin: string; name: string }>>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const drumRef = useRef<number | null>(null);
+  const [showBeerImage, setShowBeerImage] = useState(false);
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -805,13 +823,82 @@ export default function Home() {
               </button>
             </div>
             {selected && (
-              <div className="rounded-xl border border-zinc-200 bg-white px-4 py-4 text-center">
-                <div className="text-xs uppercase tracking-wide text-zinc-500">Vi stemmer over:</div>
-                <div className="mt-1 text-2xl md:text-3xl font-bold text-zinc-900">{selected.name}</div>
-                {selected.beerName ? (
-                  <div className="mt-0.5 text-xl md:text-2xl text-zinc-700">“{selected.beerName}”</div>
-                ) : null}
-              </div>
+              <>
+                <div className="rounded-xl border border-zinc-200 bg-white px-4 py-4">
+                  <div className="text-xs uppercase tracking-wide text-zinc-500">Vi stemmer over:</div>
+                  <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-4">
+                    {selected.image && (
+                      <button
+                        className="focus:outline-none"
+                        onClick={() => setShowBeerImage(true)}
+                        aria-label="Vis større bilde"
+                      >
+                        <img
+                          src={selected.image}
+                          alt={selected.beerName || selected.name}
+                          className="h-28 w-28 md:h-32 md:w-32 flex-shrink-0 rounded-lg object-cover ring-1 ring-zinc-200"
+                        />
+                      </button>
+                    )}
+                    <div className="min-w-0 text-center">
+                      <div className="text-2xl md:text-3xl font-bold text-zinc-900 truncate">
+                        {selected.name}
+                      </div>
+                      {selected.beerName ? (
+                        <div className="mt-0.5 text-xl md:text-2xl text-zinc-700 truncate">
+                          {selected.beerName}
+                        </div>
+                      ) : null}
+                      <div className="mt-2 space-y-1 text-sm text-zinc-700">
+                        {selected.producer && (
+                          <div>
+                            <span className="text-zinc-500">Produsent:</span>{" "}
+                            <span className="font-medium">{selected.producer}</span>
+                          </div>
+                        )}
+                        {selected.beerType && (
+                          <div>
+                            <span className="text-zinc-500">Øltype:</span>{" "}
+                            <span className="font-medium">{selected.beerType}</span>
+                          </div>
+                        )}
+                        {selected.abv != null && !Number.isNaN(selected.abv) && (
+                          <div>
+                            <span className="text-zinc-500">ABV:</span>{" "}
+                            <span className="font-medium">{Number(selected.abv).toFixed(1)}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {showBeerImage && selected.image && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                    onClick={() => setShowBeerImage(false)}
+                  >
+                    <div
+                      className="relative max-h-[90vh] max-w-[90vw] rounded-xl bg-white p-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        className="absolute right-2 top-2 rounded-md bg-white/90 px-2 py-1 text-sm shadow"
+                        onClick={() => setShowBeerImage(false)}
+                        aria-label="Lukk"
+                      >
+                        ✕
+                      </button>
+                      <img
+                        src={selected.image}
+                        alt={selected.beerName || selected.name}
+                        className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {isHost && (
               <div className="grid grid-cols-2 gap-3">

@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { loginBodySchema } from '@/lib/schemas';
 import { supabase } from '@/lib/supabase';
+import { z } from 'zod';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const parsed = loginBodySchema.extend({ nickname: (z) => z.string().optional() } as any).parse(body);
+    const parsed = loginBodySchema.extend({ nickname: z.string().optional() }).parse(body);
     const pin = parsed.pin as string;
     const nickname = (parsed as any).nickname as string | undefined;
     if (!nickname) return NextResponse.json({ ok: true }); // nothing to update yet

@@ -1421,6 +1421,14 @@ export default function Home() {
                   </button>
                 </div>
               )}
+              <div className="pt-2">
+                <button
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={() => setView("voting")}
+                >
+                  Til Votéring!
+                </button>
+              </div>
               {showCelebration && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
                   <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl relative">

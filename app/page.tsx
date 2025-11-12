@@ -17,7 +17,10 @@ export default function Home() {
 
   // status state from /api/status
   const [statusLoading, setStatusLoading] = useState(false);
-  const [participants, setParticipants] = useState<Array<{ pin: string; nickname: string | null; active: boolean }>>([]);
+  const [participants, setParticipants] = useState<Array<{
+    pin: string; nickname: string | null; active: boolean;
+    beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
+  }>>([]);
   const [activeCount, setActiveCount] = useState(0);
   const [votedCount, setVotedCount] = useState(0);
   const [round, setRound] = useState(1);
@@ -361,7 +364,14 @@ export default function Home() {
                       const res = await fetch("/api/pin/profile", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ pin, nickname: nickname || undefined }),
+                        body: JSON.stringify({
+                          pin,
+                          nickname: nickname || undefined,
+                          beer_name: competitor || undefined,
+                          producer: producer || undefined,
+                          beer_type: beerType || undefined,
+                          abv: strength ? Number(strength) : undefined,
+                        }),
                       }).catch(() => null);
                       if (res && res.ok) {
                         setProfileSaved(true);
@@ -461,7 +471,9 @@ export default function Home() {
                       >
                         <div className="col-span-1 tabular-nums">{rank}</div>
                         <div className="col-span-1 tabular-nums">{received}</div>
-                        <div className="col-span-1 truncate">{name}</div>
+                        <div className="col-span-1 truncate">
+                          {name}{p.beer_name ? ` — “${p.beer_name}”` : ""}
+                        </div>
                         <div className="col-span-1 truncate">{theirContender}</div>
                         <div className="col-span-1 tabular-nums text-right">{given}</div>
                       </li>

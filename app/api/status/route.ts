@@ -18,10 +18,13 @@ export async function GET() {
     // Participants
     const participantsRes = await supabase
       .from('participants')
-      .select('pin,nickname,active')
+      .select('pin,nickname,active,beer_name,producer,beer_type,abv')
       .order('created_at', { ascending: true });
     if (participantsRes.error) throw participantsRes.error;
-    const participants = ((participantsRes.data as any[]) || []) as Array<{ pin: string; nickname: string | null; active: boolean }>;
+    const participants = ((participantsRes.data as any[]) || []) as Array<{
+      pin: string; nickname: string | null; active: boolean;
+      beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
+    }>;
 
     const activePins = participants.filter((p) => p.active).map((p) => p.pin);
     const activeCount = activePins.length;

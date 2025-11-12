@@ -277,11 +277,39 @@ export default function Home() {
     }, durationMs);
   }
 
+  function playSnareHit() {
+    const ctx = getAudio();
+    if (!ctx) return;
+    // Noise buffer
+    const bufferSize = 2048;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize); // quick decay
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = "bandpass";
+    bandpass.frequency.value = 1400;
+    bandpass.Q.value = 0.8;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+    noise.connect(bandpass).connect(gain).connect(ctx.destination);
+    noise.start();
+    setTimeout(() => {
+      try { noise.stop(); } catch {}
+      try { noise.disconnect(); bandpass.disconnect(); gain.disconnect(); } catch {}
+    }, 120);
+  }
+
   function startDrumroll() {
     stopDrumroll();
     drumRef.current = window.setInterval(() => {
-      playBeep(120 + Math.random() * 80, 60, 0.05);
-    }, 120);
+      playSnareHit();
+    }, 100);
   }
   function stopDrumroll() {
     if (drumRef.current) {
@@ -290,10 +318,27 @@ export default function Home() {
     }
   }
   function playFanfare() {
-    // Simple three-tone fanfare
-    setTimeout(() => playBeep(523, 150, 0.08), 0);
-    setTimeout(() => playBeep(659, 180, 0.08), 180);
-    setTimeout(() => playBeep(784, 220, 0.08), 380);
+    const ctx = getAudio();
+    if (!ctx) return;
+    const notes = [
+      { t: 0,    f: 523.25 }, // C5
+      { t: 0.08, f: 659.25 }, // E5
+      { t: 0.16, f: 783.99 }, // G5
+      { t: 0.28, f: 1046.5 }, // C6
+    ];
+    for (const n of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = n.f;
+      const start = ctx.currentTime + n.t;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    }
   }
 
   function goToLogin() {
@@ -738,7 +783,7 @@ export default function Home() {
                 className="rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90"
                 onClick={() => setView("voting")}
               >
-                Gå til Voting
+                Til Votéring!
               </button>
               <button
                 className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"

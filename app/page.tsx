@@ -217,7 +217,7 @@ export default function Home() {
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={createPin}
                 >
-                  Opprett PIN
+                  Opprett bruker
                 </button>
               </div>
               <div className="mt-3">

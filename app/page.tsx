@@ -327,7 +327,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-md px-4 py-6">
+      <main className="mx-auto max-w-md px-4 py-6 bg-white/85 rounded-2xl shadow-lg">
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -337,11 +337,11 @@ export default function Home() {
         {view === "user" && (
           <section className="space-y-5">
             <h2 className="text-xl font-semibold">Bruker</h2>
-            <div className="space-y-4 rounded-2xl border border-zinc-200 p-4 shadow-sm">
+            <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div>
                 <label className="mb-1 block text-sm text-zinc-600">Navn</label>
                 <input
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2"
                   placeholder="Ditt navn"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
@@ -350,7 +350,7 @@ export default function Home() {
               <div>
                 <label className="mb-1 block text-sm text-zinc-600">Konkurrent</label>
                 <input
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2"
                   placeholder="Navn på øl"
                   value={competitor}
                   onChange={(e) => {
@@ -362,7 +362,7 @@ export default function Home() {
               <div>
                 <label className="mb-1 block text-sm text-zinc-600">Produsent</label>
                 <input
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2"
                   placeholder="Produsent"
                   value={producer}
                   onChange={(e) => {
@@ -472,14 +472,14 @@ export default function Home() {
         {view === "login" && (
           <section className="space-y-5">
             <h2 className="text-xl font-semibold">Logg inn eller opprett PIN</h2>
-            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <label className="mb-2 block text-sm text-zinc-600">4-sifret PIN</label>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={4}
                 placeholder="____"
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-center text-2xl tracking-widest"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-center text-2xl tracking-widest"
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\\D/g, "").slice(0, 4))}
               />
@@ -501,7 +501,7 @@ export default function Home() {
                 <label className="mb-1 block text-sm text-zinc-600">Kallenavn (valgfritt)</label>
                 <input
                   placeholder="Navn"
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                 />
@@ -513,7 +513,7 @@ export default function Home() {
         {view === "lobby" && (
           <section className="space-y-5">
             <h2 className="text-xl font-semibold">Lobby</h2>
-            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-zinc-500">
                   Deltakere: {activeCount}/{participants.length} aktive
@@ -522,7 +522,7 @@ export default function Home() {
                   Runde {round} {statusLoading ? "…" : ""}
                 </p>
               </div>
-              <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200">
+              <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
                 {participants.length === 0 && (
                   <li className="px-3 py-2 text-sm text-zinc-500">Ingen deltakere</li>
                 )}
@@ -579,7 +579,7 @@ export default function Home() {
               </button>
             </div>
             {selected && (
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+              <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm">
                 Vi stemmer over..: <span className="font-medium">{selected.name}</span>
               </div>
             )}
@@ -612,7 +612,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-sm text-zinc-600">
                 Status: {votedCount}/{activeCount} har stemt
               </div>
@@ -660,7 +660,7 @@ export default function Home() {
             >
               Velg
             </button>
-            <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <p className="text-sm text-zinc-500">
                 Trekte: {picks.length > 0 ? picks.map((ppin) => {
                   const name = (participants.find(x => x.pin === ppin)?.nickname || "").trim() || "Uten navn";

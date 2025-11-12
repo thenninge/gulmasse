@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type View = "login" | "user" | "lobby" | "voting" | "picker";
+type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin";
 
 export default function Home() {
   const [view, setView] = useState<View>("login");
@@ -812,23 +812,73 @@ export default function Home() {
         {view === "lobby" && isHost && (
           <section className="mt-6 space-y-3">
             <h3 className="text-sm font-medium text-zinc-600">Host</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {loginsLocked ? (
-                <button
-                  className="rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
-                  onClick={unlockLogins}
-                >
-                  Åpne pålogging
-                </button>
-              ) : (
+            <div className="grid grid-cols-1">
+              <button
+                className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                onClick={() => setView("admin")}
+              >
+                Admin tools
+              </button>
+            </div>
+          </section>
+        )}
+
+        {view === "admin" && isHost && (
+          <section className="space-y-5">
+            <h2 className="text-xl font-semibold">Admin tools</h2>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
+              <div className="text-sm text-zinc-600">
+                Runde: <span className="font-medium">{round}</span> ·
+                {" "}Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
+                {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={lockLogins}
+                  onClick={revealResults}
                 >
-                  Lås pålogging
+                  Avslør resultater
                 </button>
-              )}
-        </div>
+                <button
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
+                  onClick={nextRound}
+                >
+                  Ny runde
+                </button>
+                {loginsLocked ? (
+                  <button
+                    className="rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
+                    onClick={unlockLogins}
+                  >
+                    Åpne pålogging
+                  </button>
+                ) : (
+                  <button
+                    className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                    onClick={lockLogins}
+                  >
+                    Lås pålogging
+                  </button>
+                )}
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={resetPicks}
+                >
+                  Tilbakestill utvalg
+                </button>
+              </div>
+              <div className="text-xs text-zinc-500">
+                Trekte: {picks.length > 0 ? picks.join(", ") : "—"}
+              </div>
+            </div>
+            <div className="grid grid-cols-1">
+              <button
+                className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                onClick={() => setView("lobby")}
+              >
+                Tilbake til lobby
+              </button>
+            </div>
           </section>
         )}
       </main>

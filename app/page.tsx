@@ -856,10 +856,9 @@ export default function Home() {
               </button>
               <button
                 className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
-                disabled={!isHost}
                 onClick={() => setView("picker")}
               >
-                Find the chosen one {isHost ? "" : "(host)"}
+                Find the chosen one
               </button>
             </div>
           </section>

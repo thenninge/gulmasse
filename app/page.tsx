@@ -116,6 +116,8 @@ export default function Home() {
       }
       localStorage.setItem("pin", pin);
       setView("user");
+      // Load existing profile from DB
+      await loadProfile(pin);
     } catch {
       setError("Nettverksfeil");
     }
@@ -140,6 +142,8 @@ export default function Home() {
       }
       localStorage.setItem("pin", pin);
       setView("user");
+      // New user likely has empty profile; still try to load
+      await loadProfile(pin);
     } catch {
       setError("Nettverksfeil");
     }
@@ -236,6 +240,45 @@ export default function Home() {
     } finally {
       goToLogin();
       fetchStatus();
+    }
+  }
+
+  async function loadProfile(currentPin: string) {
+    try {
+      const res = await fetch("/api/pin/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: currentPin }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const p = data.participant as {
+        nickname?: string | null;
+        beer_name?: string | null;
+        producer?: string | null;
+        beer_type?: string | null;
+        abv?: number | null;
+      };
+      if (p.nickname !== undefined) setNickname(p.nickname || "");
+      if (p.beer_name !== undefined) {
+        setCompetitor(p.beer_name || "");
+        localStorage.setItem("competitor", p.beer_name || "");
+      }
+      if (p.producer !== undefined) {
+        setProducer(p.producer || "");
+        localStorage.setItem("producer", p.producer || "");
+      }
+      if (p.beer_type !== undefined) {
+        setBeerType(p.beer_type || "");
+        localStorage.setItem("beerType", p.beer_type || "");
+      }
+      if (p.abv !== undefined && p.abv !== null) {
+        const s = Number(p.abv).toFixed(1);
+        setStrength(s);
+        localStorage.setItem("strength", s);
+      }
+    } catch {
+      // ignore
     }
   }
 

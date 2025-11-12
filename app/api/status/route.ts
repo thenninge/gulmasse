@@ -43,6 +43,26 @@ export async function GET() {
     const votedPins = voteRows.map((v) => v.pin as string);
     const votedCount = voteRows.filter((v) => activePins.includes(v.pin as string)).length;
 
+    // Per-user reveals for current round (only those who chose to reveal)
+    const revealKey = `revealed_pins_round_${round}`;
+    const revealedPinsRes = await supabase
+      .from('app_state')
+      .select('text_value')
+      .eq('key', revealKey)
+      .maybeSingle();
+    if (revealedPinsRes.error && (revealedPinsRes.error as any).code !== 'PGRST116') throw revealedPinsRes.error;
+    let revealedPins: string[] = [];
+    try {
+      const txt = (revealedPinsRes.data as any)?.text_value || '[]';
+      const parsed = JSON.parse(txt);
+      if (Array.isArray(parsed)) revealedPins = parsed.filter((x) => typeof x === 'string');
+    } catch {
+      revealedPins = [];
+    }
+    const revealedVotes = voteRows
+      .filter((v) => revealedPins.includes(v.pin))
+      .map((v) => ({ pin: v.pin, value: v.value }));
+
     const histogram: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     let sum = 0;
     let cnt = 0;
@@ -104,6 +124,7 @@ export async function GET() {
         count: cnt,
         average,
         votedPins,
+        revealedVotes,
       },
       activeCount,
       votedCount,

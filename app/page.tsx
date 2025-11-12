@@ -102,6 +102,11 @@ export default function Home() {
       setHistogram(data.votes?.histogram || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
       setVoteCount(data.votes?.count || 0);
       setAverage(typeof data.votes?.average === "number" ? data.votes.average : 0);
+      const rmap: Record<string, number> = {};
+      (data.votes?.revealedVotes || []).forEach((rv: { pin: string; value: number }) => {
+        if (rv && typeof rv.pin === "string") rmap[rv.pin] = Number(rv.value);
+      });
+      setRevealedVotesMap(rmap);
       setPicks(data.picks || []);
       setLoginsLocked(data.loginsLocked === true);
       const givenMap: Record<string, number> = {};
@@ -293,6 +298,7 @@ export default function Home() {
   const [showLockConfirm, setShowLockConfirm] = useState(false);
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
+  const [revealedVotesMap, setRevealedVotesMap] = useState<Record<string, number>>({});
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -426,6 +432,19 @@ export default function Home() {
     await castVote(pendingVote);
     setShowLockConfirm(false);
     setPendingVote(null);
+  }
+  async function revealMyVote() {
+    if (pin.length !== 4 || voted == null) return;
+    try {
+      await fetch("/api/reveal-my-vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+    } finally {
+      setShowMyReveal(true);
+      fetchStatus();
+    }
   }
 
   async function loadProfile(currentPin: string) {
@@ -1134,14 +1153,19 @@ export default function Home() {
                 {participants.map((p) => {
                   const name = (p.nickname || "").trim() || p.pin;
                   const hasVoted = votedPins.includes(p.pin);
+                  const revealedVal = revealedVotesMap[p.pin];
                   return (
                     <div key={p.pin} className="flex items-center justify-between text-sm">
                       <span className="truncate">{name}</span>
-                      {hasVoted && (
+                      {typeof revealedVal === "number" ? (
+                        <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 ring-1 ring-blue-200">
+                          {revealedVal} poeng
+                        </span>
+                      ) : hasVoted ? (
                         <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
                           Stemme avgitt!
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
@@ -1175,7 +1199,7 @@ export default function Home() {
             <div>
               <button
                 className="w-full rounded-xl bg-zinc-900 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
-                onClick={() => setShowMyReveal(true)}
+                onClick={revealMyVote}
                 disabled={!(activeCount > 0 && votedCount >= activeCount) || voted == null}
               >
                 Avslør min stemme

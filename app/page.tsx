@@ -188,6 +188,15 @@ export default function Home() {
     }
   }, [view]);
 
+  // When round changes, reset local voting state so everyone can vote again
+  useEffect(() => {
+    setVoted(null);
+    setPendingVote(null);
+    setShowMyReveal(false);
+    setRevealedVotesMap({});
+    setVotedPins([]);
+  }, [round]);
+
   async function login() {
     setError(null);
     if (pin.length !== 4) {

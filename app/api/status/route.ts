@@ -18,12 +18,13 @@ export async function GET() {
     // Participants
     const participantsRes = await supabase
       .from('participants')
-      .select('pin,nickname,active,beer_name,producer,beer_type,abv')
+      .select('pin,nickname,active,beer_name,producer,beer_type,abv,given_offset,received_offset')
       .order('created_at', { ascending: true });
     if (participantsRes.error) throw participantsRes.error;
     const participants = ((participantsRes.data as any[]) || []) as Array<{
       pin: string; nickname: string | null; active: boolean;
       beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
+      given_offset?: number | null; received_offset?: number | null;
     }>;
 
     const activePins = participants.filter((p) => p.active).map((p) => p.pin);
@@ -61,10 +62,11 @@ export async function GET() {
       const v = Number(r.value) || 0;
       totalsMap[k] = (totalsMap[k] ?? 0) + v;
     }
-    const userGiven = participants.map((p) => ({
-      pin: p.pin,
-      total: totalsMap[p.pin] ?? 0,
-    }));
+    const userGiven = participants.map((p) => {
+      const raw = totalsMap[p.pin] ?? 0;
+      const off = Number(p.given_offset ?? 0);
+      return { pin: p.pin, total: Math.max(0, raw - off) };
+    });
 
     // Aggregate total received points per user (across all rounds)
     const votesRecvRes = await supabase
@@ -78,10 +80,11 @@ export async function GET() {
       const v = Number((r as any).value) || 0;
       recvMap[k] = (recvMap[k] ?? 0) + v;
     }
-    const userReceived = participants.map((p) => ({
-      pin: p.pin,
-      total: recvMap[p.pin] ?? 0,
-    }));
+    const userReceived = participants.map((p) => {
+      const raw = recvMap[p.pin] ?? 0;
+      const off = Number(p.received_offset ?? 0);
+      return { pin: p.pin, total: Math.max(0, raw - off) };
+    });
 
     // Picks history (order by created_at)
     const picksRes = await supabase

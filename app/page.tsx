@@ -845,6 +845,33 @@ export default function Home() {
                 >
                   Ny runde
                 </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={async () => {
+                    await fetch("/api/host/admin/reset-received", { method: "POST", headers: { "x-host-pin": pin } });
+                    fetchStatus();
+                  }}
+                >
+                  Reset poeng fått = 0
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={async () => {
+                    await fetch("/api/host/admin/reset-given", { method: "POST", headers: { "x-host-pin": pin } });
+                    fetchStatus();
+                  }}
+                >
+                  Reset poeng gitt = 0
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={async () => {
+                    await fetch("/api/host/admin/reset-round", { method: "POST", headers: { "x-host-pin": pin } });
+                    fetchStatus();
+                  }}
+                >
+                  Reset rundenr = 0
+                </button>
                 {loginsLocked ? (
                   <button
                     className="rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
@@ -860,15 +887,37 @@ export default function Home() {
                     Lås pålogging
                   </button>
                 )}
-                <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={resetPicks}
-                >
-                  Tilbakestill utvalg
-                </button>
               </div>
               <div className="text-xs text-zinc-500">
                 Trekte: {picks.length > 0 ? picks.join(", ") : "—"}
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>
+                <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200">
+                  {participants.map((p) => {
+                    const name = (p.nickname || "").trim() || p.pin;
+                    return (
+                      <li key={p.pin} className="flex items-center justify-between px-3 py-2 text-sm">
+                        <div className="truncate">
+                          {name} {p.beer_name ? `— ${p.beer_name}` : ""}
+                        </div>
+                        <button
+                          className="rounded-md border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50"
+                          onClick={async () => {
+                            await fetch("/api/host/admin/delete-participant", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "x-host-pin": pin },
+                              body: JSON.stringify({ pin: p.pin }),
+                            });
+                            fetchStatus();
+                          }}
+                        >
+                          Slett
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             </div>
             <div className="grid grid-cols-1">
@@ -878,7 +927,7 @@ export default function Home() {
               >
                 Tilbake til lobby
               </button>
-            </div>
+        </div>
           </section>
         )}
       </main>

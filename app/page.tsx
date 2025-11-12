@@ -1291,14 +1291,6 @@ export default function Home() {
                     {Math.max(0, participants.filter(p=>p.active).length - picks.length)}
                   </span>
                 </div>
-                {isHost && (
-                  <button
-                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm active:bg-zinc-50"
-                    onClick={resetPicks}
-                  >
-                    Tilbakestill
-                  </button>
-                )}
               </div>
               {/* PickerWheel component */}
               <PickerWheel
@@ -1365,6 +1357,20 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+              {isHost && (
+                <div className="pt-2">
+                  <button
+                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm active:bg-zinc-50"
+                    onClick={async () => {
+                      await fetch("/api/host/undo-pick", { method: "POST", headers: { "x-host-pin": pin } }).catch(()=>null);
+                      fetchStatus();
+                    }}
+                    disabled={picks.length === 0}
+                  >
+                    Legg tilbake
+                  </button>
+                </div>
+              )}
               {showCelebration && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
                   <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl relative">

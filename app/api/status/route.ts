@@ -91,6 +91,28 @@ export async function GET() {
       return { pin: p.pin, total: Math.max(0, raw - off) };
     });
 
+    // Pair totals (giver -> recipient across all rounds)
+    const votesPairsRes = await supabase
+      .from('votes')
+      .select('pin,recipient_pin,value');
+    if (votesPairsRes.error) throw votesPairsRes.error;
+    const pairTotals: Array<{ from: string; to: string; total: number }> = [];
+    {
+      const pairAgg = new Map<string, number>();
+      for (const r of ((votesPairsRes.data as any[]) || [])) {
+        const from = String(r.pin || '');
+        const to = String((r as any).recipient_pin || '');
+        if (!from || !to) continue;
+        const key = `${from}|${to}`;
+        const v = Number(r.value) || 0;
+        pairAgg.set(key, (pairAgg.get(key) ?? 0) + v);
+      }
+      for (const [k, total] of pairAgg.entries()) {
+        const [from, to] = k.split('|');
+        pairTotals.push({ from, to, total });
+      }
+    }
+
     // Aggregate total received points per user (across all rounds)
     const votesRecvRes = await supabase
       .from('votes')
@@ -135,6 +157,7 @@ export async function GET() {
       userGiven,
       userReceived,
       revealedRound,
+      pairTotals,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

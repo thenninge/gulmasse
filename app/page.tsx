@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 
-type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin";
+type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview";
 
 export default function Home() {
   const [view, setView] = useState<View>("login");
@@ -39,6 +39,7 @@ export default function Home() {
   const [sortKey, setSortKey] = useState<"rank" | "received" | "name" | "beer" | "given">("received");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [revealedRound, setRevealedRound] = useState(0);
+  const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
 
   // Rank is always based on "poeng fått" (received), independent of current sort
   const receivedRankMap = useMemo(() => {
@@ -120,6 +121,17 @@ export default function Home() {
       });
       setUserReceived(recvMap);
       setRevealedRound(data.revealedRound || 0);
+      // build pair totals map: from -> to -> total
+      const pMap: Record<string, Record<string, number>> = {};
+      (data.pairTotals || []).forEach((pt: { from: string; to: string; total: number }) => {
+        const f = String(pt?.from || "");
+        const t = String(pt?.to || "");
+        const val = Number(pt?.total || 0);
+        if (!f || !t) return;
+        if (!pMap[f]) pMap[f] = {};
+        pMap[f][t] = (pMap[f][t] ?? 0) + val;
+      });
+      setPairTotalsMap(pMap);
     } catch {
       // noop
     } finally {
@@ -905,6 +917,12 @@ export default function Home() {
               >
                 Find the chosen one
               </button>
+              <button
+                className="rounded-xl border border-zinc-300 px-4 py-4 active:bg-zinc-50"
+                onClick={() => setView("overview")}
+              >
+                Full oversikt
+              </button>
             </div>
           </section>
         )}
@@ -1412,6 +1430,60 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {view === "overview" && (
+          <section className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Full oversikt</h2>
+              <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
+                Tilbake
+              </button>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              {participants.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
+              ) : (
+                <table className="min-w-full border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                        Giver → Mottaker
+                      </th>
+                      {participants.map((rec) => {
+                        const name = (rec.nickname || "").trim() || rec.pin;
+                        return (
+                          <th key={rec.pin} className="p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                            {name}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((giver) => {
+                      const giverName = (giver.nickname || "").trim() || giver.pin;
+                      return (
+                        <tr key={giver.pin} className="odd:bg-white even:bg-zinc-50">
+                          <th className="sticky left-0 z-10 bg-inherit p-2 text-left font-medium text-zinc-700 border-b border-zinc-200">
+                            {giverName}
+                          </th>
+                          {participants.map((rec) => {
+                            const val = pairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
+                            return (
+                              <td key={rec.pin} className="p-2 border-b border-zinc-200 tabular-nums text-center">
+                                {val > 0 ? val : "—"}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           </section>

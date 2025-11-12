@@ -181,7 +181,7 @@ export default function Home() {
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold">Gulmasse</h1>
-          <div className="text-sm text-zinc-500">{pin ? `PIN: ${pin}` : "Ikke innlogget"}</div>
+          <div className="text-sm text-zinc-500">{pin ? "Innlogget" : "Ikke innlogget"}</div>
         </div>
       </header>
 
@@ -246,14 +246,17 @@ export default function Home() {
                 </p>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {participants.filter(p => p.active).map((p) => (
+                {participants.filter(p => p.active).map((p) => {
+                  const name = (p.nickname || "").trim() || "Uten navn";
+                  return (
                   <span
                     key={p.pin}
                     className="rounded-full border border-zinc-300 px-3 py-1 text-sm"
                   >
-                    {p.pin}{p.nickname ? ` • ${p.nickname}` : ""}
+                    {name}
                   </span>
-                ))}
+                  );
+                })}
                 {participants.filter(p => p.active).length === 0 && (
                   <span className="text-sm text-zinc-500">Ingen aktive</span>
                 )}
@@ -364,7 +367,10 @@ export default function Home() {
             </button>
             <div className="rounded-2xl border border-zinc-200 p-4 shadow-sm">
               <p className="text-sm text-zinc-500">
-                Trekte: {picks.length > 0 ? picks.join(", ") : "—"}<br />
+                Trekte: {picks.length > 0 ? picks.map((ppin) => {
+                  const name = (participants.find(x => x.pin === ppin)?.nickname || "").trim() || "Uten navn";
+                  return name;
+                }).join(", ") : "—"}<br />
                 Gjenstår (blant aktive): {Math.max(0, activeCount - picks.length)}
               </p>
               <button

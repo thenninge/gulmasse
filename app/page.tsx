@@ -98,6 +98,7 @@ export default function Home() {
       setVotedCount(data.votedCount || 0);
       setRound(data.round || 1);
       setReveal(data.reveal === true);
+      setVotedPins(Array.isArray(data.votes?.votedPins) ? data.votes.votedPins : []);
       setHistogram(data.votes?.histogram || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
       setVoteCount(data.votes?.count || 0);
       setAverage(typeof data.votes?.average === "number" ? data.votes.average : 0);
@@ -290,6 +291,8 @@ export default function Home() {
   const [hatDrop, setHatDrop] = useState(false);
   const [pendingVote, setPendingVote] = useState<number | null>(null);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
+  const [votedPins, setVotedPins] = useState<string[]>([]);
+  const [showMyReveal, setShowMyReveal] = useState(false);
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -1127,6 +1130,22 @@ export default function Home() {
               <div className="text-sm text-zinc-600">
                 Status: {votedCount}/{activeCount} har stemt
               </div>
+              <div className="mt-2 grid grid-cols-1 gap-1">
+                {participants.map((p) => {
+                  const name = (p.nickname || "").trim() || p.pin;
+                  const hasVoted = votedPins.includes(p.pin);
+                  return (
+                    <div key={p.pin} className="flex items-center justify-between text-sm">
+                      <span className="truncate">{name}</span>
+                      {hasVoted && (
+                        <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
+                          Stemme avgitt!
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               {(reveal || (activeCount > 0 && votedCount >= activeCount)) ? (
                 <div className="mt-3 space-y-2">
                   <div className="grid grid-cols-6 gap-2">
@@ -1153,6 +1172,50 @@ export default function Home() {
                 </div>
               )}
             </div>
+            <div>
+              <button
+                className="w-full rounded-xl bg-zinc-900 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
+                onClick={() => setShowMyReveal(true)}
+                disabled={!(activeCount > 0 && votedCount >= activeCount) || voted == null}
+              >
+                Avslør min stemme
+              </button>
+            </div>
+            {showMyReveal && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                onClick={() => setShowMyReveal(false)}
+              >
+                <div
+                  className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-semibold">Din stemme</h3>
+                  <div className="mt-3 flex flex-col items-center">
+                    {voted != null && (
+                      <>
+                        <img
+                          src={`/img/${voted}.png`}
+                          alt={`${voted}`}
+                          className="h-20 w-20 object-contain"
+                        />
+                        <div className="mt-2 text-2xl font-bold">{voted}</div>
+                      </>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      className="w-full rounded-lg border border-zinc-300 px-4 py-2 active:bg-zinc-50"
+                      onClick={() => setShowMyReveal(false)}
+                    >
+                      Lukk
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
 

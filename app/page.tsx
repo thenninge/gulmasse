@@ -75,6 +75,8 @@ export default function Home() {
     if (saved) {
       setPin(saved);
       setView("user");
+      // Prefill from DB for existing session
+      loadProfile(saved);
     }
     const savedCompetitor = localStorage.getItem("competitor") || "";
     const savedProducer = localStorage.getItem("producer") || "";
@@ -298,7 +300,12 @@ export default function Home() {
             ) : (
               <button
                 className="text-sm text-blue-600 underline"
-                onClick={() => setView("user")}
+                onClick={() => {
+                  setView("user");
+                  if (pin.length === 4) {
+                    loadProfile(pin);
+                  }
+                }}
               >
                 Brukerside
               </button>

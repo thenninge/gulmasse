@@ -288,6 +288,8 @@ export default function Home() {
   const [showBeerImage, setShowBeerImage] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
   const [hatDrop, setHatDrop] = useState(false);
+  const [pendingVote, setPendingVote] = useState<number | null>(null);
+  const [showLockConfirm, setShowLockConfirm] = useState(false);
 
   function getAudio(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -414,6 +416,13 @@ export default function Home() {
       goToLogin();
       fetchStatus();
     }
+  }
+
+  async function confirmLockVote() {
+    if (pendingVote == null) return;
+    await castVote(pendingVote);
+    setShowLockConfirm(false);
+    setPendingVote(null);
   }
 
   async function loadProfile(currentPin: string) {
@@ -1056,15 +1065,16 @@ export default function Home() {
             )}
             <div className="grid grid-cols-3 gap-3">
               {[1, 2, 3, 4, 5, 6].map((n) => {
-                const isSel = voted === n;
+                const isSel = (pendingVote ?? voted) === n;
                 return (
                   <button
                     key={n}
                     className={`flex h-20 items-center justify-center rounded-xl border ${
                       isSel ? "border-blue-700 ring-2 ring-blue-400" : "border-zinc-200"
                     } bg-white active:opacity-90`}
-                    onClick={() => castVote(n)}
+                    onClick={() => setPendingVote(n)}
                     aria-label={`Gi ${n} poeng`}
+                    disabled={voted != null}
                   >
                     <img
                       src={`/img/${n}.png`}
@@ -1076,6 +1086,59 @@ export default function Home() {
                 );
               })}
             </div>
+            {voted == null ? (
+              <div>
+                <button
+                  className="w-full rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
+                  onClick={() => setShowLockConfirm(true)}
+                  disabled={pendingVote == null}
+                >
+                  Lås poeng
+                </button>
+                <div className="mt-2 text-center text-sm text-zinc-600">
+                  {pendingVote != null ? `Valgt: ${pendingVote} poeng` : `Velg terning først`}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-sm text-emerald-700">Poeng låst for denne runden</div>
+            )}
+
+            {showLockConfirm && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                onClick={() => setShowLockConfirm(false)}
+              >
+                <div
+                  className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-semibold">Lås poeng</h3>
+                  <p className="mt-2 text-sm text-zinc-700">
+                    Er du sikker? Poeng blir låst for denne stemmerunden.
+                  </p>
+                  {pendingVote != null && (
+                    <div className="mt-2 text-sm text-zinc-600">Valgt: {pendingVote} poeng</div>
+                  )}
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button
+                      className="rounded-lg border border-zinc-300 px-4 py-2 active:bg-zinc-50"
+                      onClick={() => setShowLockConfirm(false)}
+                    >
+                      Avbryt
+                    </button>
+                    <button
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-white active:opacity-90 disabled:opacity-50"
+                      onClick={confirmLockVote}
+                      disabled={pendingVote == null}
+                    >
+                      Bekreft
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="text-sm text-zinc-600">
                 Status: {votedCount}/{activeCount} har stemt

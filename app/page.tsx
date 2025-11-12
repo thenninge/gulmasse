@@ -527,8 +527,8 @@ export default function Home() {
                     const name = (p.nickname || "").trim() || "Uten navn";
                     const given = userGiven[p.pin] ?? 0;
                     const rank = idx + 1;
-                    const received = "—";
-                    const theirContender = "—";
+                    const received = 0; // Placeholder until received-points tracking is added
+                    const beerName = (p.beer_name || "").trim() || "—";
                     return (
                       <li
                         key={p.pin}
@@ -538,10 +538,8 @@ export default function Home() {
                       >
                         <div className="col-span-1 tabular-nums">{rank}</div>
                         <div className="col-span-1 tabular-nums">{received}</div>
-                        <div className="col-span-1 truncate">
-                          {name}{p.beer_name ? ` — “${p.beer_name}”` : ""}
-                        </div>
-                        <div className="col-span-1 truncate">{theirContender}</div>
+                        <div className="col-span-1 truncate">{name}</div>
+                        <div className="col-span-1 truncate">“{beerName}”</div>
                         <div className="col-span-1 tabular-nums text-right">{given}</div>
                       </li>
                     );

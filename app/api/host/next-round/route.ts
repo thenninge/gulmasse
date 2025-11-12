@@ -9,10 +9,14 @@ export async function POST(request: Request) {
     const curr = await supabase.from('app_state').select('int_value').eq('key','current_round').maybeSingle();
     if (curr.error && curr.error.code !== 'PGRST116') throw curr.error;
     const nextRound = Number(curr.data?.int_value ?? 1) + 1;
-    const up1 = await supabase.from<any>('app_state').upsert({ key: 'current_round', int_value: nextRound } as any);
-    if (up1.error) throw up1.error;
-    const up2 = await supabase.from<any>('app_state').upsert({ key: 'reveal_results', bool_value: false } as any);
-    if (up2.error) throw up2.error;
+    const { error: err1 } = await supabase
+      .from('app_state')
+      .upsert({ key: 'current_round', int_value: nextRound }, { onConflict: 'key' });
+    if (err1) throw err1;
+    const { error: err2 } = await supabase
+      .from('app_state')
+      .upsert({ key: 'reveal_results', bool_value: false }, { onConflict: 'key' });
+    if (err2) throw err2;
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const code = e?.status || 500;

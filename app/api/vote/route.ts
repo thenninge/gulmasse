@@ -24,10 +24,10 @@ export async function POST(request: Request) {
     }
 
     const round = await getCurrentRound();
-    const up = await supabase
-      .from<any>('votes')
-      .upsert({ pin, round, value } as any, { onConflict: 'round,pin' });
-    if (up.error) throw up.error;
+    const { error } = await supabase
+      .from('votes')
+      .upsert({ pin, round, value }, { onConflict: 'round,pin' });
+    if (error) throw error;
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {
     const msg = e?.issues ? 'Invalid request' : 'Server error';

@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     // increment current_round and reset reveal_results
     const curr = await supabase.from('app_state').select('int_value').eq('key','current_round').maybeSingle();
     if (curr.error && curr.error.code !== 'PGRST116') throw curr.error;
-    const nextRound = Number(curr.data?.int_value ?? 1) + 1;
+    const nextRound = Number((curr.data as any)?.int_value ?? 1) + 1;
     const { error: err1 } = await (supabase
       .from('app_state') as any).upsert({ key: 'current_round', int_value: nextRound }, { onConflict: 'key' });
     if (err1) throw err1;

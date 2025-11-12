@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 async function getCurrentRound(): Promise<number> {
   const res = await supabase.from('app_state').select('int_value').eq('key','current_round').maybeSingle();
   if (res.error && res.error.code !== 'PGRST116') throw res.error;
-  const round = res.data?.int_value ?? 1;
+  const round = (res.data as any)?.int_value ?? 1;
   return Number(round);
 }
 

@@ -9,6 +9,7 @@ export default function Home() {
   const [pin, setPin] = useState("");
   const [nickname, setNickname] = useState("");
   const [competitor, setCompetitor] = useState("");
+  const [producer, setProducer] = useState("");
   const [beerType, setBeerType] = useState<string>("");
   const [strength, setStrength] = useState<string>("");
   const [voted, setVoted] = useState<number | null>(null);
@@ -73,9 +74,11 @@ export default function Home() {
       setView("user");
     }
     const savedCompetitor = localStorage.getItem("competitor") || "";
+    const savedProducer = localStorage.getItem("producer") || "";
     const savedType = localStorage.getItem("beerType") || "";
     const savedStrength = localStorage.getItem("strength") || "";
     setCompetitor(savedCompetitor);
+    setProducer(savedProducer);
     setBeerType(savedType);
     setStrength(savedStrength);
   }, []);
@@ -202,12 +205,14 @@ export default function Home() {
     try {
       localStorage.removeItem("pin");
       localStorage.removeItem("competitor");
+      localStorage.removeItem("producer");
       localStorage.removeItem("beerType");
       localStorage.removeItem("strength");
     } catch {}
     setPin("");
     setNickname("");
     setCompetitor("");
+    setProducer("");
     setBeerType("");
     setStrength("");
     setVoted(null);
@@ -273,10 +278,22 @@ export default function Home() {
                 />
               </div>
               <div>
+                <label className="mb-1 block text-sm text-zinc-600">Produsent</label>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2"
+                  placeholder="Produsent"
+                  value={producer}
+                  onChange={(e) => {
+                    setProducer(e.target.value);
+                    localStorage.setItem("producer", e.target.value);
+                  }}
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-sm text-zinc-600">Konkurrent</label>
                 <input
                   className="w-full rounded-xl border border-zinc-300 px-4 py-2"
-                  placeholder="Navn på konkurrent"
+                  placeholder="Navn på øl"
                   value={competitor}
                   onChange={(e) => {
                     setCompetitor(e.target.value);

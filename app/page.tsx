@@ -1957,7 +1957,7 @@ export default function Home() {
                   </button>
                 )}
                 <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>
                     confirmAdmin(async () => {
                       await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });

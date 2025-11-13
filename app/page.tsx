@@ -1840,11 +1840,15 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={() => confirmAdmin(async () => { await revealResults(); })}
-                  disabled={revealedRound === round}
+                  className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
                 >
-                  Avslør resultater (én gang)
+                  Lås opp utvalg
                 </button>
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
@@ -1865,6 +1869,13 @@ export default function Home() {
                   }
                 >
                   Ny konkurranse
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={() => confirmAdmin(async () => { await revealResults(); })}
+                  disabled={revealedRound === round}
+                >
+                  Avslør resultater (én gang)
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
@@ -1956,17 +1967,6 @@ export default function Home() {
                     Lås pålogging
                   </button>
                 )}
-                <button
-                  className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
-                  onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
-                  }
-                >
-                  Lås opp utvalg
-                </button>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>

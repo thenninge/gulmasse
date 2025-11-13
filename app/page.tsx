@@ -934,9 +934,8 @@ export default function Home() {
                   </button>
                 ) : <span />}
                 <button
-                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90 disabled:opacity-50"
+                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90"
                   onClick={() => setShowPodium(true)}
-                  disabled={!canShowScores}
                 >
                   Podium
                 </button>
@@ -1141,7 +1140,7 @@ export default function Home() {
                 ✕
               </button>
               <h3 className="mb-4 text-center text-lg font-semibold">Podium</h3>
-              {(() => {
+              {canShowScores ? (() => {
                 const items = participants.map((p) => ({
                   pin: p.pin,
                   name: (p.nickname || "").trim() || p.pin,
@@ -1190,7 +1189,11 @@ export default function Home() {
                     })}
                   </div>
                 );
-              })()}
+              })() : (
+                <div className="rounded-lg bg-zinc-50 p-4 text-center text-sm text-zinc-600">
+                  Podium oppdateres når resultater blir avslørt.
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -78,7 +78,7 @@ export function PickerWheel({
       <div className="relative mx-auto h-80 w-80">
         {/* Pointer */}
         <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2">
-          <div className="h-0 w-0 border-l-8 border-r-8 border-b-[14px] border-l-transparent border-r-transparent border-b-emerald-600" />
+          <div className="h-0 w-0 border-l-8 border-r-8 border-t-[14px] border-l-transparent border-r-transparent border-t-red-600" />
         </div>
         <svg viewBox="0 0 320 320" className="absolute inset-0">
           <defs>

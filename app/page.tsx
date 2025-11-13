@@ -1109,7 +1109,7 @@ export default function Home() {
                 Find the chosen one
               </button>
               <button
-                className="rounded-xl border border-zinc-300 px-4 py-4 active:bg-zinc-50"
+                className="rounded-xl bg-red-900/50 px-4 py-4 text-white active:opacity-90"
                 onClick={() => setView("overview")}
               >
                 Full oversikt

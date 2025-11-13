@@ -673,7 +673,7 @@ export default function Home() {
         )}
         {view === "user" && (
           <section className="space-y-5">
-            <h2 className="text-xl font-semibold">Velkommen til Gulmasse '25!</h2>
+            <h2 className="text-xl font-semibold text-center">Velkommen til Gulmasse '25!</h2>
             <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div>
                 <label className="mb-1 block text-sm text-zinc-600">Navn</label>

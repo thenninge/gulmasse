@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 
-type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview";
+type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
 export default function Home() {
   const [view, setView] = useState<View>("login");
@@ -593,6 +593,82 @@ export default function Home() {
           </div>
         )}
 
+        {view === "wheel" && isHost && (
+          <section className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Snurrehjul</h2>
+              <button
+                className="rounded-md bg-purple-600 px-3 py-1 text-sm text-white active:opacity-90"
+                onClick={() => setView("lobby")}
+              >
+                Lobby
+              </button>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm relative overflow-hidden">
+              <PickerWheel
+                participants={participants
+                  .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: false }))}
+                onPick={async (picked) => {
+                  const match = participants.find(x => x.pin === picked.id);
+                  setLastPicked({
+                    name: (match?.nickname || "").trim() || picked.name,
+                    beerName: (match?.beer_name || "").trim() || undefined,
+                  });
+                  playFanfare();
+                  setHatDrop(true);
+                  setShowCelebration(true);
+                  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+                    // @ts-ignore
+                    navigator.vibrate?.([60, 40, 80]);
+                  }
+                  setTimeout(() => { setShowCelebration(false); setHatDrop(false); }, 3000);
+                }}
+              />
+              {showCelebration && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
+                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl relative">
+                    <div className="text-xs uppercase tracking-wide text-emerald-700">Valgt</div>
+                    <div className="mt-1 relative">
+                      {hatDrop && (
+                        <img
+                          src="/img/mcga.png"
+                          alt=""
+                          className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
+                          style={{ top: "-80px" } as any}
+                        />
+                      )}
+                      <div className="text-2xl font-bold text-emerald-900">
+                        {lastPicked?.name}
+                      </div>
+                    </div>
+                    { lastPicked?.beerName ? (
+                      <div className="text-lg text-emerald-800">
+                        {lastPicked?.beerName}
+                      </div>
+                    ) : null}
+                  </div>
+                  {/* Simple confetti */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    {Array.from({ length: 80 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="absolute block h-2 w-2 animate-confetti rounded-[1px]"
+                        style={{
+                          left: `${Math.random() * 100}%`,
+                          top: `-${Math.random() * 20}%`,
+                          backgroundColor: ['#10b981', '#34d399', '#059669', '#6ee7b7'][i % 4],
+                          animationDelay: `${Math.random() * 0.6}s`,
+                          animationDuration: `${1.6 + Math.random() * 0.8}s`,
+                          transform: `rotate(${Math.random() * 360}deg)`
+                        } as any}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
         {view === "user" && (
           <section className="space-y-5">
             <h2 className="text-xl font-semibold">Bruker</h2>
@@ -1084,13 +1160,23 @@ export default function Home() {
                       // order: 2nd, 1st, 3rd visually (left, center, right)
                       const orderClass = i === 0 ? "order-2" : i === 1 ? "order-1" : "order-3";
                       const crown = i === 0 ? " 👑" : "";
+                      const img = beerImageForName(t.name);
                       return (
                         <div key={t.pin} className={`flex flex-col items-center ${orderClass}`}>
-                          <div
-                            className="w-full rounded-t-lg bg-emerald-600 text-white"
-                            style={{ height }}
-                            title={`${t.received} pts`}
-                          />
+                          <div className="w-full flex flex-col items-center">
+                            {img && (
+                              <img
+                                src={img}
+                                alt={t.beer || t.name}
+                                className="w-3/4 h-auto rounded-md object-contain ring-1 ring-zinc-200 mb-2"
+                              />
+                            )}
+                            <div
+                              className="w-full rounded-t-lg bg-emerald-600 text-white"
+                              style={{ height }}
+                              title={`${t.received} pts`}
+                            />
+                          </div>
                           <div className="mt-2 truncate text-center text-sm font-medium">
                             {t.name}{crown}
                           </div>
@@ -1748,6 +1834,12 @@ export default function Home() {
                   }
                 >
                   Reset poeng fått = 0
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={() => setView("wheel")}
+                >
+                  Snurrehjul
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"

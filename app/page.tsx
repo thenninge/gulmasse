@@ -63,6 +63,8 @@ export default function Home() {
     });
     return map;
   }, [participants, userReceived, userGiven]);
+  // Only show public scores when results are revealed for the current round
+  const canShowScores = revealedRound === round;
   function beerImageForName(name: string): string | null {
     const key = (name || "").toLowerCase().trim();
     const first = key.split(/\s+/)[0] || key;
@@ -932,8 +934,9 @@ export default function Home() {
                   </button>
                 ) : <span />}
                 <button
-                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90"
+                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90 disabled:opacity-50"
                   onClick={() => setShowPodium(true)}
+                  disabled={!canShowScores}
                 >
                   Podium
                 </button>
@@ -994,7 +997,7 @@ export default function Home() {
                   Ølnavn {sortKey === "beer" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </button>
                 <button
-                  className="text-right"
+                      className="text-right"
                   onClick={() => {
                     if (sortKey === "given") {
                       setSortDir(sortDir === "desc" ? "asc" : "desc");
@@ -1061,8 +1064,8 @@ export default function Home() {
                           p.active ? "" : "text-zinc-400 bg-zinc-50"
                         }`}
                       >
-                        <div className="col-span-1 tabular-nums">{rank}</div>
-                        <div className="col-span-1 tabular-nums">{received}</div>
+                        <div className="col-span-1 tabular-nums">{canShowScores ? rank : "—"}</div>
+                        <div className="col-span-1 tabular-nums">{canShowScores ? received : "—"}</div>
                         <div className="col-span-1 truncate">{name}</div>
                         <div className="col-span-1 truncate">
                           {(() => {
@@ -1088,7 +1091,7 @@ export default function Home() {
                             return <span>{beerName}</span>;
                           })()}
                         </div>
-                        <div className="col-span-1 tabular-nums text-right">{given}</div>
+                        <div className="col-span-1 tabular-nums text-right">{canShowScores ? given : "—"}</div>
                       </li>
                     );
                   })}

@@ -320,6 +320,13 @@ export default function Home() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const drumRef = useRef<number | null>(null);
   const [showBeerImage, setShowBeerImage] = useState(false);
+  const [lobbyImageSrc, setLobbyImageSrc] = useState<string | null>(null);
+  const [lobbyImageTitle, setLobbyImageTitle] = useState<string>("");
+  const [lobbyImageProducer, setLobbyImageProducer] = useState<string>("");
+  const [lobbyImageBeerType, setLobbyImageBeerType] = useState<string>("");
+  const [lobbyImageName, setLobbyImageName] = useState<string>("");
+  const [lobbyImageBeerName, setLobbyImageBeerName] = useState<string>("");
+  const [lobbyImageAbv, setLobbyImageAbv] = useState<string>("");
   const [showPodium, setShowPodium] = useState(false);
   const [hatDrop, setHatDrop] = useState(false);
   const [pendingVote, setPendingVote] = useState<number | null>(null);
@@ -742,6 +749,50 @@ export default function Home() {
           </section>
         )}
 
+        {/* Lobby beer image modal */}
+        {lobbyImageSrc && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setLobbyImageSrc(null)}
+          >
+            <div
+              className="relative max-h-[90vh] max-w-[90vw] rounded-xl bg-white p-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="absolute right-2 top-2 rounded-md bg-white/90 px-2 py-1 text-sm shadow"
+                onClick={() => setLobbyImageSrc(null)}
+                aria-label="Lukk"
+              >
+                ✕
+              </button>
+              <img
+                src={lobbyImageSrc}
+                alt={lobbyImageName || "Ølbilde"}
+                className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain"
+              />
+              {(lobbyImageName || lobbyImageBeerName || lobbyImageProducer || lobbyImageBeerType || lobbyImageAbv) && (
+                <div className="mt-2 px-2 text-center text-sm text-zinc-700">
+                  {lobbyImageName && <div className="font-semibold text-base">{lobbyImageName}</div>}
+                  {lobbyImageBeerName && (
+                    <div>Ølnavn: <span className="font-medium text-zinc-800">{lobbyImageBeerName}</span></div>
+                  )}
+                  {lobbyImageProducer && (
+                    <div>Produsent: <span className="font-medium text-zinc-800">{lobbyImageProducer}</span></div>
+                  )}
+                  {lobbyImageBeerType && (
+                    <div>Øltype: <span className="font-medium text-zinc-800">{lobbyImageBeerType}</span></div>
+                  )}
+                  {lobbyImageAbv && (
+                    <div>ABV: <span className="font-medium text-zinc-800">{lobbyImageAbv}%</span></div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {view === "login" && (
           <section className="space-y-5">
             <h2 className="text-xl font-semibold">Logg inn eller opprett PIN</h2>
@@ -937,7 +988,30 @@ export default function Home() {
                         <div className="col-span-1 tabular-nums">{rank}</div>
                         <div className="col-span-1 tabular-nums">{received}</div>
                         <div className="col-span-1 truncate">{name}</div>
-                        <div className="col-span-1 truncate">{beerName}</div>
+                        <div className="col-span-1 truncate">
+                          {(() => {
+                            const img = beerImageForName(name);
+                            if (img && p.beer_name) {
+                              return (
+                                <button
+                                  className="underline text-blue-700 hover:text-blue-800"
+                                  onClick={() => {
+                                    setLobbyImageSrc(img);
+                                    setLobbyImageName(name);
+                                    setLobbyImageBeerName(p.beer_name || "");
+                                    setLobbyImageProducer((p.producer || "").trim());
+                                    setLobbyImageBeerType((p.beer_type || "").trim());
+                                    const abvVal = p.abv != null ? Number(p.abv) : NaN;
+                                    setLobbyImageAbv(Number.isFinite(abvVal) ? abvVal.toFixed(1) : "");
+                                  }}
+                                >
+                                  {beerName}
+                                </button>
+                              );
+                            }
+                            return <span>{beerName}</span>;
+                          })()}
+                        </div>
                         <div className="col-span-1 tabular-nums text-right">{given}</div>
                       </li>
                     );

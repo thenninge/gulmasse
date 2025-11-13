@@ -41,6 +41,7 @@ export default function Home() {
   const [revealedRound, setRevealedRound] = useState(0);
   const [pickedRound, setPickedRound] = useState(0);
   const [roundStarted, setRoundStarted] = useState(false);
+  const [allowReveal, setAllowReveal] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
 
   // Rank is always based on "poeng fått" (received), independent of current sort
@@ -125,6 +126,7 @@ export default function Home() {
       setRevealedRound(data.revealedRound || 0);
       setPickedRound(data.pickedRound || 0);
       setRoundStarted(Boolean(data.roundStarted));
+      setAllowReveal(Boolean(data.allowReveal));
       // build pair totals map: from -> to -> total
       const pMap: Record<string, Record<string, number>> = {};
       (data.pairTotals || []).forEach((pt: { from: string; to: string; total: number }) => {
@@ -196,6 +198,7 @@ export default function Home() {
     setRevealedVotesMap({});
     setVotedPins([]);
   }, [round]);
+ 
 
   async function login() {
     setError(null);
@@ -324,6 +327,14 @@ export default function Home() {
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
   const [revealedVotesMap, setRevealedVotesMap] = useState<Record<string, number>>({});
+  // If server no longer lists my pin in votedPins, unlock local vote UI (handles admin "Reset stemmer")
+  useEffect(() => {
+    if (pin && voted !== null && !votedPins.includes(pin)) {
+      setVoted(null);
+      setPendingVote(null);
+      setShowMyReveal(false);
+    }
+  }, [votedPins, pin, voted]);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
   const adminConfirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
   function confirmAdmin(action: () => void | Promise<void>) {
@@ -465,7 +476,9 @@ export default function Home() {
     setPendingVote(null);
   }
   async function revealMyVote() {
-    if (pin.length !== 4 || voted == null) return;
+    const hasVotedLocally = voted !== null;
+    const hasVotedServer = pin.length === 4 && votedPins.includes(pin);
+    if (pin.length !== 4 || !(hasVotedLocally || hasVotedServer)) return;
     try {
       await fetch("/api/reveal-my-vote", {
         method: "POST",
@@ -786,10 +799,7 @@ export default function Home() {
                 {isHost ? (
                   <button
                     className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white active:opacity-90"
-                    onClick={async () => {
-                      await nextRound();
-                      fetchStatus();
-                    }}
+                    onClick={() => confirmAdmin(async () => { await nextRound(); fetchStatus(); })}
                   >
                     Start ny runde
                   </button>
@@ -1026,10 +1036,13 @@ export default function Home() {
           <section className="space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Votering</h2>
-              <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
-                Tilbake
+              <button
+                className="rounded-md bg-purple-600 px-3 py-1 text-sm text-white active:opacity-90"
+                onClick={() => setView("lobby")}
+              >
+                Lobby
               </button>
-            </div>
+        </div>
             {selected && (
               <>
                 <div className="rounded-xl border border-zinc-200 bg-white px-4 py-4">
@@ -1121,15 +1134,20 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-3">
               {[1, 2, 3, 4, 5, 6].map((n) => {
                 const isSel = (pendingVote ?? voted) === n;
+                const alreadyVoted = voted != null || (Boolean(pin) && votedPins.includes(pin));
+                const canVoteNow = pickedRound === round && Boolean(selected);
                 return (
                   <button
                     key={n}
                     className={`flex h-20 items-center justify-center rounded-xl border ${
                       isSel ? "border-blue-700 ring-2 ring-blue-400" : "border-zinc-200"
                     } bg-white active:opacity-90`}
-                    onClick={() => setPendingVote(n)}
+                    onClick={() => {
+                      if (!canVoteNow || alreadyVoted) return;
+                      setPendingVote(n);
+                    }}
                     aria-label={`Gi ${n} poeng`}
-                    disabled={voted != null}
+                    disabled={!canVoteNow || alreadyVoted}
                   >
                     <img
                       src={`/img/${n}.png`}
@@ -1141,21 +1159,23 @@ export default function Home() {
                 );
               })}
             </div>
-            {voted == null ? (
+            {!(voted != null || (Boolean(pin) && votedPins.includes(pin))) ? (
               <div>
                 <button
                   className="w-full rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                   onClick={() => setShowLockConfirm(true)}
-                  disabled={pendingVote == null}
+                  disabled={!(pickedRound === round && Boolean(selected)) || pendingVote == null}
                 >
                   Lås poeng
                 </button>
                 <div className="mt-2 text-center text-sm text-zinc-600">
-                  {pendingVote != null ? `Valgt: ${pendingVote} poeng` : `Velg terning først`}
+                  {!(pickedRound === round && Boolean(selected))
+                    ? `Venter på utvelgelse`
+                    : (pendingVote != null ? `Valgt: ${pendingVote} poeng` : `Velg terning!`)}
                 </div>
               </div>
             ) : (
-              <div className="text-center text-sm text-emerald-700">Poeng låst for denne runden</div>
+              <div className="text-center text-sm text-emerald-700">Stemme avgitt, poeng låst, venter på ny runde</div>
             )}
 
             {showLockConfirm && (
@@ -1281,7 +1301,10 @@ export default function Home() {
               <button
                 className="w-full rounded-xl bg-zinc-900 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={revealMyVote}
-                disabled={!(activeCount > 0 && votedCount >= activeCount) || voted == null}
+                disabled={
+                  !((activeCount > 0 && votedCount >= activeCount) || allowReveal) ||
+                  !(voted !== null || (pin && votedPins.includes(pin)))
+                }
               >
                 Avslør min stemme
               </button>
@@ -1299,16 +1322,20 @@ export default function Home() {
                 >
                   <h3 className="text-lg font-semibold">Din stemme</h3>
                   <div className="mt-3 flex flex-col items-center">
-                    {voted != null && (
+                    {(() => {
+                      const val = voted != null ? voted : (revealedVotesMap[pin] ?? null);
+                      if (val == null) return null;
+                      return (
                       <>
                         <img
-                          src={`/img/${voted}.png`}
-                          alt={`${voted}`}
+                          src={`/img/${val}.png`}
+                          alt={`${val}`}
                           className="h-20 w-20 object-contain"
                         />
-                        <div className="mt-2 text-2xl font-bold">{voted}</div>
+                        <div className="mt-2 text-2xl font-bold">{val}</div>
                       </>
-                    )}
+                      );
+                    })()}
                   </div>
                   <div className="mt-4">
                     <button
@@ -1328,8 +1355,11 @@ export default function Home() {
           <section className="space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Utvelger</h2>
-              <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
-                Tilbake
+              <button
+                className="rounded-md bg-purple-600 px-3 py-1 text-sm text-white active:opacity-90"
+                onClick={() => setView("lobby")}
+              >
+                Lobby
               </button>
             </div>
               <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4 relative overflow-hidden">
@@ -1348,7 +1378,7 @@ export default function Home() {
                   .filter(p => p.active)
                   .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: picks.includes(p.pin) }))}
                 onPick={async (picked) => {
-                  // Åpen persistering av pick for alle brukere
+                  // Persist pick server-side; only proceed if it succeeds so voting recipient is authoritative
                   let persistedPin: string | null = null;
                   try {
                     const res = await fetch("/api/pick", {
@@ -1358,19 +1388,46 @@ export default function Home() {
                     });
                     if (res.ok) {
                       const j = await res.json().catch(() => ({}));
-                      if (typeof j?.pin === "string") {
-                        persistedPin = j.pin;
+                      if (typeof j?.pin === "string") persistedPin = j.pin;
+                    } else {
+                      let msg = "";
+                      try {
+                        const jerr = await res.json();
+                        msg = jerr?.error || "";
+                      } catch {}
+                      if (res.status === 409) {
+                        // Known conflict cases: already picked this round or no candidates left
+                        if (/already picked/i.test(msg)) {
+                          setError("Det er allerede gjort et valg i denne runden.");
+                        } else if (/No candidates left/i.test(msg)) {
+                          setError("Ingen deltakere igjen å velge. Bruk 'Resett alle deltakere'.");
+                        } else {
+                          setError(msg || "Kan ikke gjøre nytt valg nå.");
+                        }
+                        await fetchStatus();
+                        return;
                       }
+                      setError(msg || "Kunne ikke lagre utvalg – prøv igjen");
+                      return;
                     }
                   } catch {
-                    // ignore; fallback below
+                    // network error handled below
                   }
-                  const usePin = persistedPin || picked.id;
-                  const match = participants.find(x => x.pin === usePin);
+                  if (!persistedPin) {
+                    setError("Kunne ikke lagre utvalg – prøv igjen");
+                    return;
+                  }
+                  const match = participants.find(x => x.pin === persistedPin);
                   setLastPicked({
                     name: (match?.nickname || "").trim() || picked.name,
                     beerName: (match?.beer_name || "").trim() || undefined,
                   });
+                  // Reset local voting UI immediately for new selection
+                  setVoted(null);
+                  setPendingVote(null);
+                  setShowMyReveal(false);
+                  setRevealedVotesMap({});
+                  setVotedPins([]);
                   playFanfare();
                   setHatDrop(true);
                   setShowCelebration(true);
@@ -1550,7 +1607,15 @@ export default function Home() {
 
         {view === "admin" && isHost && (
           <section className="space-y-5">
-            <h2 className="text-xl font-semibold">Admin tools</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Admin tools</h2>
+              <button
+                className="rounded-md bg-amber-600 px-3 py-1 text-xs text-white active:opacity-90"
+                onClick={() => setView("lobby")}
+              >
+                Tilbake til lobby
+              </button>
+            </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
               <div className="text-sm text-zinc-600">
                 Runde: <span className="font-medium">{round}</span> ·
@@ -1567,9 +1632,37 @@ export default function Home() {
                 </button>
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
-                  onClick={() => confirmAdmin(async () => { await nextRound(); })}
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/admin/reset-competition", {
+                        method: "POST",
+                        headers: { "x-host-pin": pin },
+                      });
+                      // local clears
+                      setVoted(null);
+                      setPendingVote(null);
+                      setShowMyReveal(false);
+                      setRevealedVotesMap({});
+                      setVotedPins([]);
+                      fetchStatus();
+                    })
+                  }
                 >
-                  Ny runde
+                  Ny konkurranse
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/reset-votes", { method: "POST", headers: { "x-host-pin": pin } });
+                      // local hint: clear my local locked state immediately
+                      setVoted(null);
+                      setPendingVote(null);
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Reset stemmer
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
@@ -1581,6 +1674,28 @@ export default function Home() {
                   }
                 >
                   Reset poeng fått = 0
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/reset-picks", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Resett alle deltakere
+                </button>
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/allow-reveal", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Tillat avslør stemme
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
@@ -1619,6 +1734,17 @@ export default function Home() {
                     Lås pålogging
                   </button>
                 )}
+                <button
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Lås opp utvalg
+                </button>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>
@@ -1651,14 +1777,7 @@ export default function Home() {
                 </ul>
               </div>
             </div>
-            <div className="grid grid-cols-1">
-              <button
-                className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                onClick={() => setView("lobby")}
-              >
-                Tilbake til lobby
-              </button>
-        </div>
+            <div className="grid grid-cols-1" />
           </section>
         )}
         {showAdminConfirm && (

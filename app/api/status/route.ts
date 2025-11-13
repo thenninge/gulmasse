@@ -3,13 +3,14 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes, roundStartedRes] = await Promise.all([
+    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes, roundStartedRes, allowRevealRes] = await Promise.all([
       supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'reveal_results').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'logins_locked').maybeSingle(),
       supabase.from('app_state').select('int_value').eq('key', 'revealed_round').maybeSingle(),
       supabase.from('app_state').select('int_value').eq('key', 'picked_round').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'round_started').maybeSingle(),
+      supabase.from('app_state').select('bool_value').eq('key', 'allow_reveal').maybeSingle(),
     ]);
     if (roundRes.error) throw roundRes.error;
     if (revealRes.error) throw revealRes.error;
@@ -17,12 +18,14 @@ export async function GET() {
     if (revealedRoundRes.error) throw revealedRoundRes.error;
     if (pickedRoundRes.error) throw pickedRoundRes.error;
     if (roundStartedRes.error) throw roundStartedRes.error;
+    if (allowRevealRes.error) throw allowRevealRes.error;
     const round = Number((roundRes.data as any)?.int_value ?? 1);
     const reveal = (revealRes.data as any)?.bool_value === true;
     const loginsLocked = (lockRes.data as any)?.bool_value === true;
     const revealedRound = Number((revealedRoundRes.data as any)?.int_value ?? 0);
     const pickedRound = Number((pickedRoundRes.data as any)?.int_value ?? 0);
     const roundStarted = (roundStartedRes.data as any)?.bool_value === true;
+    const allowReveal = (allowRevealRes.data as any)?.bool_value === true;
 
     // Participants
     const participantsRes = await supabase
@@ -100,17 +103,41 @@ export async function GET() {
     // Pair totals (giver -> recipient across all rounds)
     const votesPairsRes = await supabase
       .from('votes')
-      .select('pin,recipient_pin,value');
+      .select('pin,recipient_pin,value,round');
     if (votesPairsRes.error) throw votesPairsRes.error;
     const pairTotals: Array<{ from: string; to: string; total: number }> = [];
     {
+      const rows = ((votesPairsRes.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; round: number }>;
+      // Gather revealed pins per round
+      const revealedAllRes = await supabase
+        .from('app_state')
+        .select('key,text_value')
+        .like('key', 'revealed_pins_round_%');
+      if (revealedAllRes.error && (revealedAllRes.error as any).code !== 'PGRST116') throw revealedAllRes.error;
+      const roundToRevealed = new Map<number, Set<string>>();
+      for (const r of ((revealedAllRes.data as any[]) || [])) {
+        const key: string = String((r as any).key || '');
+        const m = key.match(/revealed_pins_round_(\d+)/);
+        if (!m) continue;
+        const rnd = Number(m[1] || 0);
+        let arr: string[] = [];
+        try {
+          const txt = (r as any)?.text_value || '[]';
+          const parsed = JSON.parse(txt);
+          if (Array.isArray(parsed)) arr = parsed.filter((x: any) => typeof x === 'string');
+        } catch {}
+        roundToRevealed.set(rnd, new Set(arr));
+      }
       const pairAgg = new Map<string, number>();
-      for (const r of ((votesPairsRes.data as any[]) || [])) {
-        const from = String(r.pin || '');
+      for (const r of rows) {
+        const from = String((r as any).pin || '');
         const to = String((r as any).recipient_pin || '');
+        const rnd = Number((r as any).round || 0);
         if (!from || !to) continue;
+        const revealedSet = roundToRevealed.get(rnd) || new Set<string>();
+        if (!revealedSet.has(from)) continue; // only include votes from givers who have revealed in that round
         const key = `${from}|${to}`;
-        const v = Number(r.value) || 0;
+        const v = Number((r as any).value) || 0;
         pairAgg.set(key, (pairAgg.get(key) ?? 0) + v);
       }
       // subtract pair offsets baseline if present
@@ -178,6 +205,7 @@ export async function GET() {
       revealedRound,
       pickedRound,
       roundStarted,
+      allowReveal,
       pairTotals,
     });
   } catch (e: any) {

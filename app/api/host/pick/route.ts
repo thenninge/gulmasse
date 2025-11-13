@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     const up = await (supabase.from('app_state') as any).upsert({ key: 'picked_round', int_value: round }, { onConflict: 'key' });
     if (up.error) throw up.error;
     await (supabase.from('app_state') as any).upsert({ key: 'round_started', bool_value: false }, { onConflict: 'key' });
+    await (supabase.from('app_state') as any).upsert({ key: 'allow_reveal', bool_value: false }, { onConflict: 'key' });
     return NextResponse.json({ ok: true, pin: chosen });
   } catch (e: any) {
     const code = e?.status || 500;

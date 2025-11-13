@@ -856,7 +856,7 @@ export default function Home() {
                   </button>
                 ) : <span />}
                 <button
-                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium active:bg-zinc-50"
+                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90"
                   onClick={() => setShowPodium(true)}
                 >
                   Podium

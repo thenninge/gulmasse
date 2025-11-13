@@ -1706,6 +1706,56 @@ export default function Home() {
               </button>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              {isHost && (
+                <div className="mb-3 flex justify-end">
+                  <button
+                    className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs text-white active:opacity-90"
+                    onClick={() => {
+                      // build CSV of beer info + totals + pairwise given
+                      const giverOrder = participants.map(p => p.pin);
+                      const toOrder = participants.map(p => p.pin);
+                      const header = [
+                        "PIN","Navn","Ølnavn","Produsent","Øltype","ABV",
+                        "Poeng gitt (total)","Poeng fått (total)",
+                        ...toOrder.map(pin => {
+                          const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
+                          return `Gitt til ${name}`;
+                        })
+                      ];
+                      function cell(v: any) {
+                        const s = v === null || v === undefined ? "" : String(v);
+                        if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+                        return s;
+                      }
+                      const rows = giverOrder.map(fromPin => {
+                        const p = participants.find(x=>x.pin===fromPin);
+                        const name = (p?.nickname || "").trim() || fromPin;
+                        const beer = (p?.beer_name || "").trim();
+                        const prod = (p?.producer || "").trim();
+                        const type = (p?.beer_type || "").trim();
+                        const abv = p?.abv != null ? Number(p.abv).toFixed(1) : "";
+                        const givenTot = userGiven[fromPin] ?? 0;
+                        const recvTot = userReceived[fromPin] ?? 0;
+                        const pairVals = toOrder.map(toPin => pairTotalsMap[fromPin]?.[toPin] ?? 0);
+                        const row = [fromPin,name,beer,prod,type,abv, givenTot, recvTot, ...pairVals];
+                        return row.map(cell).join(",");
+                      });
+                      const csv = [header.map(cell).join(","), ...rows].join("\n");
+                      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `poengtabell.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    Last ned CSV
+                  </button>
+                </div>
+              )}
               {participants.length === 0 ? (
                 <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
               ) : (

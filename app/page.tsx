@@ -1068,7 +1068,7 @@ export default function Home() {
                   Lagre
                 </button>
                 <button
-                  className="rounded-xl bg-red-900/80 px-4 py-3 text-white active:opacity-90"
+                  className="rounded-xl bg-red-600 px-4 py-3 text-white active:opacity-90"
                   onClick={() => setView("lobby")}
                 >
                   Fortsett til lobby
@@ -1374,7 +1374,7 @@ export default function Home() {
                 Find the chosen one
               </button>
               <button
-                className="rounded-xl bg-red-900/80 px-4 py-4 text-white active:opacity-90"
+                className="rounded-xl bg-red-600 px-4 py-4 text-white active:opacity-90"
                 onClick={() => setView("overview")}
               >
                 Full oversikt

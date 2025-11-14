@@ -2020,8 +2020,11 @@ export default function Home() {
           <section className="space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Full oversikt</h2>
-              <button className="text-sm text-zinc-600 underline" onClick={() => setView("lobby")}>
-                Tilbake
+              <button
+                className="rounded-md bg-purple-600 px-3 py-1 text-sm text-white active:opacity-90"
+                onClick={() => setView("lobby")}
+              >
+                Lobby
               </button>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">

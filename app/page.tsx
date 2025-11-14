@@ -1068,7 +1068,7 @@ export default function Home() {
                   Lagre
                 </button>
                 <button
-                  className="rounded-xl bg-red-600 px-4 py-3 text-white active:opacity-90"
+                  className="rounded-xl bg-purple-600 px-4 py-3 text-white active:opacity-90"
                   onClick={() => setView("lobby")}
                 >
                   Fortsett til lobby

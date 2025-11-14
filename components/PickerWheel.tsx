@@ -31,6 +31,7 @@ export function PickerWheel({
 }: PickerWheelProps) {
   const [angle, setAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [postPause, setPostPause] = useState(false); // brief pause after spin completes
   const announceRef = useRef<HTMLDivElement | null>(null);
   const list = participants;
   // Ensure an even number of display slices by appending a ghost slice if needed
@@ -55,7 +56,7 @@ export function PickerWheel({
   }
 
   function handlePick() {
-    if (disabled || spinning || available.length === 0) return;
+    if (disabled || spinning || postPause || available.length === 0) return;
     const visibleOrder = list; // logical order for picking (no ghost)
     const candidates = visibleOrder.filter(p => !p.selected);
     const localIdx = pickRandomIndex(candidates.length);
@@ -73,7 +74,10 @@ export function PickerWheel({
     setAngle(target);
     setTimeout(() => {
       setSpinning(false);
+      setPostPause(true);
       onPick(picked);
+      // keep hat resting and wheel paused briefly
+      setTimeout(() => setPostPause(false), 1500);
       if (announceRef.current) {
         announceRef.current.textContent = `Valgt: ${picked.name}`;
       }
@@ -152,14 +156,16 @@ export function PickerWheel({
         <button
           aria-live="polite"
           className={`absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 ${
-            spinning ? "p-0 rounded-none bg-transparent shadow-none" : "rounded-full px-6 py-3 text-white shadow"
-          } ${disabled || available.length === 0 ? (spinning ? "" : "bg-zinc-400") : (spinning ? "" : "bg-emerald-600 hover:bg-emerald-700")} ${spinning ? "" : ""}`}
+            (spinning || postPause) ? "p-0 rounded-none bg-transparent shadow-none" : "rounded-full px-6 py-3 text-white shadow"
+          } ${disabled || available.length === 0 ? ((spinning || postPause) ? "" : "bg-zinc-400") : ((spinning || postPause) ? "" : "bg-emerald-600 hover:bg-emerald-700")}`}
           onClick={handlePick}
-          disabled={disabled || spinning || available.length === 0}
+          disabled={disabled || spinning || postPause || available.length === 0}
         >
-          {available.length === 0 ? "Alle er trukket" : spinning ? (
+          {available.length === 0 ? "Alle er trukket" : (spinning ? (
             <img src="/img/mcga.png" alt="" className="h-16 w-16 md:h-20 md:w-20 object-contain animate-spin" />
-          ) : "Spin!"}
+          ) : postPause ? (
+            <img src="/img/mcga.png" alt="" className="h-16 w-16 md:h-20 md:w-20 object-contain" />
+          ) : "Spin!")}
         </button>
       </div>
       <div ref={announceRef} className="sr-only" aria-live="polite" />

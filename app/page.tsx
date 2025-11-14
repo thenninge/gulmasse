@@ -44,6 +44,7 @@ export default function Home() {
   const [allowReveal, setAllowReveal] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
+  const [sumFactor, setSumFactor] = useState<number>(0.5);
   const extraGivenByPin = useMemo(() => {
     const acc: Record<string, number> = {};
     for (const from of Object.keys(pairTotalsExtraMap || {})) {
@@ -128,6 +129,63 @@ export default function Home() {
     }
     return sum;
   }, [pairTotalsMap]);
+  // Combined (main + factor * extra)
+  const combinedPairTotalsMap = useMemo(() => {
+    const out: Record<string, Record<string, number>> = {};
+    const fromPins = new Set<string>([
+      ...Object.keys(pairTotalsMap || {}),
+      ...Object.keys(pairTotalsExtraMap || {}),
+    ]);
+    for (const from of fromPins) {
+      const rowMain = pairTotalsMap[from] || {};
+      const rowExtra = pairTotalsExtraMap[from] || {};
+      const toPins = new Set<string>([
+        ...Object.keys(rowMain),
+        ...Object.keys(rowExtra),
+      ]);
+      for (const to of toPins) {
+        const main = Number(rowMain[to] || 0);
+        const extra = Number(rowExtra[to] || 0);
+        const val = main + sumFactor * extra;
+        if (!out[from]) out[from] = {};
+        out[from][to] = val;
+      }
+    }
+    return out;
+  }, [pairTotalsMap, pairTotalsExtraMap, sumFactor]);
+  const combinedGivenByPin = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of Object.keys(combinedPairTotalsMap || {})) {
+      const row = combinedPairTotalsMap[from] || {};
+      let sum = 0;
+      for (const to of Object.keys(row)) {
+        sum += Number(row[to] || 0);
+      }
+      acc[from] = sum;
+    }
+    return acc;
+  }, [combinedPairTotalsMap]);
+  const combinedReceivedByPin = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of Object.keys(combinedPairTotalsMap || {})) {
+      const row = combinedPairTotalsMap[from] || {};
+      for (const to of Object.keys(row)) {
+        const v = Number(row[to] || 0);
+        acc[to] = (acc[to] ?? 0) + v;
+      }
+    }
+    return acc;
+  }, [combinedPairTotalsMap]);
+  const totalCombined = useMemo(() => {
+    let sum = 0;
+    for (const from of Object.keys(combinedPairTotalsMap || {})) {
+      const row = combinedPairTotalsMap[from] || {};
+      for (const to of Object.keys(row)) {
+        sum += Number(row[to] || 0);
+      }
+    }
+    return sum;
+  }, [combinedPairTotalsMap]);
 
   // Rank is always based on "poeng fått" (received), independent of current sort
   const receivedRankMap = useMemo(() => {
@@ -261,12 +319,20 @@ export default function Home() {
     const savedType = localStorage.getItem("beerType") || "";
     const savedTypeCustom = localStorage.getItem("beerTypeCustom") || "";
     const savedStrength = localStorage.getItem("strength") || "";
+    const savedSumFactor = localStorage.getItem("sumFactor");
     setCompetitor(savedCompetitor);
     setProducer(savedProducer);
     setBeerType(savedType);
     setCustomBeerType(savedTypeCustom);
     setStrength(savedStrength);
+    if (savedSumFactor != null) {
+      const f = Number(savedSumFactor);
+      if (Number.isFinite(f) && f >= 0) setSumFactor(f);
+    }
   }, []);
+  useEffect(() => {
+    localStorage.setItem("sumFactor", String(sumFactor));
+  }, [sumFactor]);
 
   // polling status every 2s
   useEffect(() => {
@@ -708,6 +774,95 @@ export default function Home() {
               >
                 Lobby
               </button>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-medium text-zinc-700">
+                  Sum of points
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-zinc-600" htmlFor="sumFactor">Factor (extra):</label>
+                  <input
+                    id="sumFactor"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-right text-xs"
+                    value={Number.isFinite(sumFactor) ? sumFactor : 0}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isFinite(v) && v >= 0) setSumFactor(v);
+                    }}
+                  />
+                </div>
+              </div>
+              {participants.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
+              ) : (
+                <table className="min-w-full border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                        Giver → Mottaker
+                      </th>
+                      {participants.map((rec) => {
+                        const name = (rec.nickname || "").trim() || rec.pin;
+                        return (
+                          <th key={`s-${rec.pin}`} className="p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                            {name}
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 text-right font-medium text-zinc-600 border-b border-zinc-200">
+                        Gitt (sum)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((giver) => {
+                      const giverName = (giver.nickname || "").trim() || giver.pin;
+                      return (
+                        <tr key={`s-${giver.pin}`} className="odd:bg-white even:bg-zinc-50">
+                          <th className="sticky left-0 z-10 bg-inherit p-2 text-left font-medium text-zinc-700 border-b border-zinc-200">
+                            {giverName}
+                          </th>
+                          {participants.map((rec) => {
+                            const raw = combinedPairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
+                            const val = Number(raw);
+                            const txt = Number.isFinite(val) ? val.toFixed(1) : "—";
+                            return (
+                              <td key={`s-${rec.pin}`} className="p-2 border-b border-zinc-200 tabular-nums text-center">
+                                {val > 0 ? txt : "—"}
+                              </td>
+                            );
+                          })}
+                          <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
+                            {(combinedGivenByPin[giver.pin] ?? 0) > 0 ? (combinedGivenByPin[giver.pin] ?? 0).toFixed(1) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-zinc-50">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-semibold text-zinc-700 border-t border-zinc-200">
+                        Sum mottatt (sum)
+                      </th>
+                      {participants.map((rec) => {
+                        const colSum = combinedReceivedByPin[rec.pin] ?? 0;
+                        return (
+                          <td key={`s-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
+                            {colSum > 0 ? colSum.toFixed(1) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
+                        {totalCombined > 0 ? totalCombined.toFixed(1) : "—"}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm relative overflow-hidden">
               <PickerWheel
@@ -1904,7 +2059,29 @@ export default function Home() {
                         return row.map(cell).join(",");
                       });
                       const csvExtra = [headerExtra.map(cell).join(","), ...rowsExtra].join("\n");
-                      const csv = [csvMain, "", csvExtra].join("\n");
+                      // Combined (factor)
+                      const headerCombined = [
+                        `Giver (Sum of points; factor=${sumFactor})`,
+                        ...toOrder.map(pin => {
+                          const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
+                          return `${name}`;
+                        }),
+                        "Sum gitt (sum)"
+                      ];
+                      const rowsCombined = giverOrder.map(fromPin => {
+                        const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
+                        const pairVals = toOrder.map(toPin => {
+                          const main = pairTotalsMap[fromPin]?.[toPin] ?? 0;
+                          const extra = pairTotalsExtraMap[fromPin]?.[toPin] ?? 0;
+                          const val = Number(main) + Number(sumFactor) * Number(extra);
+                          return Number.isFinite(val) ? Number(val.toFixed(1)) : 0;
+                        });
+                        const sumGiven = pairVals.reduce((a, b) => a + (Number(b) || 0), 0);
+                        const row = [name, ...pairVals, Number(sumGiven.toFixed(1))];
+                        return row.map(cell).join(",");
+                      });
+                      const csvCombined = [headerCombined.map(cell).join(","), ...rowsCombined].join("\n");
+                      const csv = [csvMain, "", csvExtra, "", csvCombined].join("\n");
                       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");

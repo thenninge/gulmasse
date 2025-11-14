@@ -775,6 +775,95 @@ export default function Home() {
                 Lobby
               </button>
             </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-medium text-zinc-700">
+                  Sum of points
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-zinc-600" htmlFor="sumFactor">Factor (extra):</label>
+                  <input
+                    id="sumFactor"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-right text-xs"
+                    value={Number.isFinite(sumFactor) ? sumFactor : 0}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isFinite(v) && v >= 0) setSumFactor(v);
+                    }}
+                  />
+                </div>
+              </div>
+              {participants.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
+              ) : (
+                <table className="min-w-full border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                        Giver → Mottaker
+                      </th>
+                      {participants.map((rec) => {
+                        const name = (rec.nickname || "").trim() || rec.pin;
+                        return (
+                          <th key={`s-${rec.pin}`} className="p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                            {name}
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 text-right font-medium text-zinc-600 border-b border-zinc-200">
+                        Gitt (sum)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((giver) => {
+                      const giverName = (giver.nickname || "").trim() || giver.pin;
+                      return (
+                        <tr key={`s-${giver.pin}`} className="odd:bg-white even:bg-zinc-50">
+                          <th className="sticky left-0 z-10 bg-inherit p-2 text-left font-medium text-zinc-700 border-b border-zinc-200">
+                            {giverName}
+                          </th>
+                          {participants.map((rec) => {
+                            const raw = combinedPairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
+                            const val = Number(raw);
+                            const txt = Number.isFinite(val) ? val.toFixed(1) : "—";
+                            return (
+                              <td key={`s-${rec.pin}`} className="p-2 border-b border-zinc-200 tabular-nums text-center">
+                                {val > 0 ? txt : "—"}
+                              </td>
+                            );
+                          })}
+                          <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
+                            {(combinedGivenByPin[giver.pin] ?? 0) > 0 ? (combinedGivenByPin[giver.pin] ?? 0).toFixed(1) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-zinc-50">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-semibold text-zinc-700 border-t border-zinc-200">
+                        Sum mottatt (sum)
+                      </th>
+                      {participants.map((rec) => {
+                        const colSum = combinedReceivedByPin[rec.pin] ?? 0;
+                        return (
+                          <td key={`s-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
+                            {colSum > 0 ? colSum.toFixed(1) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
+                        {totalCombined > 0 ? totalCombined.toFixed(1) : "—"}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm relative overflow-hidden">
               <PickerWheel
                 participants={participants
@@ -2138,6 +2227,95 @@ export default function Home() {
                       })}
                       <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
                         {totalRevealedExtra > 0 ? totalRevealedExtra : "—"}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-medium text-zinc-700">
+                  Sum of points
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-zinc-600" htmlFor="sumFactor">Factor (extra):</label>
+                  <input
+                    id="sumFactor"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-right text-xs"
+                    value={Number.isFinite(sumFactor) ? sumFactor : 0}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isFinite(v) && v >= 0) setSumFactor(v);
+                    }}
+                  />
+                </div>
+              </div>
+              {participants.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
+              ) : (
+                <table className="min-w-full border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                        Giver → Mottaker
+                      </th>
+                      {participants.map((rec) => {
+                        const name = (rec.nickname || "").trim() || rec.pin;
+                        return (
+                          <th key={`s-${rec.pin}`} className="p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                            {name}
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 text-right font-medium text-zinc-600 border-b border-zinc-200">
+                        Gitt (sum)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((giver) => {
+                      const giverName = (giver.nickname || "").trim() || giver.pin;
+                      return (
+                        <tr key={`s-${giver.pin}`} className="odd:bg-white even:bg-zinc-50">
+                          <th className="sticky left-0 z-10 bg-inherit p-2 text-left font-medium text-zinc-700 border-b border-zinc-200">
+                            {giverName}
+                          </th>
+                          {participants.map((rec) => {
+                            const raw = combinedPairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
+                            const val = Number(raw);
+                            const txt = Number.isFinite(val) ? val.toFixed(1) : "—";
+                            return (
+                              <td key={`s-${rec.pin}`} className="p-2 border-b border-zinc-200 tabular-nums text-center">
+                                {val > 0 ? txt : "—"}
+                              </td>
+                            );
+                          })}
+                          <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
+                            {(combinedGivenByPin[giver.pin] ?? 0) > 0 ? (combinedGivenByPin[giver.pin] ?? 0).toFixed(1) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-zinc-50">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-semibold text-zinc-700 border-t border-zinc-200">
+                        Sum mottatt (sum)
+                      </th>
+                      {participants.map((rec) => {
+                        const colSum = combinedReceivedByPin[rec.pin] ?? 0;
+                        return (
+                          <td key={`s-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
+                            {colSum > 0 ? colSum.toFixed(1) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
+                        {totalCombined > 0 ? totalCombined.toFixed(1) : "—"}
                       </td>
                     </tr>
                   </tfoot>

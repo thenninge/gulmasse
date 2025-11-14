@@ -57,6 +57,27 @@ export default function Home() {
     }
     return acc;
   }, [pairTotalsExtraMap]);
+  const extraReceivedByPin = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of Object.keys(pairTotalsExtraMap || {})) {
+      const row = pairTotalsExtraMap[from] || {};
+      for (const to of Object.keys(row)) {
+        const v = Number(row[to] || 0);
+        if (v > 0) acc[to] = (acc[to] ?? 0) + v;
+      }
+    }
+    return acc;
+  }, [pairTotalsExtraMap]);
+  const totalRevealedExtra = useMemo(() => {
+    let sum = 0;
+    for (const from of Object.keys(pairTotalsExtraMap || {})) {
+      const row = pairTotalsExtraMap[from] || {};
+      for (const to of Object.keys(row)) {
+        sum += Number(row[to] || 0);
+      }
+    }
+    return sum;
+  }, [pairTotalsExtraMap]);
   const revealedGivenByPin = useMemo(() => {
     const acc: Record<string, number> = {};
     for (const from of Object.keys(pairTotalsMap || {})) {
@@ -97,6 +118,16 @@ export default function Home() {
     });
     return map;
   }, [participants, revealedReceivedByPin, revealedGivenByPin]);
+  const totalRevealedMain = useMemo(() => {
+    let sum = 0;
+    for (const from of Object.keys(pairTotalsMap || {})) {
+      const row = pairTotalsMap[from] || {};
+      for (const to of Object.keys(row)) {
+        sum += Number(row[to] || 0);
+      }
+    }
+    return sum;
+  }, [pairTotalsMap]);
 
   // Rank is always based on "poeng fått" (received), independent of current sort
   const receivedRankMap = useMemo(() => {
@@ -1906,6 +1937,9 @@ export default function Home() {
                           </th>
                         );
                       })}
+                      <th className="p-2 text-right font-medium text-zinc-600 border-b border-zinc-200">
+                        Gitt (sum)
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1924,10 +1958,31 @@ export default function Home() {
                               </td>
                             );
                           })}
+                          <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
+                            {(revealedGivenByPin[giver.pin] ?? 0) > 0 ? (revealedGivenByPin[giver.pin] ?? 0) : "—"}
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-zinc-50">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-medium text-zinc-700 border-t border-zinc-200">
+                        Sum mottatt
+                      </th>
+                      {participants.map((rec) => {
+                        const colSum = revealedReceivedByPin[rec.pin] ?? 0;
+                        return (
+                          <td key={`sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-medium">
+                            {colSum > 0 ? colSum : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
+                        {totalRevealedMain > 0 ? totalRevealedMain : "—"}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </div>
@@ -1980,6 +2035,24 @@ export default function Home() {
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-zinc-50">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-medium text-zinc-700 border-t border-zinc-200">
+                        Sum mottatt (ekstra)
+                      </th>
+                      {participants.map((rec) => {
+                        const colSum = extraReceivedByPin[rec.pin] ?? 0;
+                        return (
+                          <td key={`x-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-medium">
+                            {colSum > 0 ? colSum : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
+                        {totalRevealedExtra > 0 ? totalRevealedExtra : "—"}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </div>

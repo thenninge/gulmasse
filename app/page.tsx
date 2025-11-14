@@ -1213,7 +1213,7 @@ export default function Home() {
                   Podium
                 </button>
               </div>
-              <div className="mt-2 grid [grid-template-columns:28px_36px_1.2fr_1.4fr_56px] gap-1 px-3 py-2 text-xs font-medium text-zinc-600">
+              <div className="mt-2 grid [grid-template-columns:28px_1.4fr_1.6fr_56px] gap-1 px-3 py-2 text-xs font-medium text-zinc-600">
                 <button
                   className="text-left"
                   onClick={() => {
@@ -1228,19 +1228,6 @@ export default function Home() {
                   }}
                 >
                   Rang
-                </button>
-                <button
-                  className="text-left"
-                  onClick={() => {
-                    if (sortKey === "received") {
-                      setSortDir(sortDir === "desc" ? "asc" : "desc");
-                    } else {
-                      setSortKey("received");
-                      setSortDir("desc");
-                    }
-                  }}
-                >
-                  Pts {sortKey === "received" ? (sortDir === "desc" ? "▼" : "▲") : ""}
                 </button>
                 <button
                   className="text-left"
@@ -1269,17 +1256,17 @@ export default function Home() {
                   Ølnavn {sortKey === "beer" ? (sortDir === "asc" ? "▲" : "▼") : ""}
                 </button>
                 <button
-                      className="text-right"
+                  className="text-right"
                   onClick={() => {
-                    if (sortKey === "given") {
+                    if (sortKey === "received") {
                       setSortDir(sortDir === "desc" ? "asc" : "desc");
                     } else {
-                      setSortKey("given");
+                      setSortKey("received");
                       setSortDir("desc");
                     }
                   }}
                 >
-                  Gitt {sortKey === "given" ? (sortDir === "desc" ? "▼" : "▲") : ""}
+                  Pts {sortKey === "received" ? (sortDir === "desc" ? "▼" : "▲") : ""}
                 </button>
               </div>
               <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
@@ -1294,19 +1281,12 @@ export default function Home() {
                     const aBeer = (a.beer_name || "").trim();
                     const bBeer = (b.beer_name || "").trim();
                     // Use revealed-only totals when reflecting overview
-                    const aGiven = canShowScores ? (combinedGivenByPin[a.pin] ?? 0) : 0;
-                    const bGiven = canShowScores ? (combinedGivenByPin[b.pin] ?? 0) : 0;
                     const aRecv = canShowScores ? (combinedReceivedByPin[a.pin] ?? 0) : 0;
                     const bRecv = canShowScores ? (combinedReceivedByPin[b.pin] ?? 0) : 0;
                     const dir = sortDir === "asc" ? 1 : -1;
                     if (sortKey === "received") {
                       if (aRecv !== bRecv) return (aRecv - bRecv) * dir;
-                      if (aGiven !== bGiven) return (aGiven - bGiven) * -1; // tie-break by given desc
-                      return aName.localeCompare(bName);
-                    }
-                    if (sortKey === "given") {
-                      if (aGiven !== bGiven) return (aGiven - bGiven) * dir;
-                      if (aRecv !== bRecv) return (aRecv - bRecv) * -1; // tie-break by received desc
+                      // tie-break by name if equal
                       return aName.localeCompare(bName);
                     }
                     if (sortKey === "name") {
@@ -1321,24 +1301,21 @@ export default function Home() {
                     }
                     // rank default: received desc
                     if (aRecv !== bRecv) return (aRecv - bRecv) * -1;
-                    if (aGiven !== bGiven) return (aGiven - bGiven) * -1;
                     return aName.localeCompare(bName);
                   })
                   .map((p, idx) => {
                     const name = (p.nickname || "").trim() || "Uten navn";
-                    const given = combinedGivenByPin[p.pin] ?? 0;
                     const rank = combinedRankMap[p.pin] ?? idx + 1;
                     const received = combinedReceivedByPin[p.pin] ?? 0;
                     const beerName = (p.beer_name || "").trim() || "—";
                     return (
                       <li
                         key={p.pin}
-                        className={`grid [grid-template-columns:28px_36px_1.2fr_1.4fr_56px] items-center gap-1 px-3 py-2 text-sm ${
+                        className={`grid [grid-template-columns:28px_1.4fr_1.6fr_56px] items-center gap-1 px-3 py-2 text-sm ${
                           p.active ? "" : "text-zinc-400 bg-zinc-50"
                         }`}
                       >
                         <div className="col-span-1 tabular-nums">{canShowScores ? rank : "—"}</div>
-                        <div className="col-span-1 tabular-nums">{canShowScores ? received : "—"}</div>
                         <div className="col-span-1 truncate">{name}</div>
                         <div className="col-span-1 truncate">
                           {(() => {
@@ -1364,7 +1341,7 @@ export default function Home() {
                             return <span>{beerName}</span>;
                           })()}
                         </div>
-                        <div className="col-span-1 tabular-nums text-right">{canShowScores ? given : "—"}</div>
+                        <div className="col-span-1 tabular-nums text-right">{canShowScores ? received : "—"}</div>
                       </li>
                     );
                   })}

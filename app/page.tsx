@@ -45,6 +45,7 @@ export default function Home() {
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
   const [sumFactor, setSumFactor] = useState<number>(0.5);
+  const [showWelcome, setShowWelcome] = useState(false);
   const extraGivenByPin = useMemo(() => {
     const acc: Record<string, number> = {};
     for (const from of Object.keys(pairTotalsExtraMap || {})) {
@@ -549,7 +550,6 @@ export default function Home() {
   const [pendingVote, setPendingVote] = useState<number | null>(null);
   const [pendingExtraVote, setPendingExtraVote] = useState<number | null>(null);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
   const [revealedVotesMap, setRevealedVotesMap] = useState<Record<string, number>>({});

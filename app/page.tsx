@@ -1695,36 +1695,49 @@ export default function Home() {
               <div className="text-sm text-zinc-600">
                 Status: {votedCount}/{activeCount} har stemt
               </div>
-              <div className="mt-2 grid grid-cols-[1fr_72px_72px] items-center gap-x-2 gap-y-1 text-xs text-zinc-600">
-                <div className="px-1">Navn</div>
-                <div className="text-center">Beer dice</div>
-                <div className="text-center">Extra dice</div>
-                {participants.map((p) => {
-                  const name = (p.nickname || "").trim() || p.pin;
-                  const hasVoted = votedPins.includes(p.pin);
-                  const beerVal = revealedVotesMap[p.pin];
-                  const extraVal = revealedExtraMap[p.pin];
-                  const revealedAny = typeof beerVal === "number" || typeof extraVal === "number";
-                  return (
-                    <>
-                      <div key={`${p.pin}-name`} className="px-1 text-sm text-zinc-800 truncate flex items-center gap-2">
-                        <span className="truncate">{name}</span>
-                        {hasVoted && !revealedAny ? (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
-                            Stemme avgitt!
-                          </span>
-                        ) : null}
-                      </div>
-                      <div key={`${p.pin}-beer`} className="text-center tabular-nums">
-                        {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}
-                      </div>
-                      <div key={`${p.pin}-extra`} className="text-center tabular-nums">
-                        {typeof extraVal === "number" ? extraVal : (hasVoted ? "—" : "")}
-                      </div>
-                    </>
-                  );
-                })}
-              </div>
+              <table className="mt-2 w-full table-fixed text-xs">
+                <colgroup>
+                  <col className="w-[65%]" />
+                  <col className="w-[17.5%]" />
+                  <col className="w-[17.5%]" />
+                </colgroup>
+                <thead>
+                  <tr className="text-zinc-600">
+                    <th className="px-1 py-1 text-left font-medium">Navn</th>
+                    <th className="px-1 py-1 text-center font-medium">Beer dice</th>
+                    <th className="px-1 py-1 text-center font-medium">Extra dice</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {participants.map((p) => {
+                    const name = (p.nickname || "").trim() || p.pin;
+                    const hasVoted = votedPins.includes(p.pin);
+                    const beerVal = revealedVotesMap[p.pin];
+                    const extraVal = revealedExtraMap[p.pin];
+                    const revealedAny = typeof beerVal === "number" || typeof extraVal === "number";
+                    return (
+                      <tr key={p.pin} className="odd:bg-white even:bg-zinc-50">
+                        <td className="px-1 py-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm text-zinc-800">{name}</span>
+                            {hasVoted && !revealedAny ? (
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
+                                Stemme avgitt!
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-1 py-1 text-center tabular-nums">
+                          {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}
+                        </td>
+                        <td className="px-1 py-1 text-center tabular-nums">
+                          {typeof extraVal === "number" ? extraVal : (hasVoted ? "—" : "")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
               {(activeCount > 0 && votedCount >= activeCount) ? (
                 <div className="mt-3 space-y-2">
                   {(() => {

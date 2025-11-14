@@ -281,6 +281,11 @@ export default function Home() {
         if (rv && typeof rv.pin === "string") rmap[rv.pin] = Number(rv.value);
       });
       setRevealedVotesMap(rmap);
+      const rxmap: Record<string, number> = {};
+      (data.votesExtra?.revealedVotes || []).forEach((rv: { pin: string; value: number }) => {
+        if (rv && typeof rv.pin === "string") rxmap[rv.pin] = Number(rv.value);
+      });
+      setRevealedExtraMap(rxmap);
       setPicks(data.picks || []);
       setLoginsLocked(data.loginsLocked === true);
       const givenMap: Record<string, number> = {};
@@ -412,6 +417,7 @@ export default function Home() {
     setPendingExtraVote(null);
     setShowMyReveal(false);
     setRevealedVotesMap({});
+    setRevealedExtraMap({});
     setVotedPins([]);
   }, [round]);
  
@@ -553,6 +559,7 @@ export default function Home() {
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
   const [revealedVotesMap, setRevealedVotesMap] = useState<Record<string, number>>({});
+  const [revealedExtraMap, setRevealedExtraMap] = useState<Record<string, number>>({});
   // If server no longer lists my pin in votedPins, unlock local vote UI (handles admin "Reset stemmer")
   useEffect(() => {
     if (pin && voted !== null && !votedPins.includes(pin)) {
@@ -1686,24 +1693,28 @@ export default function Home() {
               <div className="text-sm text-zinc-600">
                 Status: {votedCount}/{activeCount} har stemt
               </div>
-              <div className="mt-2 grid grid-cols-1 gap-1">
+              <div className="mt-2 grid grid-cols-[1fr_72px_72px] items-center gap-x-2 gap-y-1 text-xs text-zinc-600">
+                <div className="px-1">Navn</div>
+                <div className="text-center">Beer dice</div>
+                <div className="text-center">Extra dice</div>
                 {participants.map((p) => {
                   const name = (p.nickname || "").trim() || p.pin;
                   const hasVoted = votedPins.includes(p.pin);
-                  const revealedVal = revealedVotesMap[p.pin];
+                  const beerVal = revealedVotesMap[p.pin];
+                  const extraVal = revealedExtraMap[p.pin];
                   return (
-                    <div key={p.pin} className="flex items-center justify-between text-sm">
-                      <span className="truncate">{name}</span>
-                      {typeof revealedVal === "number" ? (
-                        <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 ring-1 ring-blue-200">
-                          {revealedVal} poeng
-                        </span>
-                      ) : hasVoted ? (
-                        <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
-                          Stemme avgitt!
-                        </span>
-                      ) : null}
-                    </div>
+                    <>
+                      <div key={`${p.pin}-name`} className="px-1 text-sm text-zinc-800 truncate">
+                        {name}
+                        {!hasVoted ? "" : ""}
+                      </div>
+                      <div key={`${p.pin}-beer`} className="text-center tabular-nums">
+                        {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}
+                      </div>
+                      <div key={`${p.pin}-extra`} className="text-center tabular-nums">
+                        {typeof extraVal === "number" ? extraVal : (hasVoted ? "—" : "")}
+                      </div>
+                    </>
                   );
                 })}
               </div>

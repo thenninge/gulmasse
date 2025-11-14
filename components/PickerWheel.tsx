@@ -33,7 +33,14 @@ export function PickerWheel({
   const [spinning, setSpinning] = useState(false);
   const announceRef = useRef<HTMLDivElement | null>(null);
   const list = participants;
-  const n = Math.max(1, list.length);
+  // Ensure an even number of display slices by appending a ghost slice if needed
+  const displayList = useMemo(() => {
+    if (list.length % 2 === 1) {
+      return [...list, { id: "__ghost__", name: "", selected: true } as Participant];
+    }
+    return list;
+  }, [list]);
+  const n = Math.max(1, displayList.length);
   const available = useMemo(() => list.filter(p => !p.selected), [list]);
   const slice = 360 / n;
   const radius = 140;
@@ -49,11 +56,12 @@ export function PickerWheel({
 
   function handlePick() {
     if (disabled || spinning || available.length === 0) return;
-    const visibleOrder = list; // draw order
+    const visibleOrder = list; // logical order for picking (no ghost)
     const candidates = visibleOrder.filter(p => !p.selected);
     const localIdx = pickRandomIndex(candidates.length);
     const picked = candidates[localIdx];
-    const idxInVisible = visibleOrder.findIndex(p => p.id === picked.id);
+    // compute index within display list (which may include a ghost at the end)
+    const idxInVisible = displayList.findIndex(p => p.id === picked.id);
     // compute absolute target from current angle
     const base = ((angle % 360) + 360) % 360;
     const turns = Math.max(5, Math.min(8, 5 + Math.floor(n / 8)));
@@ -82,9 +90,13 @@ export function PickerWheel({
         </div>
         <svg viewBox="0 0 320 320" className="absolute inset-0">
           <defs>
-            <linearGradient id="seg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ecfdf5" />
-              <stop offset="100%" stopColor="#d1fae5" />
+            <linearGradient id="segGreen" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#86efac" />
+              <stop offset="100%" stopColor="#10b981" />
+            </linearGradient>
+            <linearGradient id="segRed" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fca5a5" />
+              <stop offset="100%" stopColor="#ef4444" />
             </linearGradient>
             <linearGradient id="sel" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#e5e7eb" />
@@ -100,7 +112,7 @@ export function PickerWheel({
             // rotate around center
             style={{ transformOrigin: `${cx}px ${cy}px` }}
           >
-            {list.map((p, i) => {
+            {displayList.map((p, i) => {
               const start = i * slice;
               const end = (i + 1) * slice;
               const path = arcPath(cx, cy, radius, start, end);
@@ -119,8 +131,14 @@ export function PickerWheel({
               );
               return (
                 <g key={p.id}>
-                  <path d={path} fill={p.selected ? "url(#sel)" : "url(#seg)"} opacity={p.selected ? 0.5 : 1} stroke="#10b98155" strokeWidth={1} />
-                  {label}
+                  <path
+                    d={path}
+                    fill={p.selected ? "url(#sel)" : (i % 2 === 0 ? "url(#segGreen)" : "url(#segRed)")}
+                    opacity={p.id === "__ghost__" ? 0.6 : (p.selected ? 0.5 : 1)}
+                    stroke="rgba(0,0,0,0.08)"
+                    strokeWidth={1}
+                  />
+                  {p.id !== "__ghost__" ? label : null}
                 </g>
               );
             })}

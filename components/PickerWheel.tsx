@@ -86,7 +86,10 @@ export function PickerWheel({
       <div className="relative mx-auto h-80 w-80">
         {/* Pointer */}
         <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2">
-          <div className="h-0 w-0 border-l-8 border-r-8 border-t-[14px] border-l-transparent border-r-transparent border-t-red-600" />
+          <div
+            className="h-0 w-0 border-l-8 border-r-8 border-t-[14px] border-l-transparent border-r-transparent"
+            style={{ borderTopColor: "#D94E53" }}
+          />
         </div>
         <svg viewBox="0 0 320 320" className="absolute inset-0">
           <defs>
@@ -95,8 +98,8 @@ export function PickerWheel({
               <stop offset="100%" stopColor="#10b981" />
             </linearGradient>
             <linearGradient id="segRed" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fca5a5" />
-              <stop offset="100%" stopColor="#ef4444" />
+              <stop offset="0%" stopColor="#D94E53" />
+              <stop offset="100%" stopColor="#D94E53" />
             </linearGradient>
             <linearGradient id="sel" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#e5e7eb" />

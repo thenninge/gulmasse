@@ -1155,7 +1155,7 @@ export default function Home() {
                   Logg inn
                 </button>
                 <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
+                  className="rounded-xl bg-emerald-600 px-4 py-3 text-white active:opacity-90"
                   onClick={createPin}
                 >
                   Opprett bruker

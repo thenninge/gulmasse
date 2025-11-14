@@ -1570,6 +1570,7 @@ export default function Home() {
                 )}
               </>
             )}
+            <div className="text-center text-sm font-medium text-zinc-700">Beer points:</div>
             <div className="grid grid-cols-3 gap-3">
               {[1, 2, 3, 4, 5, 6].map((n) => {
                 const isSel = (pendingVote ?? voted) === n;

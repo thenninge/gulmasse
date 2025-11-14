@@ -152,7 +152,7 @@ export function PickerWheel({
           onClick={handlePick}
           disabled={disabled || spinning || available.length === 0}
         >
-          {available.length === 0 ? "Alle er trukket" : spinning ? "Trekker..." : "Velg"}
+          {available.length === 0 ? "Alle er trukket" : spinning ? "The chosen one is.." : "Spin!"}
         </button>
       </div>
       <div ref={announceRef} className="sr-only" aria-live="polite" />

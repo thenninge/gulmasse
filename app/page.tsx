@@ -206,13 +206,13 @@ export default function Home() {
     });
     return map;
   }, [participants, userReceived, userGiven]);
-  // Show lobby scores whenever overview has revealed data, or if revealed for the round
+  // Show lobby scores whenever overview has revealed data (combined), or if revealed for the round
   const canShowScores = useMemo(() => {
-    const anyPair = Object.values(pairTotalsMap || {}).some((toMap) =>
+    const anyPair = Object.values(combinedPairTotalsMap || {}).some((toMap) =>
       Object.values(toMap || {}).some((v) => (Number(v) || 0) > 0)
     );
     return anyPair || revealedRound === round;
-  }, [pairTotalsMap, revealedRound, round]);
+  }, [combinedPairTotalsMap, revealedRound, round]);
   function beerImageForName(name: string): string | null {
     const key = (name || "").toLowerCase().trim();
     const first = key.split(/\s+/)[0] || key;
@@ -1279,10 +1279,10 @@ export default function Home() {
                     const aBeer = (a.beer_name || "").trim();
                     const bBeer = (b.beer_name || "").trim();
                     // Use revealed-only totals when reflecting overview
-                    const aGiven = canShowScores ? (revealedGivenByPin[a.pin] ?? 0) : 0;
-                    const bGiven = canShowScores ? (revealedGivenByPin[b.pin] ?? 0) : 0;
-                    const aRecv = canShowScores ? (revealedReceivedByPin[a.pin] ?? 0) : 0;
-                    const bRecv = canShowScores ? (revealedReceivedByPin[b.pin] ?? 0) : 0;
+                    const aGiven = canShowScores ? (combinedGivenByPin[a.pin] ?? 0) : 0;
+                    const bGiven = canShowScores ? (combinedGivenByPin[b.pin] ?? 0) : 0;
+                    const aRecv = canShowScores ? (combinedReceivedByPin[a.pin] ?? 0) : 0;
+                    const bRecv = canShowScores ? (combinedReceivedByPin[b.pin] ?? 0) : 0;
                     const dir = sortDir === "asc" ? 1 : -1;
                     if (sortKey === "received") {
                       if (aRecv !== bRecv) return (aRecv - bRecv) * dir;
@@ -1311,9 +1311,9 @@ export default function Home() {
                   })
                   .map((p, idx) => {
                     const name = (p.nickname || "").trim() || "Uten navn";
-                    const given = revealedGivenByPin[p.pin] ?? 0;
-                    const rank = revealedRankMap[p.pin] ?? idx + 1;
-                    const received = revealedReceivedByPin[p.pin] ?? 0;
+                    const given = combinedGivenByPin[p.pin] ?? 0;
+                    const rank = combinedRankMap[p.pin] ?? idx + 1;
+                    const received = combinedReceivedByPin[p.pin] ?? 0;
                     const beerName = (p.beer_name || "").trim() || "—";
                     return (
                       <li

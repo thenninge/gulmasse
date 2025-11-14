@@ -158,7 +158,7 @@ export function PickerWheel({
           disabled={disabled || spinning || available.length === 0}
         >
           {available.length === 0 ? "Alle er trukket" : spinning ? (
-            <img src="/img/mcga.png" alt="" className="h-8 w-8 object-contain" />
+            <img src="/img/mcga.png" alt="" className="h-16 w-16 md:h-20 md:w-20 object-contain animate-spin" />
           ) : "Spin!"}
         </button>
       </div>

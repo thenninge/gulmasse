@@ -2026,6 +2026,9 @@ export default function Home() {
               </button>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              <div className="mb-2 text-sm font-medium text-zinc-700">
+                Beer points:
+              </div>
               {isHost && (
                 <div className="mb-3 flex justify-end">
                   <button

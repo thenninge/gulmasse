@@ -213,6 +213,25 @@ export default function Home() {
     );
     return anyPair || revealedRound === round;
   }, [combinedPairTotalsMap, revealedRound, round]);
+  // Rank map based on combined totals (used in Lobby)
+  const combinedRankMap = useMemo(() => {
+    const items = participants.map((p) => ({
+      pin: p.pin,
+      received: combinedReceivedByPin[p.pin] ?? 0,
+      given: combinedGivenByPin[p.pin] ?? 0,
+      name: (p.nickname || "").trim(),
+    }));
+    items.sort((a, b) => {
+      if (a.received !== b.received) return b.received - a.received;
+      if (a.given !== b.given) return b.given - a.given;
+      return a.name.localeCompare(b.name);
+    });
+    const map: Record<string, number> = {};
+    items.forEach((item, idx) => {
+      map[item.pin] = idx + 1;
+    });
+    return map;
+  }, [participants, combinedReceivedByPin, combinedGivenByPin]);
   function beerImageForName(name: string): string | null {
     const key = (name || "").toLowerCase().trim();
     const first = key.split(/\s+/)[0] || key;

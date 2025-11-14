@@ -244,6 +244,7 @@ export default function Home() {
       tomas: "/img/tomas.jpg",
       roald: "/img/roald.png",
       kathinka: "/img/kathinka.png",
+      magnus: "/img/magnus.png",
     };
     return map[first] || null;
   }

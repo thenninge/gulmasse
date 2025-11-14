@@ -1374,7 +1374,7 @@ export default function Home() {
                 Find the chosen one
               </button>
               <button
-                className="rounded-xl bg-[#D94E53] px-4 py-4 text-white active:opacity-90"
+                className="rounded-xl bg-[#D94E53] px-4 py-4 text-white opacity-80 active:opacity-90"
                 onClick={() => setView("overview")}
               >
                 Full oversikt

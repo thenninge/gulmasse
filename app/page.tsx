@@ -823,6 +823,12 @@ export default function Home() {
               className="relative w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
+              <img
+                src="/img/mcga.png"
+                alt=""
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
+                style={{ top: "-80px" } as any}
+              />
               <div className="text-2xl font-extrabold tracking-wide text-emerald-700">
                 WELCOME TO GULMASSE!
               </div>

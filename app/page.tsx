@@ -1704,11 +1704,16 @@ export default function Home() {
                   const hasVoted = votedPins.includes(p.pin);
                   const beerVal = revealedVotesMap[p.pin];
                   const extraVal = revealedExtraMap[p.pin];
+                  const revealedAny = typeof beerVal === "number" || typeof extraVal === "number";
                   return (
                     <>
-                      <div key={`${p.pin}-name`} className="px-1 text-sm text-zinc-800 truncate">
-                        {name}
-                        {!hasVoted ? "" : ""}
+                      <div key={`${p.pin}-name`} className="px-1 text-sm text-zinc-800 truncate flex items-center gap-2">
+                        <span className="truncate">{name}</span>
+                        {hasVoted && !revealedAny ? (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
+                            Stemme avgitt!
+                          </span>
+                        ) : null}
                       </div>
                       <div key={`${p.pin}-beer`} className="text-center tabular-nums">
                         {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}

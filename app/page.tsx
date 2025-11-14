@@ -44,6 +44,19 @@ export default function Home() {
   const [allowReveal, setAllowReveal] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
+  const extraGivenByPin = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of Object.keys(pairTotalsExtraMap || {})) {
+      const row = pairTotalsExtraMap[from] || {};
+      let sum = 0;
+      for (const to of Object.keys(row)) {
+        const v = Number(row[to] || 0);
+        if (v > 0) sum += v;
+      }
+      acc[from] = sum;
+    }
+    return acc;
+  }, [pairTotalsExtraMap]);
   const revealedGivenByPin = useMemo(() => {
     const acc: Record<string, number> = {};
     for (const from of Object.keys(pairTotalsMap || {})) {
@@ -1845,16 +1858,18 @@ export default function Home() {
                       const csvMain = [header.map(cell).join(","), ...rows].join("\n");
                       // Extra matrix (no totals for now)
                       const headerExtra = [
-                        "Ekstra-poeng (pitch/etikett/x-faktor)",
+                        "Giver",
                         ...toOrder.map(pin => {
                           const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
                           return `${name}`;
-                        })
+                        }),
+                        "Sum gitt (ekstra)"
                       ];
                       const rowsExtra = giverOrder.map(fromPin => {
                         const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
                         const pairVals = toOrder.map(toPin => pairTotalsExtraMap[fromPin]?.[toPin] ?? 0);
-                        const row = [name, ...pairVals];
+                        const sumGiven = pairVals.reduce((a, b) => a + (Number(b) || 0), 0);
+                        const row = [name, ...pairVals, sumGiven];
                         return row.map(cell).join(",");
                       });
                       const csvExtra = [headerExtra.map(cell).join(","), ...rowsExtra].join("\n");
@@ -1937,6 +1952,9 @@ export default function Home() {
                           </th>
                         );
                       })}
+                      <th className="p-2 text-right font-medium text-zinc-600 border-b border-zinc-200">
+                        Gitt (ekstra)
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1955,6 +1973,9 @@ export default function Home() {
                               </td>
                             );
                           })}
+                          <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
+                            {(extraGivenByPin[giver.pin] ?? 0) > 0 ? (extraGivenByPin[giver.pin] ?? 0) : "—"}
+                          </td>
                         </tr>
                       );
                     })}

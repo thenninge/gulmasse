@@ -43,12 +43,24 @@ export async function GET() {
     const activeCount = activePins.length;
 
     // Votes for current round
-    const votesRes = await supabase
-      .from('votes')
-      .select('pin,value,extra_value')
-      .eq('round', round);
-    if (votesRes.error) throw votesRes.error;
-    const voteRows = ((votesRes.data as any[]) || []) as Array<{ pin: string; value: number; extra_value?: number | null }>;
+    // Try to include extra_value; if column doesn't exist yet, fall back gracefully
+    let voteRows: Array<{ pin: string; value: number; extra_value?: number | null }> = [];
+    {
+      const tryWithExtra = await supabase
+        .from('votes')
+        .select('pin,value,extra_value')
+        .eq('round', round);
+      if (tryWithExtra.error) {
+        const tryWithoutExtra = await supabase
+          .from('votes')
+          .select('pin,value')
+          .eq('round', round);
+        if (tryWithoutExtra.error) throw tryWithoutExtra.error;
+        voteRows = ((tryWithoutExtra.data as any[]) || []) as Array<{ pin: string; value: number }>;
+      } else {
+        voteRows = ((tryWithExtra.data as any[]) || []) as Array<{ pin: string; value: number; extra_value?: number | null }>;
+      }
+    }
     const votedPins = voteRows.map((v) => v.pin as string);
     const votedCount = voteRows.filter((v) => activePins.includes(v.pin as string)).length;
 
@@ -104,14 +116,26 @@ export async function GET() {
     });
 
     // Pair totals (giver -> recipient across all rounds)
-    const votesPairsRes = await supabase
-      .from('votes')
-      .select('pin,recipient_pin,value,extra_value,round');
-    if (votesPairsRes.error) throw votesPairsRes.error;
+    // Try to include extra_value in pairwise; fall back if column absent
+    let votesPairsRows: Array<{ pin: string; recipient_pin: string; value: number; extra_value?: number | null; round: number }> = [];
+    {
+      const resWithExtra = await supabase
+        .from('votes')
+        .select('pin,recipient_pin,value,extra_value,round');
+      if (resWithExtra.error) {
+        const resNoExtra = await supabase
+          .from('votes')
+          .select('pin,recipient_pin,value,round');
+        if (resNoExtra.error) throw resNoExtra.error;
+        votesPairsRows = ((resNoExtra.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; round: number }>;
+      } else {
+        votesPairsRows = ((resWithExtra.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; extra_value?: number | null; round: number }>;
+      }
+    }
     const pairTotals: Array<{ from: string; to: string; total: number }> = [];
     const pairTotalsExtra: Array<{ from: string; to: string; total: number }> = [];
     {
-      const rows = ((votesPairsRes.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; extra_value?: number | null; round: number }>;
+      const rows = votesPairsRows;
       // Gather revealed pins per round
       const revealedAllRes = await supabase
         .from('app_state')

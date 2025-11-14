@@ -38,12 +38,21 @@ export async function POST(request: Request) {
 
     const round = await getCurrentRound();
     const payload: any = { pin, round, value, recipient_pin: recipientPin };
+    let resErr = null as any;
     if (typeof extra === 'number') {
       payload.extra_value = extra;
+      const r1 = await (supabase.from('votes') as any).upsert(payload, { onConflict: 'round,pin' });
+      if (r1.error) {
+        resErr = r1.error;
+        // Retry without extra_value if column does not exist
+        const fallbackPayload: any = { pin, round, value, recipient_pin: recipientPin };
+        const r2 = await (supabase.from('votes') as any).upsert(fallbackPayload, { onConflict: 'round,pin' });
+        if (r2.error) throw r2.error;
+      }
+    } else {
+      const { error } = await (supabase.from('votes') as any).upsert(payload, { onConflict: 'round,pin' });
+      if (error) throw error;
     }
-    const { error } = await (supabase
-      .from('votes') as any).upsert(payload, { onConflict: 'round,pin' });
-    if (error) throw error;
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {
     const msg = e?.issues ? 'Invalid request' : 'Server error';

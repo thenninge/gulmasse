@@ -1058,7 +1058,7 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
-                  className="rounded-xl bg-red-900/50 px-4 py-3 text-white active:opacity-90"
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
                   onClick={async () => {
                     if (pin.length === 4) {
                       const res = await fetch("/api/pin/profile", {
@@ -1083,7 +1083,7 @@ export default function Home() {
                   Lagre
                 </button>
                 <button
-                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
+                  className="rounded-xl bg-red-900/50 px-4 py-3 text-white active:opacity-90"
                   onClick={() => setView("lobby")}
                 >
                   Fortsett til lobby

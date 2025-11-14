@@ -1697,10 +1697,10 @@ export default function Home() {
               </div>
               <table className="mt-2 w-full table-fixed text-xs">
                 <colgroup>
-                  <col className="w-[55%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[17.5%]" />
-                  <col className="w-[17.5%]" />
+                  <col className="w-[25%]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
                 </colgroup>
                 <thead>
                   <tr className="text-zinc-600">

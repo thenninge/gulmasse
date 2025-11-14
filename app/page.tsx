@@ -1599,7 +1599,7 @@ export default function Home() {
               })}
             </div>
             <div className="mt-4">
-              <div className="mb-2 text-sm font-medium text-zinc-700">
+              <div className="mb-2 text-sm font-medium text-zinc-700 text-center">
                 Generell opplevelse, pitch, etikett, x-faktor
               </div>
               <div className="grid grid-cols-6 gap-2">

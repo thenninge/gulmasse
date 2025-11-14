@@ -1697,15 +1697,17 @@ export default function Home() {
               </div>
               <table className="mt-2 w-full table-fixed text-xs">
                 <colgroup>
-                  <col className="w-[65%]" />
-                  <col className="w-[17.5%]" />
-                  <col className="w-[17.5%]" />
+                  <col className="w-[55%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
                 </colgroup>
                 <thead>
                   <tr className="text-zinc-600">
                     <th className="px-1 py-1 text-left font-medium">Navn</th>
                     <th className="px-1 py-1 text-center font-medium">Beer dice</th>
                     <th className="px-1 py-1 text-center font-medium">Extra dice</th>
+                    <th className="px-1 py-1 text-center font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1718,20 +1720,20 @@ export default function Home() {
                     return (
                       <tr key={p.pin} className="odd:bg-white even:bg-zinc-50">
                         <td className="px-1 py-1">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate text-sm text-zinc-800">{name}</span>
-                            {hasVoted && !revealedAny ? (
-                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
-                                Stemme avgitt!
-                              </span>
-                            ) : null}
-                          </div>
+                          <span className="truncate text-sm text-zinc-800 block">{name}</span>
                         </td>
                         <td className="px-1 py-1 text-center tabular-nums">
                           {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}
                         </td>
                         <td className="px-1 py-1 text-center tabular-nums">
                           {typeof extraVal === "number" ? extraVal : (hasVoted ? "—" : "")}
+                        </td>
+                        <td className="px-1 py-1 text-center">
+                          {hasVoted && !revealedAny ? (
+                            <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
+                              Stemme avgitt!
+                            </span>
+                          ) : ""}
                         </td>
                       </tr>
                     );

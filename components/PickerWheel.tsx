@@ -123,7 +123,7 @@ export function PickerWheel({
                   y={cy}
                   transform={`rotate(${mid}, ${cx}, ${cy}) translate(0, -${radius - 20}) rotate(${-mid}, ${cx}, ${cy})`}
                   textAnchor="middle"
-                  className={`fill-emerald-900 ${labelFont}`}
+                  className={`fill-emerald-900 ${labelFont} ${p.selected ? "font-normal" : "font-bold"}`}
                   style={{ paintOrder: "stroke", stroke: "white", strokeWidth: 3 }}
                 >
                   {p.name}
@@ -131,13 +131,11 @@ export function PickerWheel({
               );
               return (
                 <g key={p.id}>
-                  <path
-                    d={path}
-                    fill={p.selected ? "url(#sel)" : (i % 2 === 0 ? "url(#segGreen)" : "url(#segRed)")}
-                    opacity={p.id === "__ghost__" ? 0.6 : (p.selected ? 0.5 : 1)}
-                    stroke="rgba(0,0,0,0.08)"
-                    strokeWidth={1}
-                  />
+                  <path d={path}
+                        fill={i % 2 === 0 ? "url(#segGreen)" : "url(#segRed)"}
+                        opacity={p.id === "__ghost__" ? 0.35 : 1}
+                        stroke="rgba(0,0,0,0.08)"
+                        strokeWidth={1} />
                   {p.id !== "__ghost__" ? label : null}
                 </g>
               );

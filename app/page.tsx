@@ -832,6 +832,9 @@ export default function Home() {
               <div className="text-2xl font-extrabold tracking-wide text-emerald-700">
                 WELCOME TO GULMASSE!
               </div>
+              <div className="mt-1 text-lg font-semibold text-zinc-800">
+                {(nickname || pin || "").trim()}
+              </div>
               <div className="mt-2 text-sm text-zinc-600">🎄✨</div>
               {/* Confetti overlay */}
               <div className="pointer-events-none absolute inset-0 overflow-hidden">

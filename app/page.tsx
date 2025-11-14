@@ -1967,13 +1967,13 @@ export default function Home() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-zinc-50">
-                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-medium text-zinc-700 border-t border-zinc-200">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-semibold text-zinc-700 border-t border-zinc-200">
                         Sum mottatt
                       </th>
                       {participants.map((rec) => {
                         const colSum = revealedReceivedByPin[rec.pin] ?? 0;
                         return (
-                          <td key={`sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-medium">
+                          <td key={`sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
                             {colSum > 0 ? colSum : "—"}
                           </td>
                         );
@@ -2037,13 +2037,13 @@ export default function Home() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-zinc-50">
-                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-medium text-zinc-700 border-t border-zinc-200">
+                      <th className="sticky left-0 z-10 bg-zinc-50 p-2 text-left font-semibold text-zinc-700 border-t border-zinc-200">
                         Sum mottatt (ekstra)
                       </th>
                       {participants.map((rec) => {
                         const colSum = extraReceivedByPin[rec.pin] ?? 0;
                         return (
-                          <td key={`x-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-medium">
+                          <td key={`x-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
                             {colSum > 0 ? colSum : "—"}
                           </td>
                         );

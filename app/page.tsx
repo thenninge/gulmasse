@@ -2390,7 +2390,7 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Admin tools</h2>
               <button
-                className="rounded-md bg-amber-600 px-3 py-1 text-xs text-white active:opacity-90"
+                className="rounded-md bg-purple-600 px-3 py-1 text-xs text-white active:opacity-90"
                 onClick={() => setView("lobby")}
               >
                 Tilbake til lobby

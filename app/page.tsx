@@ -1423,8 +1423,8 @@ export default function Home() {
                   pin: p.pin,
                   name: (p.nickname || "").trim() || p.pin,
                   beer: (p.beer_name || "").trim(),
-                  received: userReceived[p.pin] ?? 0,
-                  given: userGiven[p.pin] ?? 0,
+                  received: combinedReceivedByPin[p.pin] ?? 0,
+                  given: combinedGivenByPin[p.pin] ?? 0,
                 }));
                 items.sort((a, b) => {
                   if (a.received !== b.received) return b.received - a.received;
@@ -1432,11 +1432,11 @@ export default function Home() {
                   return a.name.localeCompare(b.name);
                 });
                 const top = items.slice(0, 3);
-                const maxVal = Math.max(1, ...top.map((t) => t.received));
+                const maxVal = Math.max(1, ...top.map((t) => Number(t.received) || 0));
                 return (
                   <div className="grid grid-cols-3 items-end gap-3">
                     {top.map((t, i) => {
-                      const height = 60 + (t.received / maxVal) * 80; // 60-140px
+                      const height = 60 + ((Number(t.received) || 0) / maxVal) * 80; // 60-140px
                       // order: 2nd, 1st, 3rd visually (left, center, right)
                       const orderClass = i === 0 ? "order-2" : i === 1 ? "order-1" : "order-3";
                       const crown = i === 0 ? " 👑" : "";
@@ -1461,7 +1461,7 @@ export default function Home() {
                             {t.name}{crown}
                           </div>
                           <div className="truncate text-center text-xs text-zinc-600">{t.beer || "—"}</div>
-                          <div className="text-xs text-zinc-700">{t.received} pts</div>
+                          <div className="text-xs text-zinc-700">{Number(t.received).toFixed(1)} pts</div>
                         </div>
                       );
                     })}

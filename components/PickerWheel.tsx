@@ -151,7 +151,9 @@ export function PickerWheel({
         </svg>
         <button
           aria-live="polite"
-          className={`absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full px-6 py-3 text-white shadow ${disabled || available.length === 0 ? "bg-zinc-400" : "bg-emerald-600 hover:bg-emerald-700"} ${spinning ? "opacity-80" : ""}`}
+          className={`absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 ${
+            spinning ? "p-0 rounded-none bg-transparent shadow-none" : "rounded-full px-6 py-3 text-white shadow"
+          } ${disabled || available.length === 0 ? (spinning ? "" : "bg-zinc-400") : (spinning ? "" : "bg-emerald-600 hover:bg-emerald-700")} ${spinning ? "" : ""}`}
           onClick={handlePick}
           disabled={disabled || spinning || available.length === 0}
         >

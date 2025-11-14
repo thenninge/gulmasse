@@ -363,6 +363,33 @@ export default function Home() {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [fetchStatus]);
+  // Welcome splash lifecycle
+  useEffect(() => {
+    if (showWelcome) {
+      const Ctx: any = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (Ctx) {
+        const ctx = audioCtxRef.current || new Ctx();
+        audioCtxRef.current = ctx;
+        function bell(freq: number, t0: number) {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(freq, ctx.currentTime + t0);
+          g.gain.setValueAtTime(0.0001, ctx.currentTime + t0);
+          g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + 1.0);
+          o.connect(g).connect(ctx.destination);
+          o.start(ctx.currentTime + t0);
+          o.stop(ctx.currentTime + t0 + 1.1);
+        }
+        bell(880, 0);
+        bell(1319, 0.15);
+        bell(988, 0.3);
+      }
+      const id = window.setTimeout(() => setShowWelcome(false), 2600);
+      return () => window.clearTimeout(id);
+    }
+  }, [showWelcome]);
   
   // Drop hat on voter view when selected changes; keep until leaving voting
   useEffect(() => {
@@ -407,6 +434,7 @@ export default function Home() {
       }
       localStorage.setItem("pin", pin);
       setView("user");
+      setShowWelcome(true);
       // Load existing profile from DB
       await loadProfile(pin);
     } catch {
@@ -433,6 +461,7 @@ export default function Home() {
       }
       localStorage.setItem("pin", pin);
       setView("user");
+      setShowWelcome(true);
       // New user likely has empty profile; still try to load
       await loadProfile(pin);
     } catch {
@@ -780,6 +809,41 @@ export default function Home() {
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
+          </div>
+        )}
+        {showWelcome && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setShowWelcome(false)}
+          >
+            <div
+              className="relative w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-2xl font-extrabold tracking-wide text-emerald-700">
+                WELCOME TO GULMASSE!
+              </div>
+              <div className="mt-2 text-sm text-zinc-600">🎄✨</div>
+              {/* Confetti overlay */}
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {Array.from({ length: 90 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute block h-2 w-2 animate-confetti rounded-[1px]"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `-${Math.random() * 20}%`,
+                      backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6'][i % 4],
+                      animationDelay: `${Math.random() * 0.6}s`,
+                      animationDuration: `${1.8 + Math.random() * 0.8}s`,
+                      transform: `rotate(${Math.random() * 360}deg)`
+                    } as any}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

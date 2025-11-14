@@ -44,6 +44,46 @@ export default function Home() {
   const [allowReveal, setAllowReveal] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
+  const revealedGivenByPin = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of Object.keys(pairTotalsMap || {})) {
+      const row = pairTotalsMap[from] || {};
+      for (const to of Object.keys(row)) {
+        const v = Number(row[to] || 0);
+        if (v > 0) acc[from] = (acc[from] ?? 0) + v;
+      }
+    }
+    return acc;
+  }, [pairTotalsMap]);
+  const revealedReceivedByPin = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of Object.keys(pairTotalsMap || {})) {
+      const row = pairTotalsMap[from] || {};
+      for (const to of Object.keys(row)) {
+        const v = Number(row[to] || 0);
+        if (v > 0) acc[to] = (acc[to] ?? 0) + v;
+      }
+    }
+    return acc;
+  }, [pairTotalsMap]);
+  const revealedRankMap = useMemo(() => {
+    const items = participants.map((p) => ({
+      pin: p.pin,
+      received: revealedReceivedByPin[p.pin] ?? 0,
+      given: revealedGivenByPin[p.pin] ?? 0,
+      name: (p.nickname || "").trim(),
+    }));
+    items.sort((a, b) => {
+      if (a.received !== b.received) return b.received - a.received;
+      if (a.given !== b.given) return b.given - a.given;
+      return a.name.localeCompare(b.name);
+    });
+    const map: Record<string, number> = {};
+    items.forEach((item, idx) => {
+      map[item.pin] = idx + 1;
+    });
+    return map;
+  }, [participants, revealedReceivedByPin, revealedGivenByPin]);
 
   // Rank is always based on "poeng fått" (received), independent of current sort
   const receivedRankMap = useMemo(() => {
@@ -64,8 +104,13 @@ export default function Home() {
     });
     return map;
   }, [participants, userReceived, userGiven]);
-  // Only show public scores when results are revealed for the current round
-  const canShowScores = revealedRound === round;
+  // Show lobby scores whenever overview has revealed data, or if revealed for the round
+  const canShowScores = useMemo(() => {
+    const anyPair = Object.values(pairTotalsMap || {}).some((toMap) =>
+      Object.values(toMap || {}).some((v) => (Number(v) || 0) > 0)
+    );
+    return anyPair || revealedRound === round;
+  }, [pairTotalsMap, revealedRound, round]);
   function beerImageForName(name: string): string | null {
     const key = (name || "").toLowerCase().trim();
     const first = key.split(/\s+/)[0] || key;
@@ -1034,10 +1079,11 @@ export default function Home() {
                     const bName = (b.nickname || "").trim();
                     const aBeer = (a.beer_name || "").trim();
                     const bBeer = (b.beer_name || "").trim();
-                    const aGiven = userGiven[a.pin] ?? 0;
-                    const bGiven = userGiven[b.pin] ?? 0;
-                    const aRecv = userReceived[a.pin] ?? 0;
-                    const bRecv = userReceived[b.pin] ?? 0;
+                    // Use revealed-only totals when reflecting overview
+                    const aGiven = canShowScores ? (revealedGivenByPin[a.pin] ?? 0) : 0;
+                    const bGiven = canShowScores ? (revealedGivenByPin[b.pin] ?? 0) : 0;
+                    const aRecv = canShowScores ? (revealedReceivedByPin[a.pin] ?? 0) : 0;
+                    const bRecv = canShowScores ? (revealedReceivedByPin[b.pin] ?? 0) : 0;
                     const dir = sortDir === "asc" ? 1 : -1;
                     if (sortKey === "received") {
                       if (aRecv !== bRecv) return (aRecv - bRecv) * dir;
@@ -1066,9 +1112,9 @@ export default function Home() {
                   })
                   .map((p, idx) => {
                     const name = (p.nickname || "").trim() || "Uten navn";
-                    const given = userGiven[p.pin] ?? 0;
-                    const rank = receivedRankMap[p.pin] ?? idx + 1;
-                    const received = userReceived[p.pin] ?? 0;
+                    const given = revealedGivenByPin[p.pin] ?? 0;
+                    const rank = revealedRankMap[p.pin] ?? idx + 1;
+                    const received = revealedReceivedByPin[p.pin] ?? 0;
                     const beerName = (p.beer_name || "").trim() || "—";
                     return (
                       <li

@@ -1698,16 +1698,16 @@ export default function Home() {
               <table className="mt-2 w-full table-fixed text-xs">
                 <colgroup>
                   <col className="w-[50%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[15%]" />
                   <col className="w-[20%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[15%]" />
                 </colgroup>
                 <thead>
                   <tr className="text-zinc-600">
                     <th className="px-1 py-1 text-left font-medium">Navn</th>
+                    <th className="px-1 py-1 text-center font-medium">Status</th>
                     <th className="px-1 py-1 text-center font-medium">Beer dice</th>
                     <th className="px-1 py-1 text-center font-medium">Extra dice</th>
-                    <th className="px-1 py-1 text-center font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1722,18 +1722,18 @@ export default function Home() {
                         <td className="px-1 py-1">
                           <span className="truncate text-sm text-zinc-800 block">{name}</span>
                         </td>
-                        <td className="px-1 py-1 text-center tabular-nums">
-                          {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}
-                        </td>
-                        <td className="px-1 py-1 text-center tabular-nums">
-                          {typeof extraVal === "number" ? extraVal : (hasVoted ? "—" : "")}
-                        </td>
                         <td className="px-1 py-1 text-center">
                           {hasVoted && !revealedAny ? (
                             <span className="inline-block whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
                               Stemme avgitt!
                             </span>
                           ) : ""}
+                        </td>
+                        <td className="px-1 py-1 text-center tabular-nums">
+                          {typeof beerVal === "number" ? beerVal : (hasVoted ? "—" : "")}
+                        </td>
+                        <td className="px-1 py-1 text-center tabular-nums">
+                          {typeof extraVal === "number" ? extraVal : (hasVoted ? "—" : "")}
                         </td>
                       </tr>
                     );

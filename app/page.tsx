@@ -43,6 +43,7 @@ export default function Home() {
   const [roundStarted, setRoundStarted] = useState(false);
   const [allowReveal, setAllowReveal] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
+  const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
 
   // Rank is always based on "poeng fått" (received), independent of current sort
   const receivedRankMap = useMemo(() => {
@@ -140,6 +141,16 @@ export default function Home() {
         pMap[f][t] = (pMap[f][t] ?? 0) + val;
       });
       setPairTotalsMap(pMap);
+      const pxMap: Record<string, Record<string, number>> = {};
+      (data.pairTotalsExtra || []).forEach((pt: { from: string; to: string; total: number }) => {
+        const f = String(pt?.from || "");
+        const t = String(pt?.to || "");
+        const val = Number(pt?.total || 0);
+        if (!f || !t) return;
+        if (!pxMap[f]) pxMap[f] = {};
+        pxMap[f][t] = (pxMap[f][t] ?? 0) + val;
+      });
+      setPairTotalsExtraMap(pxMap);
     } catch {
       // noop
     } finally {
@@ -196,6 +207,7 @@ export default function Home() {
   useEffect(() => {
     setVoted(null);
     setPendingVote(null);
+    setPendingExtraVote(null);
     setShowMyReveal(false);
     setRevealedVotesMap({});
     setVotedPins([]);
@@ -254,7 +266,7 @@ export default function Home() {
     }
   }
 
-  async function castVote(value: number) {
+  async function castVote(value: number, extra: number) {
     setError(null);
     if (pin.length !== 4) {
       setError("Du må være innlogget");
@@ -264,7 +276,7 @@ export default function Home() {
       const res = await fetch("/api/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin, value }),
+        body: JSON.stringify({ pin, value, extra }),
       });
       if (!res.ok) {
         const { error: msg } = await res.json().catch(() => ({ error: "Kunne ikke lagre stemme" }));
@@ -332,6 +344,7 @@ export default function Home() {
   const [showPodium, setShowPodium] = useState(false);
   const [hatDrop, setHatDrop] = useState(false);
   const [pendingVote, setPendingVote] = useState<number | null>(null);
+  const [pendingExtraVote, setPendingExtraVote] = useState<number | null>(null);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
@@ -479,10 +492,11 @@ export default function Home() {
   }
 
   async function confirmLockVote() {
-    if (pendingVote == null) return;
-    await castVote(pendingVote);
+    if (pendingVote == null || pendingExtraVote == null) return;
+    await castVote(pendingVote, pendingExtraVote);
     setShowLockConfirm(false);
     setPendingVote(null);
+    setPendingExtraVote(null);
   }
   async function revealMyVote() {
     const hasVotedLocally = voted !== null;
@@ -1325,19 +1339,54 @@ export default function Home() {
                 );
               })}
             </div>
+            <div className="mt-4">
+              <div className="mb-2 text-sm font-medium text-zinc-700">
+                Generell opplevelse, pitch, etikett, x-faktor
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {[1,2,3,4,5,6].map((n) => {
+                  const isSel = pendingExtraVote === n;
+                  const alreadyVoted = voted != null || (Boolean(pin) && votedPins.includes(pin));
+                  const canVoteNow = pickedRound === round && Boolean(selected);
+                  return (
+                    <button
+                      key={`x-${n}`}
+                      className={`flex h-14 items-center justify-center rounded-lg border ${
+                        isSel ? "border-amber-700 ring-2 ring-amber-400" : "border-zinc-200"
+                      } bg-white active:opacity-90`}
+                      onClick={() => {
+                        if (!canVoteNow || alreadyVoted) return;
+                        setPendingExtraVote(n);
+                      }}
+                      aria-label={`Ekstra ${n} poeng`}
+                      disabled={!canVoteNow || alreadyVoted}
+                    >
+                      <img
+                        src={`/img/${n}.png`}
+                        alt={`${n}`}
+                        className="h-10 w-10 object-contain"
+                      />
+                      <span className="sr-only">{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             {!(voted != null || (Boolean(pin) && votedPins.includes(pin))) ? (
               <div>
                 <button
                   className="w-full rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                   onClick={() => setShowLockConfirm(true)}
-                  disabled={!(pickedRound === round && Boolean(selected)) || pendingVote == null}
+                  disabled={!(pickedRound === round && Boolean(selected)) || pendingVote == null || pendingExtraVote == null}
                 >
                   Lås poeng
                 </button>
                 <div className="mt-2 text-center text-sm text-zinc-600">
                   {!(pickedRound === round && Boolean(selected))
                     ? `Venter på utvelgelse`
-                    : (pendingVote != null ? `Valgt: ${pendingVote} poeng` : `Velg terning!`)}
+                    : ((pendingVote != null || pendingExtraVote != null)
+                        ? `Valgt: ${pendingVote ?? "—"} poeng · Ekstra: ${pendingExtraVote ?? "—"}`
+                        : `Velg terning!`)}
                 </div>
               </div>
             ) : (
@@ -1359,9 +1408,10 @@ export default function Home() {
                   <p className="mt-2 text-sm text-zinc-700">
                     Er du sikker? Poeng blir låst for denne stemmerunden.
                   </p>
-                  {pendingVote != null && (
-                    <div className="mt-2 text-sm text-zinc-600">Valgt: {pendingVote} poeng</div>
-                  )}
+                  <div className="mt-2 space-y-1 text-sm text-zinc-600">
+                    <div>Smak: {pendingVote != null ? pendingVote : "—"} poeng</div>
+                    <div>Ekstra: {pendingExtraVote != null ? pendingExtraVote : "—"} poeng</div>
+                  </div>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <button
                       className="rounded-lg border border-zinc-300 px-4 py-2 active:bg-zinc-50"
@@ -1372,7 +1422,7 @@ export default function Home() {
                     <button
                       className="rounded-lg bg-blue-600 px-4 py-2 text-white active:opacity-90 disabled:opacity-50"
                       onClick={confirmLockVote}
-                      disabled={pendingVote == null}
+                      disabled={pendingVote == null || pendingExtraVote == null}
                     >
                       Bekreft
                     </button>
@@ -1746,7 +1796,23 @@ export default function Home() {
                         const row = [fromPin,name,beer,prod,type,abv, givenTot, recvTot, ...pairVals];
                         return row.map(cell).join(",");
                       });
-                      const csv = [header.map(cell).join(","), ...rows].join("\n");
+                      const csvMain = [header.map(cell).join(","), ...rows].join("\n");
+                      // Extra matrix (no totals for now)
+                      const headerExtra = [
+                        "Ekstra-poeng (pitch/etikett/x-faktor)",
+                        ...toOrder.map(pin => {
+                          const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
+                          return `${name}`;
+                        })
+                      ];
+                      const rowsExtra = giverOrder.map(fromPin => {
+                        const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
+                        const pairVals = toOrder.map(toPin => pairTotalsExtraMap[fromPin]?.[toPin] ?? 0);
+                        const row = [name, ...pairVals];
+                        return row.map(cell).join(",");
+                      });
+                      const csvExtra = [headerExtra.map(cell).join(","), ...rowsExtra].join("\n");
+                      const csv = [csvMain, "", csvExtra].join("\n");
                       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
@@ -1793,6 +1859,52 @@ export default function Home() {
                             const val = pairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
                             return (
                               <td key={rec.pin} className="p-2 border-b border-zinc-200 tabular-nums text-center">
+                                {val > 0 ? val : "—"}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
+              <div className="mb-2 text-sm font-medium text-zinc-700">
+                Ekstra: Pitch / etikett / x‑faktor
+              </div>
+              {participants.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
+              ) : (
+                <table className="min-w-full border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                        Giver → Mottaker
+                      </th>
+                      {participants.map((rec) => {
+                        const name = (rec.nickname || "").trim() || rec.pin;
+                        return (
+                          <th key={`x-${rec.pin}`} className="p-2 text-left font-medium text-zinc-600 border-b border-zinc-200">
+                            {name}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((giver) => {
+                      const giverName = (giver.nickname || "").trim() || giver.pin;
+                      return (
+                        <tr key={`x-${giver.pin}`} className="odd:bg-white even:bg-zinc-50">
+                          <th className="sticky left-0 z-10 bg-inherit p-2 text-left font-medium text-zinc-700 border-b border-zinc-200">
+                            {giverName}
+                          </th>
+                          {participants.map((rec) => {
+                            const val = pairTotalsExtraMap[giver.pin]?.[rec.pin] ?? 0;
+                            return (
+                              <td key={`x-${rec.pin}`} className="p-2 border-b border-zinc-200 tabular-nums text-center">
                                 {val > 0 ? val : "—"}
                               </td>
                             );

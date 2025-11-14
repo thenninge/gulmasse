@@ -16,6 +16,7 @@ export const loginBodySchema = z.object({
 export const voteBodySchema = z.object({
   pin: pinSchema,
   value: z.number().int().min(1).max(6),
+  extra: z.number().int().min(1).max(6).optional(),
 });
 
 

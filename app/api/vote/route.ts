@@ -12,7 +12,7 @@ async function getCurrentRound(): Promise<number> {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { pin, value } = voteBodySchema.parse(body);
+    const { pin, value, extra } = voteBodySchema.parse(body);
 
     const exists = await supabase.from('participants').select('active').eq('pin', pin).maybeSingle();
     if (exists.error && exists.error.code !== 'PGRST116') throw exists.error;
@@ -37,8 +37,12 @@ export async function POST(request: Request) {
     }
 
     const round = await getCurrentRound();
+    const payload: any = { pin, round, value, recipient_pin: recipientPin };
+    if (typeof extra === 'number') {
+      payload.extra_value = extra;
+    }
     const { error } = await (supabase
-      .from('votes') as any).upsert({ pin, round, value, recipient_pin: recipientPin }, { onConflict: 'round,pin' });
+      .from('votes') as any).upsert(payload, { onConflict: 'round,pin' });
     if (error) throw error;
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {

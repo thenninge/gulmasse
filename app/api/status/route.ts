@@ -45,10 +45,10 @@ export async function GET() {
     // Votes for current round
     const votesRes = await supabase
       .from('votes')
-      .select('pin,value')
+      .select('pin,value,extra_value')
       .eq('round', round);
     if (votesRes.error) throw votesRes.error;
-    const voteRows = ((votesRes.data as any[]) || []) as Array<{ pin: string; value: number }>;
+    const voteRows = ((votesRes.data as any[]) || []) as Array<{ pin: string; value: number; extra_value?: number | null }>;
     const votedPins = voteRows.map((v) => v.pin as string);
     const votedCount = voteRows.filter((v) => activePins.includes(v.pin as string)).length;
 
@@ -71,6 +71,9 @@ export async function GET() {
     const revealedVotes = voteRows
       .filter((v) => revealedPins.includes(v.pin))
       .map((v) => ({ pin: v.pin, value: v.value }));
+    const revealedVotesExtra = voteRows
+      .filter((v) => revealedPins.includes(v.pin) && typeof v.extra_value === 'number')
+      .map((v) => ({ pin: v.pin, value: Number(v.extra_value) }));
 
     const histogram: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     let sum = 0;
@@ -103,11 +106,12 @@ export async function GET() {
     // Pair totals (giver -> recipient across all rounds)
     const votesPairsRes = await supabase
       .from('votes')
-      .select('pin,recipient_pin,value,round');
+      .select('pin,recipient_pin,value,extra_value,round');
     if (votesPairsRes.error) throw votesPairsRes.error;
     const pairTotals: Array<{ from: string; to: string; total: number }> = [];
+    const pairTotalsExtra: Array<{ from: string; to: string; total: number }> = [];
     {
-      const rows = ((votesPairsRes.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; round: number }>;
+      const rows = ((votesPairsRes.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; extra_value?: number | null; round: number }>;
       // Gather revealed pins per round
       const revealedAllRes = await supabase
         .from('app_state')
@@ -129,6 +133,7 @@ export async function GET() {
         roundToRevealed.set(rnd, new Set(arr));
       }
       const pairAgg = new Map<string, number>();
+      const pairAggExtra = new Map<string, number>();
       for (const r of rows) {
         const from = String((r as any).pin || '');
         const to = String((r as any).recipient_pin || '');
@@ -139,6 +144,11 @@ export async function GET() {
         const key = `${from}|${to}`;
         const v = Number((r as any).value) || 0;
         pairAgg.set(key, (pairAgg.get(key) ?? 0) + v);
+        const vx = (r as any).extra_value;
+        if (typeof vx === 'number') {
+          const vv = Number(vx) || 0;
+          pairAggExtra.set(key, (pairAggExtra.get(key) ?? 0) + vv);
+        }
       }
       // subtract pair offsets baseline if present
       const pairOffsetsRes = await supabase.from('app_state').select('text_value').eq('key','pair_offsets').maybeSingle();
@@ -156,6 +166,12 @@ export async function GET() {
         const baseline = Number(offsets[k] ?? 0);
         const adj = Math.max(0, total - baseline);
         if (adj > 0) pairTotals.push({ from, to, total: adj });
+      }
+      // For extra totals, no offsetting currently (kept independent)
+      for (const [k, total] of pairAggExtra.entries()) {
+        const [from, to] = k.split('|');
+        const adj = Math.max(0, total);
+        if (adj > 0) pairTotalsExtra.push({ from, to, total: adj });
       }
     }
 
@@ -194,6 +210,9 @@ export async function GET() {
         votedPins,
         revealedVotes,
       },
+      votesExtra: {
+        revealedVotes: revealedVotesExtra,
+      },
       activeCount,
       votedCount,
       reveal,
@@ -207,6 +226,7 @@ export async function GET() {
       roundStarted,
       allowReveal,
       pairTotals,
+      pairTotalsExtra,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

@@ -1697,10 +1697,10 @@ export default function Home() {
               </div>
               <table className="mt-2 w-full table-fixed text-xs">
                 <colgroup>
-                  <col className="w-[55%]" />
+                  <col className="w-[50%]" />
                   <col className="w-[15%]" />
                   <col className="w-[15%]" />
-                  <col className="w-[15%]" />
+                  <col className="w-[20%]" />
                 </colgroup>
                 <thead>
                   <tr className="text-zinc-600">
@@ -1730,7 +1730,7 @@ export default function Home() {
                         </td>
                         <td className="px-1 py-1 text-center">
                           {hasVoted && !revealedAny ? (
-                            <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
+                            <span className="inline-block whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 ring-1 ring-emerald-200">
                               Stemme avgitt!
                             </span>
                           ) : ""}

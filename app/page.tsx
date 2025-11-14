@@ -2026,7 +2026,7 @@ export default function Home() {
               </button>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
-              <div className="mb-2 text-sm font-medium text-zinc-700">
+              <div className="mb-2 text-sm font-bold text-zinc-700">
                 Beer points:
               </div>
               {isHost && (
@@ -2186,8 +2186,8 @@ export default function Home() {
               )}
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
-              <div className="mb-2 text-sm font-medium text-zinc-700">
-                Ekstra: Pitch / etikett / x‑faktor
+              <div className="mb-2 text-sm font-bold text-zinc-700">
+                Extra points:
               </div>
               {participants.length === 0 ? (
                 <div className="p-4 text-sm text-zinc-500">Ingen deltakere</div>
@@ -2257,7 +2257,7 @@ export default function Home() {
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
               <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-medium text-zinc-700">
+                <div className="text-sm font-bold text-zinc-700">
                   Sum of points
                 </div>
                 <div className="flex items-center gap-2">

@@ -2514,7 +2514,8 @@ export default function Home() {
                   Lås opp utvalg
                 </button>
                 <button
-                  className="rounded-xl bg-emerald-600 px-4 py-3 text-white active:opacity-90"
+                  className="rounded-xl px-4 py-3 text-white active:opacity-90"
+                  style={{ backgroundColor: '#d4af37' }}
                   onClick={() =>
                     confirmAdmin(async () => {
                       await fetch("/api/host/unlock-award", { method: "POST", headers: { "x-host-pin": pin } });

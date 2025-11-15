@@ -1539,14 +1539,13 @@ export default function Home() {
               )}
               <div className="mt-4">
                 <button
-                  className="w-full rounded-xl px-4 py-3 text-white text-sm font-medium active:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: awardUnlocked ? '#d4af37' : '#9ca3af' }}
+                  className={`w-full rounded-xl px-4 py-3 text-white text-sm font-medium active:opacity-90 disabled:opacity-50 ${awardUnlocked ? 'bg-amber-500' : 'bg-zinc-400'}`}
                   onClick={() => { setShowPodium(false); setShowAward(true); }}
                   disabled={!awardUnlocked}
                 >
                   Award ceremony
                 </button>
-        </div>
+              </div>
             </div>
           </div>
         )}

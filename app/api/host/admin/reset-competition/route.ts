@@ -33,6 +33,8 @@ export async function POST(request: Request) {
     ups.push((supabase.from('app_state') as any).upsert({ key: 'picked_round', int_value: 0 }, { onConflict: 'key' }));
     ups.push((supabase.from('app_state') as any).upsert({ key: 'round_started', bool_value: false }, { onConflict: 'key' }));
     ups.push((supabase.from('app_state') as any).upsert({ key: 'allow_reveal', bool_value: false }, { onConflict: 'key' }));
+    // lock award ceremony
+    ups.push((supabase.from('app_state') as any).upsert({ key: 'award_unlocked', bool_value: false }, { onConflict: 'key' }));
     const upAll = await Promise.all(ups);
     for (const r of upAll) {
       if (r.error) throw r.error;

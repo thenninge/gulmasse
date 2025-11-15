@@ -847,6 +847,8 @@ export default function Home() {
                   pin: p.pin,
                   name: (p.nickname || "").trim() || p.pin,
                   beer: (p.beer_name || "").trim(),
+                  producer: (p.producer || "").trim(),
+                  abv: p.abv != null ? Number(p.abv) : undefined,
                   beerPts: revealedReceivedByPin[p.pin] ?? 0,
                   extraPts: extraReceivedByPin[p.pin] ?? 0,
                   sumPts: combinedReceivedByPin[p.pin] ?? 0,
@@ -859,9 +861,15 @@ export default function Home() {
                 const w = items[0];
                 return (
                   <div className="space-y-3 text-center">
-                    <img src="/img/trophy.png" alt="Trophy" className="mx-auto h-24 w-24 object-contain" />
+                    <img src="/img/trophy.png" alt="Trophy" className="mx-auto h-72 w-72 md:h-80 md:w-80 object-contain" />
                     <div className="text-xl font-bold text-zinc-900">{w.name}</div>
                     <div className="text-sm text-zinc-700">{w.beer || "—"}</div>
+                    {w.producer && (
+                      <div className="text-sm text-zinc-700">Produsent: <span className="font-medium">{w.producer}</span></div>
+                    )}
+                    {Number.isFinite(w.abv as any) && (
+                      <div className="text-sm text-zinc-700">ABV: <span className="font-medium">{Number(w.abv).toFixed(1)}%</span></div>
+                    )}
                     <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
                       <div className="rounded-lg bg-zinc-50 p-2">
                         <div className="text-zinc-500">Beer points</div>

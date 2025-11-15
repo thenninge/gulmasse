@@ -1509,10 +1509,10 @@ export default function Home() {
                   Podium oppdateres når resultater blir avslørt.
                 </div>
               )}
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4">
                 <button
-                  className="rounded-md px-3 py-1 text-sm text-white active:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: awardUnlocked ? '#10b981' : '#9ca3af' }}
+                  className="w-full rounded-xl px-4 py-3 text-white text-sm font-medium active:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: awardUnlocked ? '#d4af37' : '#9ca3af' }}
                   onClick={() => setShowAward(true)}
                   disabled={!awardUnlocked}
                 >
@@ -2455,28 +2455,6 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="rounded-xl bg-emerald-600 px-4 py-3 text-white active:opacity-90"
-                  onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/unlock-award", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
-                  }
-                >
-                  Unlock award ceremony
-                </button>
-                <button
-                  className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
-                  onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
-                  }
-                >
-                  Lås opp utvalg
-                </button>
-                <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>
                     confirmAdmin(async () => {
@@ -2495,6 +2473,28 @@ export default function Home() {
                   }
                 >
                   Ny konkurranse
+                </button>
+                <button
+                  className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Lås opp utvalg
+                </button>
+                <button
+                  className="rounded-xl bg-emerald-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/unlock-award", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Unlock award ceremony
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"

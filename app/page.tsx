@@ -1264,7 +1264,7 @@ export default function Home() {
                 </button>
               </div>
               <div className="mt-3">
-                <label className="mb-1 block text-sm text-zinc-600">Kallenavn (valgfritt)</label>
+                <label className="mb-1 block text-sm text-zinc-600">Fornavn (påkrevd)</label>
                 <input
                   placeholder="Navn"
                   className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2"

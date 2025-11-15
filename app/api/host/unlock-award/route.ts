@@ -5,8 +5,7 @@ import { assertHost } from '@/lib/host';
 export async function POST(request: Request) {
   try {
     assertHost(request);
-    const { error } = await supabase
-      .from('app_state')
+    const { error } = await (supabase.from('app_state') as any)
       .upsert({ key: 'award_unlocked', bool_value: true }, { onConflict: 'key' });
     if (error) throw error;
     return NextResponse.json({ ok: true });

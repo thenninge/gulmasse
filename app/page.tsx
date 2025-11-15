@@ -2525,6 +2525,12 @@ export default function Home() {
                   Unlock award ceremony
                 </button>
                 <button
+                  className="rounded-xl bg-emerald-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={() => setView("wheel")}
+                >
+                  Snurrehjul
+                </button>
+                <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() => confirmAdmin(async () => { await revealResults(); })}
                   disabled={revealedRound === round}
@@ -2555,12 +2561,6 @@ export default function Home() {
                   }
                 >
                   Reset poeng fått = 0
-                </button>
-                <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={() => setView("wheel")}
-                >
-                  Snurrehjul
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"

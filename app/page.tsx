@@ -860,17 +860,18 @@ export default function Home() {
                 });
                 const w = items[0];
                 return (
-                  <div className="space-y-3 text-center">
+                  <div className="space-y-3 text-center relative">
                     <div className="text-2xl font-extrabold text-emerald-700">Congratulations!</div>
                     <div className="text-lg text-zinc-800">The GULMASSE 2025 trophy is awarded to</div>
                     <img src="/img/trophy.png" alt="Trophy" className="mx-auto h-72 w-72 md:h-80 md:w-80 object-contain" />
-                    <div className="text-xl font-bold text-zinc-900">{w.name}</div>
-                    <div className="text-sm text-zinc-700">{w.beer || "—"}</div>
-                    {w.producer && (
-                      <div className="text-sm text-zinc-700">Produsent: <span className="font-medium">{w.producer}</span></div>
-                    )}
-                    {Number.isFinite(w.abv as any) && (
-                      <div className="text-sm text-zinc-700">ABV: <span className="font-medium">{Number(w.abv).toFixed(1)}%</span></div>
+                    <div className="text-3xl md:text-4xl font-extrabold text-zinc-900">{w.name}</div>
+                    <div className="text-base md:text-lg text-zinc-800 font-semibold">{w.beer || "—"}</div>
+                    {(w.producer || Number.isFinite(w.abv as any)) && (
+                      <div className="text-sm text-zinc-700">
+                        {w.producer ? <>Produsent: <span className="font-medium">{w.producer}</span></> : null}
+                        {(w.producer && Number.isFinite(w.abv as any)) ? " · " : null}
+                        {Number.isFinite(w.abv as any) ? <>ABV: <span className="font-medium">{Number(w.abv).toFixed(1)}%</span></> : null}
+                      </div>
                     )}
                     <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
                       <div className="rounded-lg bg-zinc-50 p-2">
@@ -885,6 +886,23 @@ export default function Home() {
                         <div className="text-emerald-700">Sum of points</div>
                         <div className="font-semibold tabular-nums">{w.sumPts.toFixed(1)}</div>
                       </div>
+                    </div>
+                    {/* Confetti overlay */}
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                      {Array.from({ length: 120 }).map((_, i) => (
+                        <span
+                          key={i}
+                          className="absolute block h-2 w-2 animate-confetti rounded-[1px]"
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            top: `-${Math.random() * 20}%`,
+                            backgroundColor: ['#10b981', '#d4af37', '#3b82f6', '#ef4444'][i % 4],
+                            animationDelay: `${Math.random() * 0.6}s`,
+                            animationDuration: `${1.8 + Math.random() * 0.8}s`,
+                            transform: `rotate(${Math.random() * 360}deg)`
+                          } as any}
+                        />
+                      ))}
                     </div>
                   </div>
                 );

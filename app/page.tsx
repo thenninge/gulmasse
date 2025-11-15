@@ -756,7 +756,7 @@ export default function Home() {
       }
       if (p.beer_type !== undefined) {
         const known = new Set([
-          "Barleywine","Belgian Double","Belgian Quad","Belgian Tripple","Bock","Dobblebock","Double IPA","Home Brew","Imperial Stout","IPA","Julebrygg","Lager","Mjød","Other","Pilsner","Stout","Tripplebock","Nuclear Surprise"
+          "Barleywine","Belgian Double","Belgian Quad","Belgian Tripple","Bock","Dobblebock","Double IPA","Home Brew","Imperial Stout","IPA","Julebrygg","Lager","Mjød","Other","Pilsner","Stout","Tripplebock","Nuclear Surprise","Brown ale"
         ]);
         const t = (p.beer_type || "").trim();
         if (t && !known.has(t)) {
@@ -1099,6 +1099,7 @@ export default function Home() {
                   <option value="IPA">IPA</option>
                   <option value="Julebrygg">Julebrygg</option>
                   <option value="Lager">Lager</option>
+                  <option value="Brown ale">Brown ale</option>
                   <option value="Mjød">Mjød</option>
                   <option value="Other">Other</option>
                   <option value="Pilsner">Pilsner</option>
@@ -1545,7 +1546,7 @@ export default function Home() {
                 >
                   Award ceremony
                 </button>
-              </div>
+        </div>
             </div>
           </div>
         )}

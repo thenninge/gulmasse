@@ -1513,7 +1513,7 @@ export default function Home() {
                 <button
                   className="w-full rounded-xl px-4 py-3 text-white text-sm font-medium active:opacity-90 disabled:opacity-50"
                   style={{ backgroundColor: awardUnlocked ? '#d4af37' : '#9ca3af' }}
-                  onClick={() => setShowAward(true)}
+                  onClick={() => { setShowPodium(false); setShowAward(true); }}
                   disabled={!awardUnlocked}
                 >
                   Award ceremony

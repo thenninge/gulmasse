@@ -861,6 +861,8 @@ export default function Home() {
                 const w = items[0];
                 return (
                   <div className="space-y-3 text-center">
+                    <div className="text-2xl font-extrabold text-emerald-700">Congratulations!</div>
+                    <div className="text-lg text-zinc-800">The GULMASSE 2025 trophy is awarded to</div>
                     <img src="/img/trophy.png" alt="Trophy" className="mx-auto h-72 w-72 md:h-80 md:w-80 object-contain" />
                     <div className="text-xl font-bold text-zinc-900">{w.name}</div>
                     <div className="text-sm text-zinc-700">{w.beer || "—"}</div>

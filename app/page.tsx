@@ -1403,7 +1403,9 @@ export default function Home() {
                             return <span>{beerName}</span>;
                           })()}
                         </div>
-                        <div className="col-span-1 tabular-nums text-right">{canShowScores ? received : "—"}</div>
+                        <div className="col-span-1 tabular-nums text-right">
+                          {canShowScores ? Number(received).toFixed(1) : "—"}
+                        </div>
                       </li>
                     );
                   })}

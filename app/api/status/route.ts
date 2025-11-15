@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes, roundStartedRes, allowRevealRes] = await Promise.all([
+    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes, roundStartedRes, allowRevealRes, awardUnlockedRes] = await Promise.all([
       supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'reveal_results').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'logins_locked').maybeSingle(),
@@ -11,6 +11,7 @@ export async function GET() {
       supabase.from('app_state').select('int_value').eq('key', 'picked_round').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'round_started').maybeSingle(),
       supabase.from('app_state').select('bool_value').eq('key', 'allow_reveal').maybeSingle(),
+      supabase.from('app_state').select('bool_value').eq('key', 'award_unlocked').maybeSingle(),
     ]);
     if (roundRes.error) throw roundRes.error;
     if (revealRes.error) throw revealRes.error;
@@ -19,6 +20,7 @@ export async function GET() {
     if (pickedRoundRes.error) throw pickedRoundRes.error;
     if (roundStartedRes.error) throw roundStartedRes.error;
     if (allowRevealRes.error) throw allowRevealRes.error;
+    if (awardUnlockedRes.error) throw awardUnlockedRes.error;
     const round = Number((roundRes.data as any)?.int_value ?? 1);
     const reveal = (revealRes.data as any)?.bool_value === true;
     const loginsLocked = (lockRes.data as any)?.bool_value === true;
@@ -26,6 +28,7 @@ export async function GET() {
     const pickedRound = Number((pickedRoundRes.data as any)?.int_value ?? 0);
     const roundStarted = (roundStartedRes.data as any)?.bool_value === true;
     const allowReveal = (allowRevealRes.data as any)?.bool_value === true;
+    const awardUnlocked = (awardUnlockedRes.data as any)?.bool_value === true;
 
     // Participants
     const participantsRes = await supabase
@@ -249,6 +252,7 @@ export async function GET() {
       pickedRound,
       roundStarted,
       allowReveal,
+      awardUnlocked,
       pairTotals,
       pairTotalsExtra,
     });

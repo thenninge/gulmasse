@@ -42,6 +42,7 @@ export default function Home() {
   const [pickedRound, setPickedRound] = useState(0);
   const [roundStarted, setRoundStarted] = useState(false);
   const [allowReveal, setAllowReveal] = useState(false);
+  const [awardUnlocked, setAwardUnlocked] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
   const [sumFactor, setSumFactor] = useState<number>(0.5);
@@ -303,6 +304,7 @@ export default function Home() {
       setPickedRound(data.pickedRound || 0);
       setRoundStarted(Boolean(data.roundStarted));
       setAllowReveal(Boolean(data.allowReveal));
+      setAwardUnlocked(Boolean(data.awardUnlocked));
       // build pair totals map: from -> to -> total
       const pMap: Record<string, Record<string, number>> = {};
       (data.pairTotals || []).forEach((pt: { from: string; to: string; total: number }) => {
@@ -553,6 +555,7 @@ export default function Home() {
   const [lobbyImageBeerName, setLobbyImageBeerName] = useState<string>("");
   const [lobbyImageAbv, setLobbyImageAbv] = useState<string>("");
   const [showPodium, setShowPodium] = useState(false);
+  const [showAward, setShowAward] = useState(false);
   const [hatDrop, setHatDrop] = useState(false);
   const [pendingVote, setPendingVote] = useState<number | null>(null);
   const [pendingExtraVote, setPendingExtraVote] = useState<number | null>(null);
@@ -818,6 +821,65 @@ export default function Home() {
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
+          </div>
+        )}
+        {showAward && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setShowAward(false)}
+          >
+            <div
+              className="relative w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="absolute right-3 top-3 rounded-md bg-white/90 px-2 py-1 text-sm shadow"
+                onClick={() => setShowAward(false)}
+                aria-label="Lukk"
+              >
+                ✕
+              </button>
+              {(() => {
+                // Find winner based on combined totals
+                const items = participants.map((p) => ({
+                  pin: p.pin,
+                  name: (p.nickname || "").trim() || p.pin,
+                  beer: (p.beer_name || "").trim(),
+                  beerPts: revealedReceivedByPin[p.pin] ?? 0,
+                  extraPts: extraReceivedByPin[p.pin] ?? 0,
+                  sumPts: combinedReceivedByPin[p.pin] ?? 0,
+                }));
+                items.sort((a, b) => {
+                  if (a.sumPts !== b.sumPts) return b.sumPts - a.sumPts;
+                  if (a.beerPts !== b.beerPts) return b.beerPts - a.beerPts;
+                  return a.name.localeCompare(b.name);
+                });
+                const w = items[0];
+                return (
+                  <div className="space-y-3 text-center">
+                    <img src="/img/trophy.png" alt="Trophy" className="mx-auto h-24 w-24 object-contain" />
+                    <div className="text-xl font-bold text-zinc-900">{w.name}</div>
+                    <div className="text-sm text-zinc-700">{w.beer || "—"}</div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                      <div className="rounded-lg bg-zinc-50 p-2">
+                        <div className="text-zinc-500">Beer points</div>
+                        <div className="font-semibold tabular-nums">{w.beerPts}</div>
+                      </div>
+                      <div className="rounded-lg bg-zinc-50 p-2">
+                        <div className="text-zinc-500">Extra points</div>
+                        <div className="font-semibold tabular-nums">{w.extraPts}</div>
+                      </div>
+                      <div className="rounded-lg bg-emerald-50 p-2">
+                        <div className="text-emerald-700">Sum of points</div>
+                        <div className="font-semibold tabular-nums">{w.sumPts.toFixed(1)}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
         {showWelcome && (
@@ -1445,6 +1507,16 @@ export default function Home() {
                   Podium oppdateres når resultater blir avslørt.
                 </div>
               )}
+              <div className="mt-4 flex justify-end">
+                <button
+                  className="rounded-md px-3 py-1 text-sm text-white active:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: awardUnlocked ? '#10b981' : '#9ca3af' }}
+                  onClick={() => setShowAward(true)}
+                  disabled={!awardUnlocked}
+                >
+                  Award ceremony
+                </button>
+        </div>
             </div>
           </div>
         )}
@@ -2380,6 +2452,17 @@ export default function Home() {
                 {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <button
+                  className="rounded-xl bg-emerald-600 px-4 py-3 text-white active:opacity-90"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      await fetch("/api/host/unlock-award", { method: "POST", headers: { "x-host-pin": pin } });
+                      fetchStatus();
+                    })
+                  }
+                >
+                  Unlock award ceremony
+                </button>
                 <button
                   className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>

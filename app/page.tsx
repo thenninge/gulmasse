@@ -1088,6 +1088,7 @@ export default function Home() {
                 >
                   <option value="">Velg type</option>
                   <option value="Barleywine">Barleywine</option>
+                  <option value="Brown ale">Brown ale</option>
                   <option value="Belgian Double">Belgian Double</option>
                   <option value="Belgian Quad">Belgian Quad</option>
                   <option value="Belgian Tripple">Belgian Tripple</option>
@@ -1099,13 +1100,12 @@ export default function Home() {
                   <option value="IPA">IPA</option>
                   <option value="Julebrygg">Julebrygg</option>
                   <option value="Lager">Lager</option>
-                  <option value="Brown ale">Brown ale</option>
                   <option value="Mjød">Mjød</option>
+                  <option value="Nuclear Surprise">Nuclear Surprise</option>
                   <option value="Other">Other</option>
                   <option value="Pilsner">Pilsner</option>
                   <option value="Stout">Stout</option>
                   <option value="Tripplebock">Tripplebock</option>
-                  <option value="Nuclear Surprise">Nuclear Surprise</option>
                   <option value="__custom__">Annet (skriv selv)</option>
                 </select>
                 {beerType === "__custom__" && (

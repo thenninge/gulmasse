@@ -8,10 +8,45 @@ import {
 } from '@/lib/demoStore';
 import { supabase } from '@/lib/supabase';
 
+function isMissingRelation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  if (e.code === '42P01' || e.code === 'PGRST205') return true;
+  return typeof e.message === 'string' && /relation .* does not exist|Could not find the table/i.test(e.message);
+}
+
+function errorMessage(error: unknown): string {
+  if (isMissingRelation(error)) {
+    return 'Database mangler events-tabeller. Kjør SQL i Supabase (db/supabase_invite_setup.sql).';
+  }
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'object' && error && 'message' in error) {
+    return String((error as { message?: unknown }).message || 'Server error');
+  }
+  return 'Server error';
+}
+
 async function isPinTaken(pin: string) {
   const res = await supabase.from('participants').select('pin').eq('pin', pin).maybeSingle();
   if (res.error && (res.error as { code?: string }).code !== 'PGRST116') throw res.error;
   return !!res.data;
+}
+
+async function createParticipant(pin: string, name: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pinIns = await (supabase.from('participants') as any).insert({
+    pin,
+    nickname: name,
+    active: true,
+  });
+  if (pinIns.error) {
+    if ((pinIns.error as { code?: string }).code === '23505') {
+      const err = new Error('PIN er allerede i bruk – velg en annen');
+      (err as Error & { status?: number }).status = 409;
+      throw err;
+    }
+    throw pinIns.error;
+  }
 }
 
 export async function POST(request: Request) {
@@ -44,23 +79,30 @@ export async function POST(request: Request) {
           typeof e === 'object' && e !== null && 'status' in e
             ? Number((e as { status?: number }).status) || 500
             : 500;
-        const message = e instanceof Error ? e.message : 'Server error';
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: errorMessage(e) }, { status });
       }
     }
 
-    const event = await getActiveEvent();
-    if (!event) {
-      return NextResponse.json({ error: 'Ingen aktivt event' }, { status: 404 });
+    let event = null;
+    try {
+      event = await getActiveEvent();
+    } catch (e: unknown) {
+      if (!isMissingRelation(e)) throw e;
+      // Tables not migrated yet — continue with participant-only signup
+      event = null;
     }
-    if (!event.registration_open || event.status === 'archived' || event.status === 'draft') {
-      return NextResponse.json({ error: 'Påmelding er stengt' }, { status: 403 });
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const regs = supabase.from('event_registrations') as any;
 
     if (parsed.status === 'declined') {
+      if (!event) {
+        return NextResponse.json({
+          ok: true,
+          status: 'declined',
+          message: 'Takk for svaret – hyggelig om du får det til en annen gang!',
+          pending_migration: true,
+        });
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const regs = supabase.from('event_registrations') as any;
       const name = (parsed.name || '').trim() || 'Anonym';
       const ins = await regs
         .insert({
@@ -81,7 +123,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // accepted → create participant + registration
+    // accepted
+    if (event && (!event.registration_open || event.status === 'archived' || event.status === 'draft')) {
+      return NextResponse.json({ error: 'Påmelding er stengt' }, { status: 403 });
+    }
+
     const lock = await supabase
       .from('app_state')
       .select('bool_value')
@@ -99,22 +145,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pinIns = await (supabase.from('participants') as any).insert({
-      pin: parsed.pin,
-      nickname: parsed.name,
-      active: true,
-    });
-    if (pinIns.error) {
-      if ((pinIns.error as { code?: string }).code === '23505') {
-        return NextResponse.json(
-          { error: 'PIN er allerede i bruk – velg en annen' },
-          { status: 409 },
-        );
-      }
-      throw pinIns.error;
+    await createParticipant(parsed.pin, parsed.name);
+
+    if (!event) {
+      return NextResponse.json({
+        ok: true,
+        status: 'accepted',
+        pin: parsed.pin,
+        name: parsed.name,
+        message: 'Bruker opprettet! Husk PIN-koden. (Kjør database-setup for full påmeldingsliste.)',
+        pending_migration: true,
+      });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const regs = supabase.from('event_registrations') as any;
     const regIns = await regs
       .insert({
         event_id: event.id,
@@ -144,9 +189,15 @@ export async function POST(request: Request) {
     });
   } catch (e: unknown) {
     const hasIssues = typeof e === 'object' && e !== null && 'issues' in e;
+    const status =
+      hasIssues
+        ? 400
+        : typeof e === 'object' && e !== null && 'status' in e
+          ? Number((e as { status?: number }).status) || 500
+          : 500;
     return NextResponse.json(
-      { error: hasIssues ? 'Ugyldig forespørsel' : 'Server error' },
-      { status: hasIssues ? 400 : 500 },
+      { error: hasIssues ? 'Ugyldig forespørsel' : errorMessage(e) },
+      { status },
     );
   }
 }

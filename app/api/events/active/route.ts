@@ -47,11 +47,40 @@ export async function GET() {
       counts: { accepted, invited, declined, total: rows.length },
     });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Server error';
+    const msg = e instanceof Error ? e.message : '';
+    const code =
+      typeof e === 'object' && e !== null && 'code' in e
+        ? String((e as { code?: unknown }).code || '')
+        : '';
     // Graceful when migration not applied yet
-    if (typeof msg === 'string' && /relation .* does not exist|Could not find the table/i.test(msg)) {
-      return NextResponse.json({ event: null, counts: null, pending_migration: true });
+    if (
+      code === '42P01' ||
+      code === 'PGRST205' ||
+      /relation .* does not exist|Could not find the table/i.test(msg)
+    ) {
+      return NextResponse.json({
+        event: {
+          id: 'pending',
+          slug: 'gulmasse-2026',
+          name: "Gulmasse '26",
+          tagline: 'Christmas Beer Competition',
+          description: null,
+          location: null,
+          event_date: '2026-11-28',
+          event_time: null,
+          status: 'registration',
+          registration_open: true,
+          max_participants: null,
+          invite_code: 'GULMASSE26',
+          formatted_date: 'lørdag 28. november 2026',
+        },
+        counts: { accepted: 0, invited: 0, declined: 0, total: 0 },
+        pending_migration: true,
+      });
     }
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: msg || 'Server error' },
+      { status: 500 },
+    );
   }
 }

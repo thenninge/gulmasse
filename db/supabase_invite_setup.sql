@@ -108,6 +108,9 @@ CREATE TABLE IF NOT EXISTS year_standings (
 CREATE INDEX IF NOT EXISTS idx_year_standings_edition
   ON year_standings(edition_id, rank);
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON year_editions TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON year_standings TO anon, authenticated, service_role;
+
 INSERT INTO year_editions (year, name, event_date, notes, sum_factor)
 VALUES (
   2025,

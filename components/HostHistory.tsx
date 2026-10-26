@@ -319,24 +319,48 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
         <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{message}</div>
       )}
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
-        <p className="text-xs text-amber-950">
-          Fjorårets resultater ligger som ferdige tall (Martin 43.5 osv.). Importer dem hit — trenger ikke live-lobby.
-        </p>
-        <button
-          className="w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-medium text-white active:opacity-90"
-          onClick={seed2025}
-        >
-          Importer Gulmasse &apos;25
-        </button>
-      </div>
-
       {editions.length === 0 ? (
-        <p className="text-xs text-zinc-500">
-          Ingen arkiverte år ennå. Hvis import feiler: kjør <code className="text-[10px]">db/supabase_invite_setup.sql</code> i Supabase.
-        </p>
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-3">
+          <p className="text-xs font-medium text-amber-950">
+            Fjoråret mangler i databasen — ikke bruk «Arkiver» til dette.
+          </p>
+          <ol className="list-decimal space-y-1 pl-4 text-xs text-amber-950">
+            <li>
+              Åpne <span className="font-medium">Supabase</span> → prosjektet til Gulmasse →{" "}
+              <span className="font-medium">SQL Editor</span> → New query
+            </li>
+            <li>
+              Lim inn hele filen <code className="rounded bg-amber-100 px-1 text-[10px]">db/seed_gulmasse_2025.sql</code>{" "}
+              fra GitHub-repoet og trykk <span className="font-medium">Run</span>
+            </li>
+            <li>
+              Kom tilbake hit og trykk <span className="font-medium">Oppdater</span> — podium for ’25 skal dukke opp
+            </li>
+          </ol>
+          <button
+            className="w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-medium text-white active:opacity-90"
+            onClick={seed2025}
+          >
+            Prøv «Importer Gulmasse &apos;25» fra appen
+          </button>
+          <p className="text-[11px] text-amber-900/80">
+            App-import virker bare hvis tabellene allerede finnes. SQL-steget over er det sikre.
+          </p>
+        </div>
       ) : (
         <>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+            <p className="text-xs text-amber-950">
+              Oppdater fjorårets tall på nytt (Martin 43.5 …) hvis noe ser feil ut.
+            </p>
+            <button
+              className="w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-medium text-white active:opacity-90"
+              onClick={seed2025}
+            >
+              Re-importer Gulmasse &apos;25
+            </button>
+          </div>
+
           <div>
             <label className="mb-1 block text-xs text-zinc-600">Velg år</label>
             <select
@@ -487,9 +511,9 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
       )}
 
       <div className="space-y-2 border-t border-zinc-100 pt-3">
-        <p className="text-xs font-medium text-zinc-700">Arkiver årets live-resultater</p>
+        <p className="text-xs font-medium text-zinc-700">Arkiver årets live-resultater (ikke fjoråret)</p>
         <p className="text-[11px] text-zinc-500">
-          Tar snapshot av nåværende poengstilling (krever avslørte resultater i lobby).
+          Kun for når ’26 er ferdigspilt og avslørt i lobby. Fjoråret: bruk SQL / Importer over.
         </p>
         <div className="flex gap-2">
           <input

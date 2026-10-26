@@ -7,7 +7,7 @@ Mobilapp for **Gulmasse** – Christmas Beer Competition med invitasjon, påmeld
 - **Dato:** 28. november 2026
 - **Påmelding:** [`/invite`](https://gulmasse.vercel.app/invite) (`gulmasse.vercel.app/invite`)
 - Flyt: JA → sett opp navn + PIN · NEI → registrer avslag
-- Host: Admin → «Invitasjon & påmelding»
+- Host: Admin → «Invitasjon & påmelding» + «Tidligere år» (podium/poeng, arkiver årets resultat)
 
 ## Kom i gang
 

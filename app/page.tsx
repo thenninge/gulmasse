@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 import HostRegistrations from "@/components/HostRegistrations";
+import HostHistory from "@/components/HostHistory";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -242,6 +243,28 @@ export default function Home() {
     });
     return map;
   }, [participants, combinedReceivedByPin, combinedGivenByPin]);
+  const liveStandingsForArchive = useMemo(() => {
+    if (!canShowScores) return [];
+    const items = participants.map((p) => ({
+      rank: combinedRankMap[p.pin] || 0,
+      name: (p.nickname || "").trim() || p.pin,
+      beer_name: p.beer_name || null,
+      producer: p.producer || null,
+      beer_type: p.beer_type || null,
+      abv: p.abv == null ? null : Number(p.abv),
+      points: combinedReceivedByPin[p.pin] ?? 0,
+      given_points: combinedGivenByPin[p.pin] ?? 0,
+    }));
+    return items
+      .filter((i) => i.rank > 0)
+      .sort((a, b) => a.rank - b.rank);
+  }, [
+    canShowScores,
+    participants,
+    combinedRankMap,
+    combinedReceivedByPin,
+    combinedGivenByPin,
+  ]);
   function beerImageForName(name: string): string | null {
     const key = (name || "").toLowerCase().trim();
     const first = key.split(/\s+/)[0] || key;
@@ -2527,6 +2550,7 @@ export default function Home() {
               </button>
             </div>
             <HostRegistrations hostPin={pin} />
+            <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
               <div className="text-sm text-zinc-600">
                 Runde: <span className="font-medium">{round}</span> ·

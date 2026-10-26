@@ -6,6 +6,7 @@ import {
   hostRegistrationPatchSchema,
   type RegistrationRow,
 } from '@/lib/events';
+import { demoListRegistrations, getDemoStore, isLocalDemo } from '@/lib/demoStore';
 import { supabase } from '@/lib/supabase';
 
 function statusCode(e: unknown): number {
@@ -18,6 +19,27 @@ function statusCode(e: unknown): number {
 export async function GET(request: Request) {
   try {
     assertHost(request);
+
+    if (isLocalDemo()) {
+      const { event, registrations, counts } = demoListRegistrations();
+      if (!event) {
+        return NextResponse.json({ error: 'Ingen aktivt event' }, { status: 404 });
+      }
+      return NextResponse.json({
+        event: {
+          id: event.id,
+          slug: event.slug,
+          name: event.name,
+          invite_code: event.invite_code,
+          registration_open: event.registration_open,
+          status: event.status,
+        },
+        registrations,
+        counts,
+        demo: true,
+      });
+    }
+
     const url = new URL(request.url);
     const slug = url.searchParams.get('slug');
     const event = slug ? await getEventBySlug(slug) : await getActiveEvent();
@@ -68,6 +90,20 @@ export async function PATCH(request: Request) {
     assertHost(request);
     const body = await request.json();
     const parsed = hostRegistrationPatchSchema.parse(body);
+
+    if (isLocalDemo()) {
+      const store = getDemoStore();
+      const reg = store.registrations.find((r) => r.id === parsed.id);
+      if (!reg) {
+        return NextResponse.json({ error: 'Ikke funnet' }, { status: 404 });
+      }
+      reg.status = parsed.status;
+      reg.responded_at = new Date().toISOString();
+      return NextResponse.json({
+        ok: true,
+        registration: { id: reg.id, status: reg.status, name: reg.name },
+      });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const upd = await (supabase.from('event_registrations') as any)

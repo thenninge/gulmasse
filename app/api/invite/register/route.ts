@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { inviteSignupBodySchema } from '@/lib/schemas';
 import { getActiveEvent } from '@/lib/events';
+import {
+  demoRegisterAccepted,
+  demoRegisterDeclined,
+  isLocalDemo,
+} from '@/lib/demoStore';
 import { supabase } from '@/lib/supabase';
 
 async function isPinTaken(pin: string) {
@@ -13,6 +18,36 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const parsed = inviteSignupBodySchema.parse(body);
+
+    if (isLocalDemo()) {
+      if (parsed.status === 'declined') {
+        const registration = demoRegisterDeclined(parsed.name);
+        return NextResponse.json({
+          ok: true,
+          status: 'declined',
+          message: 'Takk for svaret – hyggelig om du får det til en annen gang!',
+          registration,
+        });
+      }
+      try {
+        const registration = demoRegisterAccepted(parsed.name, parsed.pin);
+        return NextResponse.json({
+          ok: true,
+          status: 'accepted',
+          pin: parsed.pin,
+          name: parsed.name,
+          message: 'Du er påmeldt! Husk PIN-koden din til kvelden.',
+          registration,
+        });
+      } catch (e: unknown) {
+        const status =
+          typeof e === 'object' && e !== null && 'status' in e
+            ? Number((e as { status?: number }).status) || 500
+            : 500;
+        const message = e instanceof Error ? e.message : 'Server error';
+        return NextResponse.json({ error: message }, { status });
+      }
+    }
 
     const event = await getActiveEvent();
     if (!event) {

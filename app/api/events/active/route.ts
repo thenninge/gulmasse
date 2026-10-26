@@ -1,9 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getActiveEvent, publicEventPayload, formatEventDate } from '@/lib/events';
+import { demoListRegistrations, isLocalDemo } from '@/lib/demoStore';
 import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
+    if (isLocalDemo()) {
+      const { event, counts } = demoListRegistrations();
+      if (!event) return NextResponse.json({ event: null });
+      return NextResponse.json({
+        event: {
+          ...publicEventPayload(event),
+          formatted_date: formatEventDate(event.event_date, event.event_time),
+        },
+        counts: {
+          accepted: counts.accepted ?? 0,
+          invited: counts.invited ?? 0,
+          declined: counts.declined ?? 0,
+          total: counts.total ?? 0,
+        },
+        demo: true,
+      });
+    }
+
     const event = await getActiveEvent();
     if (!event) {
       return NextResponse.json({ event: null });

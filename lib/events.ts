@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { demoActiveEvent, isLocalDemo } from '@/lib/demoStore';
 import { supabase } from '@/lib/supabase';
 
 export const registrationStatusSchema = z.enum([
@@ -67,6 +68,9 @@ export type RegistrationRow = {
 };
 
 export async function getActiveEventSlug(): Promise<string | null> {
+  if (isLocalDemo()) {
+    return demoActiveEvent()?.slug ?? 'gulmasse-2026';
+  }
   const res = await supabase
     .from('app_state')
     .select('text_value')
@@ -78,12 +82,21 @@ export async function getActiveEventSlug(): Promise<string | null> {
 }
 
 export async function getEventBySlug(slug: string): Promise<EventRow | null> {
+  if (isLocalDemo()) {
+    const event = demoActiveEvent();
+    return event && event.slug === slug ? event : null;
+  }
   const res = await supabase.from('events').select('*').eq('slug', slug).maybeSingle();
   if (res.error && (res.error as { code?: string }).code !== 'PGRST116') throw res.error;
   return (res.data as EventRow | null) ?? null;
 }
 
 export async function getEventByInviteCode(code: string): Promise<EventRow | null> {
+  if (isLocalDemo()) {
+    const event = demoActiveEvent();
+    if (!event) return null;
+    return event.invite_code.toUpperCase() === code.toUpperCase() ? event : null;
+  }
   const res = await supabase
     .from('events')
     .select('*')
@@ -94,6 +107,9 @@ export async function getEventByInviteCode(code: string): Promise<EventRow | nul
 }
 
 export async function getActiveEvent(): Promise<EventRow | null> {
+  if (isLocalDemo()) {
+    return demoActiveEvent();
+  }
   const slug = await getActiveEventSlug();
   if (slug) {
     const bySlug = await getEventBySlug(slug);

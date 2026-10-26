@@ -18,6 +18,15 @@ npm run migrate                  # kjør SQL-migrasjoner (inkl. events)
 npm run dev                      # http://localhost:3030
 ```
 
+### Lokal demo uten database
+
+```bash
+npm run dev:demo
+# åpne http://localhost:3030/invite
+```
+
+`LOCAL_DEMO=1` bruker in-memory lagring (resettes ved restart).
+
 ### Miljøvariabler
 
 Se `env.local.sample`:

@@ -75,8 +75,8 @@ CROSS JOIN (
 WHERE e.year = 2025;
 
 -- Sjekk at det ble riktig (skal vise 6 rader, Martin først)
-SELECT rank, name, beer_name, points
+SELECT ys.rank, ys.name, ys.beer_name, ys.points
 FROM year_standings ys
 JOIN year_editions ye ON ye.id = ys.edition_id
 WHERE ye.year = 2025
-ORDER BY rank;
+ORDER BY ys.rank;

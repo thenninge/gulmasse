@@ -159,3 +159,104 @@ export function formatEventDate(date: string | null, time: string | null): strin
     return date;
   }
 }
+
+function isMissingRelation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  if (e.code === '42P01' || e.code === 'PGRST205') return true;
+  return typeof e.message === 'string' && /relation .* does not exist|Could not find the table/i.test(e.message);
+}
+
+/** Link a live participant to the active event as «Kommer» (accepted). */
+export async function ensureAcceptedRegistration(opts: {
+  eventId: string;
+  pin: string;
+  name: string;
+}): Promise<{ created: boolean; updated: boolean }> {
+  const name = opts.name.trim() || opts.pin;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const regs = supabase.from('event_registrations') as any;
+
+  const byPin = await regs
+    .select('id,status')
+    .eq('event_id', opts.eventId)
+    .eq('participant_pin', opts.pin)
+    .maybeSingle();
+  if (byPin.error && !isMissingRelation(byPin.error) && (byPin.error as { code?: string }).code !== 'PGRST116') {
+    throw byPin.error;
+  }
+  if (byPin.data?.id) {
+    if (byPin.data.status !== 'accepted') {
+      const upd = await regs
+        .update({
+          status: 'accepted',
+          name,
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', byPin.data.id);
+      if (upd.error) throw upd.error;
+      return { created: false, updated: true };
+    }
+    return { created: false, updated: false };
+  }
+
+  const ins = await regs.insert({
+    event_id: opts.eventId,
+    name,
+    status: 'accepted',
+    bringing_beer: true,
+    participant_pin: opts.pin,
+    responded_at: new Date().toISOString(),
+  });
+  if (ins.error) {
+    if (isMissingRelation(ins.error)) return { created: false, updated: false };
+    throw ins.error;
+  }
+  return { created: true, updated: false };
+}
+
+/**
+ * Backfill: any active participant without an event_registrations row
+ * becomes «Kommer». Host PIN is skipped.
+ */
+export async function syncParticipantsToRegistrations(event: EventRow): Promise<number> {
+  if (isLocalDemo()) return 0;
+  const hostPin = process.env.HOST_PIN || '0808';
+
+  const parts = await supabase
+    .from('participants')
+    .select('pin,nickname,active')
+    .eq('active', true);
+  if (parts.error) {
+    if (isMissingRelation(parts.error)) return 0;
+    throw parts.error;
+  }
+
+  const existing = await supabase
+    .from('event_registrations')
+    .select('participant_pin,status')
+    .eq('event_id', event.id);
+  if (existing.error) {
+    if (isMissingRelation(existing.error)) return 0;
+    throw existing.error;
+  }
+
+  const linkedPins = new Set(
+    ((existing.data || []) as Array<{ participant_pin?: string | null }>)
+      .map((r) => r.participant_pin)
+      .filter((p): p is string => !!p),
+  );
+
+  let created = 0;
+  for (const p of (parts.data || []) as Array<{ pin: string; nickname: string | null }>) {
+    if (!p.pin || p.pin === hostPin) continue;
+    if (linkedPins.has(p.pin)) continue;
+    const result = await ensureAcceptedRegistration({
+      eventId: event.id,
+      pin: p.pin,
+      name: (p.nickname || '').trim() || p.pin,
+    });
+    if (result.created) created += 1;
+  }
+  return created;
+}

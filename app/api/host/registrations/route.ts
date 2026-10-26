@@ -4,6 +4,7 @@ import {
   getActiveEvent,
   getEventBySlug,
   hostRegistrationPatchSchema,
+  syncParticipantsToRegistrations,
   type RegistrationRow,
 } from '@/lib/events';
 import { demoListRegistrations, getDemoStore, isLocalDemo } from '@/lib/demoStore';
@@ -45,6 +46,13 @@ export async function GET(request: Request) {
     const event = slug ? await getEventBySlug(slug) : await getActiveEvent();
     if (!event) {
       return NextResponse.json({ error: 'Ingen aktivt event' }, { status: 404 });
+    }
+
+    // Existing participants (main-app signup) → «Kommer» if missing from påmelding
+    try {
+      await syncParticipantsToRegistrations(event);
+    } catch {
+      // ignore sync failures; still return whatever registrations we have
     }
 
     const res = await supabase

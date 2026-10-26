@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createPinBodySchema, pinSchema } from '@/lib/schemas';
+import { ensureAcceptedRegistration, getActiveEvent } from '@/lib/events';
 import { supabase } from '@/lib/supabase';
 
 async function isPinTaken(pin: string) {
@@ -44,6 +45,21 @@ export async function POST(request: Request) {
     const nickname = parsed.nickname ?? null;
     const ins = await (supabase.from('participants') as any).insert({ pin, nickname, active: true });
     if (ins.error) throw ins.error;
+
+    // Keep Invite «Kommer» in sync when users sign up via main app
+    try {
+      const event = await getActiveEvent();
+      if (event) {
+        await ensureAcceptedRegistration({
+          eventId: event.id,
+          pin,
+          name: (nickname || '').trim() || pin,
+        });
+      }
+    } catch {
+      // Event tables missing / optional — participant still created
+    }
+
     return NextResponse.json({ ok: true, pin });
   } catch (e: any) {
     const msg = e?.issues ? 'Invalid request' : 'Server error';

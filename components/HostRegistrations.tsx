@@ -142,11 +142,9 @@ export default function HostRegistrations({ hostPin }: Props) {
   }
 
   const shareUrl =
-    typeof window !== "undefined" && inviteCode
-      ? `${window.location.origin}/invitasjon/${encodeURIComponent(inviteCode)}`
-      : inviteCode
-        ? `/invitasjon/${encodeURIComponent(inviteCode)}`
-        : "";
+    typeof window !== "undefined"
+      ? `${window.location.origin}/invite`
+      : "/invite";
 
   async function copyShare() {
     if (!shareUrl) return;

@@ -1272,16 +1272,16 @@ export default function Home() {
         )}
         {view === "login" && (
           <section className="space-y-5">
-            {activeEvent?.registration_open && activeEvent.invite_code && (
+            {activeEvent?.registration_open && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50/95 p-4 shadow-sm">
                 <p className="text-sm font-medium text-amber-950">
-                  {activeEvent.name} – påmelding er åpen
+                  {activeEvent.name || "Gulmasse '26"} – påmelding er åpen
                 </p>
                 {activeEvent.formatted_date && (
                   <p className="mt-1 text-xs text-amber-900/80">{activeEvent.formatted_date}</p>
                 )}
                 <a
-                  href={`/invitasjon/${encodeURIComponent(activeEvent.invite_code)}`}
+                  href="/invite"
                   className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white active:opacity-90"
                 >
                   Åpne invitasjon & påmelding

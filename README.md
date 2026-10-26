@@ -2,12 +2,12 @@
 
 Mobilapp for **Gulmasse** – Christmas Beer Competition med invitasjon, påmelding, stemmegiving og snurrehjul.
 
-## Nytt i Gulmasse '26
+## Gulmasse '26
 
-- **Event**: `gulmasse-2026` (seedet i migrasjon `007`)
-- **Invitasjonslenke**: `/invitasjon/GULMASSE26` (eller eventets `invite_code`)
-- **Påmelding**: navn, RSVP (kommer / kan ikke), valgfritt øl-notat
-- **Host**: Admin → «Invitasjon & påmelding» (del lenke, personlige invitasjoner, status)
+- **Dato:** 28. november 2026
+- **Påmelding:** [`/invite`](https://gulmasse.vercel.app/invite) (`gulmasse.vercel.app/invite`)
+- Flyt: JA → sett opp navn + PIN · NEI → registrer avslag
+- Host: Admin → «Invitasjon & påmelding»
 
 ## Kom i gang
 
@@ -28,7 +28,7 @@ Se `env.local.sample`:
 
 ## Flyt
 
-1. Host deler `/invitasjon/GULMASSE26`
-2. Gjester melder seg på
-3. På arrangementsdagen logger deltakere inn med PIN i konkurranseappen (`/`)
+1. Del `https://gulmasse.vercel.app/invite`
+2. Gjest leser «Hva er Gulmasse?» og svarer JA / NEI
+3. Ved JA opprettes bruker (navn + PIN) til innlogging på kvelden
 4. Host setter event til **live** fra admin når konkurransen starter

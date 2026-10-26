@@ -51,13 +51,13 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin;
-    const inviteUrl = `${origin}/invitasjon/${event.invite_code}?token=${ins.data.invite_token}`;
+    const inviteUrl = `${origin}/invite?token=${ins.data.invite_token}`;
 
     return NextResponse.json({
       ok: true,
       registration: ins.data,
       invite_url: inviteUrl,
-      event_invite_url: `${origin}/invitasjon/${event.invite_code}`,
+      event_invite_url: `${origin}/invite`,
     });
   } catch (e: unknown) {
     const hasIssues = typeof e === 'object' && e !== null && 'issues' in e;

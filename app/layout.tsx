@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Christmas Beer Competition '25!",
-  description: "Mobile voting and picker for the 2025 Christmas Beer Competition.",
+  title: "Gulmasse '26 – Christmas Beer Competition",
+  description: "Invitasjon, påmelding og mobil stemmegiving for Gulmasse 2026.",
 };
 
 export default function RootLayout({

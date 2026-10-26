@@ -629,6 +629,7 @@ export default function Home() {
     }
   }, [votedPins, pin, voted]);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
+  const [showInviteHistory, setShowInviteHistory] = useState(true);
   const adminConfirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
   function confirmAdmin(action: () => void | Promise<void>) {
     adminConfirmActionRef.current = action;
@@ -2549,42 +2550,64 @@ export default function Home() {
                 Tilbake til lobby
               </button>
             </div>
-            <HostRegistrations hostPin={pin} />
-            <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm space-y-3">
-              <h3 className="text-sm font-medium text-emerald-950">Gulmasse &apos;26 – clean slate</h3>
-              <p className="text-xs text-emerald-900/80">
-                Nullstiller live-poeng og fjorårets deltakere. Beholder historikk for &apos;25 under «Tidligere år».
-                Påmeldte til &apos;26 (og host) beholdes.
-              </p>
+            <div className="rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
               <button
-                className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-white active:opacity-90"
-                onClick={() =>
-                  confirmAdmin(async () => {
-                    const res = await fetch("/api/host/admin/start-year", {
-                      method: "POST",
-                      headers: { "x-host-pin": pin },
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                      setError(data.error || "Kunne ikke starte '26");
-                      return;
-                    }
-                    setVoted(null);
-                    setPendingVote(null);
-                    setShowMyReveal(false);
-                    setRevealedVotesMap({});
-                    setVotedPins([]);
-                    setParticipants([]);
-                    setPairTotalsMap({});
-                    setPairTotalsExtraMap({});
-                    fetchStatus();
-                    alert(data.message || "Gulmasse '26 er nullstilt");
-                  })
-                }
+                type="button"
+                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left active:bg-amber-50/80"
+                onClick={() => setShowInviteHistory((v) => !v)}
+                aria-expanded={showInviteHistory}
               >
-                Start Gulmasse &apos;26 (slett live-data)
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900">Invite &amp; History</h3>
+                  <p className="text-xs text-zinc-500">
+                    Påmelding, fjorårshistorikk og start av Gulmasse &apos;26
+                  </p>
+                </div>
+                <span className="text-zinc-500 text-sm tabular-nums" aria-hidden>
+                  {showInviteHistory ? "▾" : "▸"}
+                </span>
               </button>
+              {showInviteHistory && (
+                <div className="space-y-4 border-t border-amber-100 px-4 pb-4 pt-3">
+                  <HostRegistrations hostPin={pin} />
+                  <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm space-y-3">
+                    <h3 className="text-sm font-medium text-emerald-950">Gulmasse &apos;26 – clean slate</h3>
+                    <p className="text-xs text-emerald-900/80">
+                      Nullstiller live-poeng og fjorårets deltakere. Beholder historikk for &apos;25 under «Tidligere år».
+                      Påmeldte til &apos;26 (og host) beholdes.
+                    </p>
+                    <button
+                      className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-white active:opacity-90"
+                      onClick={() =>
+                        confirmAdmin(async () => {
+                          const res = await fetch("/api/host/admin/start-year", {
+                            method: "POST",
+                            headers: { "x-host-pin": pin },
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            setError(data.error || "Kunne ikke starte '26");
+                            return;
+                          }
+                          setVoted(null);
+                          setPendingVote(null);
+                          setShowMyReveal(false);
+                          setRevealedVotesMap({});
+                          setVotedPins([]);
+                          setParticipants([]);
+                          setPairTotalsMap({});
+                          setPairTotalsExtraMap({});
+                          fetchStatus();
+                          alert(data.message || "Gulmasse '26 er nullstilt");
+                        })
+                      }
+                    >
+                      Start Gulmasse &apos;26 (slett live-data)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
               <div className="text-sm text-zinc-600">

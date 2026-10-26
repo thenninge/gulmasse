@@ -9,6 +9,32 @@ import {
   type ScoreMatrix,
 } from '@/lib/year2025';
 
+function isMissingRelation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  if (e.code === '42P01' || e.code === 'PGRST205') return true;
+  return typeof e.message === 'string' && /relation .* does not exist|Could not find the table|schema cache/i.test(e.message);
+}
+
+function missingHistoryError(): Error {
+  return Object.assign(
+    new Error(
+      "Historikk-tabeller mangler i databasen. Kjør db/supabase_invite_setup.sql i Supabase SQL Editor, deretter «Importer Gulmasse '25».",
+    ),
+    { status: 503 },
+  );
+}
+
+function mapDbError(error: unknown): never {
+  if (isMissingRelation(error)) throw missingHistoryError();
+  if (typeof error === 'object' && error && 'message' in error) {
+    throw Object.assign(new Error(String((error as { message?: unknown }).message || 'Databasefeil')), {
+      status: 500,
+    });
+  }
+  throw error;
+}
+
 export type YearEdition = {
   id: string;
   year: number;
@@ -143,7 +169,10 @@ export async function listEditions(): Promise<YearEdition[]> {
     .from('year_editions')
     .select('id,year,name,event_date,notes,sum_factor')
     .order('year', { ascending: false });
-  if (res.error) throw res.error;
+  if (res.error) {
+    if (isMissingRelation(res.error)) return [];
+    mapDbError(res.error);
+  }
   return ((res.data || []) as Record<string, unknown>[]).map(mapEditionRow);
 }
 
@@ -161,12 +190,20 @@ export async function getEditionStandings(editionId: string): Promise<{
     };
   }
 
-  const ed = await supabase
+  let ed = await supabase
     .from('year_editions')
     .select('id,year,name,event_date,notes,sum_factor,beer_matrix,extra_matrix,combined_matrix')
     .eq('id', editionId)
     .maybeSingle();
-  if (ed.error) throw ed.error;
+  if (ed.error) {
+    // Older schema without matrix columns
+    ed = await supabase
+      .from('year_editions')
+      .select('id,year,name,event_date,notes')
+      .eq('id', editionId)
+      .maybeSingle();
+    if (ed.error) mapDbError(ed.error);
+  }
   if (!ed.data) return { edition: null, standings: [] };
 
   const st = await supabase
@@ -293,24 +330,42 @@ export async function archiveEdition(
     return { edition: meta, standings };
   }
 
+  // Minimal insert first (works even if matrix columns are not migrated yet)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const edIns = await (supabase.from('year_editions') as any)
+  let edIns = await (supabase.from('year_editions') as any)
     .insert({
       year: body.year,
       name,
       notes: body.notes ?? null,
-      sum_factor: body.sum_factor ?? 0.5,
-      beer_matrix: body.beer_matrix ?? null,
-      extra_matrix: body.extra_matrix ?? null,
-      combined_matrix: body.combined_matrix ?? null,
     })
-    .select('id,year,name,event_date,notes,sum_factor,beer_matrix,extra_matrix,combined_matrix')
+    .select('id,year,name,event_date,notes')
     .single();
+
   if (edIns.error) {
     if ((edIns.error as { code?: string }).code === '23505') {
-      throw Object.assign(new Error(`År ${body.year} er allerede arkivert`), { status: 409 });
+      throw Object.assign(new Error(`År ${body.year} er allerede arkivert. Bruk «Importer Gulmasse '25» eller velg året i listen.`), {
+        status: 409,
+      });
     }
-    throw edIns.error;
+    mapDbError(edIns.error);
+  }
+
+  // Best-effort matrix / factor update
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const matrixUpd = await (supabase.from('year_editions') as any)
+      .update({
+        sum_factor: body.sum_factor ?? 0.5,
+        beer_matrix: body.beer_matrix ?? null,
+        extra_matrix: body.extra_matrix ?? null,
+        combined_matrix: body.combined_matrix ?? null,
+      })
+      .eq('id', edIns.data.id)
+      .select('id,year,name,event_date,notes,sum_factor,beer_matrix,extra_matrix,combined_matrix')
+      .single();
+    if (!matrixUpd.error && matrixUpd.data) edIns = matrixUpd;
+  } catch {
+    // ignore older schemas without matrix columns
   }
 
   const rows = body.standings.map((s) => ({
@@ -333,7 +388,7 @@ export async function archiveEdition(
       'id,edition_id,rank,name,beer_name,producer,beer_type,abv,points,given_points,is_winner',
     )
     .order('rank', { ascending: true });
-  if (stIns.error) throw stIns.error;
+  if (stIns.error) mapDbError(stIns.error);
 
   return {
     edition: mapEditionRow(edIns.data as Record<string, unknown>),
@@ -344,4 +399,114 @@ export async function archiveEdition(
       abv: row.abv == null ? null : Number(row.abv),
     })),
   };
+}
+
+/** Upsert canonical Gulmasse '25 results (from competition screenshots). */
+export async function seedOfficial2025(): Promise<{ edition: YearEdition; standings: YearStanding[] }> {
+  if (isLocalDemo()) {
+    const history = demoHistory();
+    const existing = history.find((e) => e.year === 2025);
+    if (existing) {
+      const { standings, ...meta } = existing;
+      return { edition: meta, standings };
+    }
+    // demoHistory already seeds 2025
+    const again = demoHistory()[0];
+    const { standings, ...meta } = again;
+    return { edition: meta, standings };
+  }
+
+  // Find or create edition (select without matrix cols first — older schemas)
+  let existing = await supabase
+    .from('year_editions')
+    .select('id,year,name,event_date,notes')
+    .eq('year', 2025)
+    .maybeSingle();
+  if (existing.error) mapDbError(existing.error);
+
+  let editionId = (existing.data as { id?: string } | null)?.id;
+  if (!editionId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ins = await (supabase.from('year_editions') as any)
+      .insert({
+        year: 2025,
+        name: "Gulmasse '25",
+        event_date: '2025-12-13',
+        notes: 'Endelig stilling – Martin vant med Postludium (43.5). Factor (extra) = 0.5.',
+      })
+      .select('id')
+      .single();
+    if (ins.error) {
+      if ((ins.error as { code?: string }).code === '23505') {
+        existing = await supabase
+          .from('year_editions')
+          .select('id,year,name,event_date,notes')
+          .eq('year', 2025)
+          .maybeSingle();
+        if (existing.error) mapDbError(existing.error);
+        editionId = (existing.data as { id?: string } | null)?.id;
+      } else {
+        mapDbError(ins.error);
+      }
+    } else {
+      editionId = ins.data.id as string;
+    }
+  }
+
+  if (!editionId) {
+    throw Object.assign(new Error('Kunne ikke opprette Gulmasse ’25 i historikk'), { status: 500 });
+  }
+
+  // Best-effort matrices / metadata (ignore if columns missing)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const matrixUpd = await (supabase.from('year_editions') as any)
+    .update({
+      sum_factor: 0.5,
+      beer_matrix: YEAR_2025_BEER,
+      extra_matrix: YEAR_2025_EXTRA,
+      combined_matrix: YEAR_2025_COMBINED,
+      notes: 'Endelig stilling – Martin vant med Postludium (43.5). Factor (extra) = 0.5.',
+      name: "Gulmasse '25",
+      event_date: '2025-12-13',
+    })
+    .eq('id', editionId);
+  if (matrixUpd.error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('year_editions') as any)
+      .update({
+        notes: 'Endelig stilling – Martin vant med Postludium (43.5). Factor (extra) = 0.5.',
+        name: "Gulmasse '25",
+        event_date: '2025-12-13',
+      })
+      .eq('id', editionId);
+  }
+
+  // Replace standings
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const del = await (supabase.from('year_standings') as any).delete().eq('edition_id', editionId);
+  if (del.error) mapDbError(del.error);
+
+  const rows = YEAR_2025_STANDINGS.map((s) => ({
+    edition_id: editionId,
+    rank: s.rank,
+    name: s.name,
+    beer_name: s.beer_name,
+    points: s.points,
+    given_points: s.given_points,
+    is_winner: s.is_winner,
+  }));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stIns = await (supabase.from('year_standings') as any)
+    .insert(rows)
+    .select(
+      'id,edition_id,rank,name,beer_name,producer,beer_type,abv,points,given_points,is_winner',
+    )
+    .order('rank', { ascending: true });
+  if (stIns.error) mapDbError(stIns.error);
+
+  return getEditionStandings(editionId as string).then((r) => {
+    if (!r.edition) throw Object.assign(new Error('Kunne ikke hente seedet år'), { status: 500 });
+    return { edition: r.edition, standings: r.standings };
+  });
 }

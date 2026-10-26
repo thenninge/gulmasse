@@ -235,6 +235,24 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
     }
   }
 
+  async function seed2025() {
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/host/history", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ action: "seed_2025" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Kunne ikke importere '25");
+      setMessage(data.message || "Gulmasse '25 importert");
+      await load(data.edition?.id);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Feil");
+    }
+  }
+
   async function archiveLive() {
     setError(null);
     setMessage(null);
@@ -244,7 +262,7 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
       return;
     }
     if (!liveStandings.length) {
-      setError("Ingen live-resultater å arkivere ennå");
+      setError("Ingen live-resultater å arkivere ennå. For fjoråret: bruk «Importer Gulmasse '25».");
       return;
     }
     try {
@@ -301,8 +319,22 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
         <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{message}</div>
       )}
 
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+        <p className="text-xs text-amber-950">
+          Fjorårets resultater ligger som ferdige tall (Martin 43.5 osv.). Importer dem hit — trenger ikke live-lobby.
+        </p>
+        <button
+          className="w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-medium text-white active:opacity-90"
+          onClick={seed2025}
+        >
+          Importer Gulmasse &apos;25
+        </button>
+      </div>
+
       {editions.length === 0 ? (
-        <p className="text-xs text-zinc-500">Ingen arkiverte år ennå.</p>
+        <p className="text-xs text-zinc-500">
+          Ingen arkiverte år ennå. Hvis import feiler: kjør <code className="text-[10px]">db/supabase_invite_setup.sql</code> i Supabase.
+        </p>
       ) : (
         <>
           <div>

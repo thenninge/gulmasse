@@ -6,6 +6,7 @@ import {
   getEditionStandings,
   listEditions,
   patchStanding,
+  seedOfficial2025,
   standingPatchSchema,
 } from '@/lib/history';
 
@@ -14,6 +15,13 @@ function statusCode(e: unknown): number {
     return (e as { status: number }).status;
   }
   return 500;
+}
+
+function errorMessage(e: unknown, status: number): string {
+  if (typeof e === 'object' && e !== null && 'issues' in e) return 'Ugyldig forespørsel';
+  if (e instanceof Error && e.message) return e.message;
+  if (status === 401) return 'Unauthorized';
+  return 'Server error';
 }
 
 export async function GET(request: Request) {
@@ -30,14 +38,18 @@ export async function GET(request: Request) {
 
     const first = editions[0];
     if (!first) {
-      return NextResponse.json({ editions: [], edition: null, standings: [] });
+      return NextResponse.json({
+        editions: [],
+        edition: null,
+        standings: [],
+        hint: "Ingen historikk ennå. Kjør db/supabase_invite_setup.sql i Supabase, deretter «Importer Gulmasse '25».",
+      });
     }
     const detail = await getEditionStandings(first.id);
     return NextResponse.json({ editions, ...detail });
   } catch (e: unknown) {
     const status = statusCode(e);
-    const msg = e instanceof Error && status !== 500 ? e.message : status === 401 ? 'Unauthorized' : 'Server error';
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json({ error: errorMessage(e, status) }, { status });
   }
 }
 
@@ -45,20 +57,28 @@ export async function POST(request: Request) {
   try {
     assertHost(request);
     const body = await request.json();
+
+    if (
+      body &&
+      typeof body === 'object' &&
+      'action' in body &&
+      (body as { action?: unknown }).action === 'seed_2025'
+    ) {
+      const result = await seedOfficial2025();
+      return NextResponse.json({
+        ok: true,
+        ...result,
+        message: "Gulmasse '25 er importert (Martin 43.5, Tomas 42.5, …).",
+      });
+    }
+
     const parsed = archiveBodySchema.parse(body);
     const result = await archiveEdition(parsed);
     return NextResponse.json({ ok: true, ...result });
   } catch (e: unknown) {
     const hasIssues = typeof e === 'object' && e !== null && 'issues' in e;
     const status = hasIssues ? 400 : statusCode(e);
-    const msg = hasIssues
-      ? 'Ugyldig forespørsel'
-      : e instanceof Error && status !== 500
-        ? e.message
-        : status === 401
-          ? 'Unauthorized'
-          : 'Server error';
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json({ error: errorMessage(e, status) }, { status });
   }
 }
 
@@ -72,13 +92,6 @@ export async function PATCH(request: Request) {
   } catch (e: unknown) {
     const hasIssues = typeof e === 'object' && e !== null && 'issues' in e;
     const status = hasIssues ? 400 : statusCode(e);
-    const msg = hasIssues
-      ? 'Ugyldig forespørsel'
-      : e instanceof Error && status !== 500
-        ? e.message
-        : status === 401
-          ? 'Unauthorized'
-          : 'Server error';
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json({ error: errorMessage(e, status) }, { status });
   }
 }

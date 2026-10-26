@@ -2551,6 +2551,41 @@ export default function Home() {
             </div>
             <HostRegistrations hostPin={pin} />
             <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm space-y-3">
+              <h3 className="text-sm font-medium text-emerald-950">Gulmasse &apos;26 – clean slate</h3>
+              <p className="text-xs text-emerald-900/80">
+                Nullstiller live-poeng og fjorårets deltakere. Beholder historikk for &apos;25 under «Tidligere år».
+                Påmeldte til &apos;26 (og host) beholdes.
+              </p>
+              <button
+                className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-white active:opacity-90"
+                onClick={() =>
+                  confirmAdmin(async () => {
+                    const res = await fetch("/api/host/admin/start-year", {
+                      method: "POST",
+                      headers: { "x-host-pin": pin },
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      setError(data.error || "Kunne ikke starte '26");
+                      return;
+                    }
+                    setVoted(null);
+                    setPendingVote(null);
+                    setShowMyReveal(false);
+                    setRevealedVotesMap({});
+                    setVotedPins([]);
+                    setParticipants([]);
+                    setPairTotalsMap({});
+                    setPairTotalsExtraMap({});
+                    fetchStatus();
+                    alert(data.message || "Gulmasse '26 er nullstilt");
+                  })
+                }
+              >
+                Start Gulmasse &apos;26 (slett live-data)
+              </button>
+            </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
               <div className="text-sm text-zinc-600">
                 Runde: <span className="font-medium">{round}</span> ·

@@ -138,3 +138,11 @@ CROSS JOIN (
     (6, 'Magnus', 'Rudolf Brown Ale',     32.5::numeric, 43.5::numeric, FALSE)
 ) AS s(rank, name, beer_name, points, given_points, is_winner)
 WHERE e.year = 2025;
+
+-- Optional clean slate for live competition (keeps year_standings history).
+-- Uncomment to wipe last year's participants/scores from the live app:
+-- DELETE FROM votes;
+-- DELETE FROM picks;
+-- DELETE FROM participants WHERE pin <> '0808';
+-- INSERT INTO app_state(key, text_value) VALUES ('active_event_slug', 'gulmasse-2026')
+-- ON CONFLICT (key) DO UPDATE SET text_value = EXCLUDED.text_value;

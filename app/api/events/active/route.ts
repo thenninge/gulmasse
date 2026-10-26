@@ -25,7 +25,26 @@ export async function GET() {
 
     const event = await getActiveEvent();
     if (!event) {
-      return NextResponse.json({ event: null });
+      // Branding fallback so the app always shows Gulmasse '26 even before seed
+      return NextResponse.json({
+        event: {
+          id: 'fallback-2026',
+          slug: 'gulmasse-2026',
+          name: "Gulmasse '26",
+          tagline: 'Christmas Beer Competition',
+          description: null,
+          location: null,
+          event_date: '2026-11-28',
+          event_time: null,
+          status: 'registration',
+          registration_open: true,
+          max_participants: null,
+          invite_code: 'GULMASSE26',
+          formatted_date: 'lørdag 28. november 2026',
+        },
+        counts: { accepted: 0, invited: 0, declined: 0, total: 0 },
+        pending_migration: true,
+      });
     }
 
     const regs = await supabase

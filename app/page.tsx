@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
+import HostRegistrations from "@/components/HostRegistrations";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -16,6 +17,13 @@ export default function Home() {
   const [strength, setStrength] = useState<string>("");
   const [voted, setVoted] = useState<number | null>(null);
   const isHost = useMemo(() => pin === "0808", [pin]);
+  const [activeEvent, setActiveEvent] = useState<{
+    name: string;
+    invite_code: string;
+    registration_open: boolean;
+    status: string;
+    formatted_date?: string | null;
+  } | null>(null);
 
   // status state from /api/status
   const [statusLoading, setStatusLoading] = useState(false);
@@ -331,6 +339,31 @@ export default function Home() {
     } finally {
       setStatusLoading(false);
     }
+  }, []);
+
+  // Active event (invitasjon / påmelding)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/events/active");
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && data?.event) {
+          setActiveEvent({
+            name: data.event.name,
+            invite_code: data.event.invite_code,
+            registration_open: !!data.event.registration_open,
+            status: data.event.status,
+            formatted_date: data.event.formatted_date,
+          });
+        }
+      } catch {
+        // ignore when migration not applied
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // read pin from localStorage on mount
@@ -784,7 +817,7 @@ export default function Home() {
     <div className="min-h-dvh w-full bg-transparent text-zinc-900">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-semibold">Christmas Beer Competition '25!</h1>
+          <h1 className="text-lg font-semibold">{activeEvent?.name || "Gulmasse '26"}</h1>
           {pin ? (
             view === "user" ? (
               <button
@@ -862,7 +895,7 @@ export default function Home() {
                 return (
                   <div className="space-y-3 text-center relative">
                     <div className="text-2xl font-extrabold text-emerald-700">Congratulations!</div>
-                    <div className="text-lg text-zinc-800">The GULMASSE 2025 trophy is awarded to</div>
+                    <div className="text-lg text-zinc-800">The GULMASSE 2026 trophy is awarded to</div>
                     <img src="/img/trophy.png" alt="Trophy" className="mx-auto h-72 w-72 md:h-80 md:w-80 object-contain" />
                     <div className="text-3xl md:text-4xl font-extrabold text-zinc-900">{w.name}</div>
                     <div className="text-base md:text-lg text-zinc-800 font-semibold">{w.beer || "—"}</div>
@@ -1036,7 +1069,9 @@ export default function Home() {
         )}
         {view === "user" && (
           <section className="space-y-5">
-            <h2 className="text-xl font-semibold text-center">Velkommen til Gulmasse '25!</h2>
+            <h2 className="text-xl font-semibold text-center">
+              Velkommen til {activeEvent?.name || "Gulmasse '26"}!
+            </h2>
             <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div>
                 <label className="mb-1 block text-sm text-zinc-600">Navn</label>
@@ -1237,6 +1272,22 @@ export default function Home() {
         )}
         {view === "login" && (
           <section className="space-y-5">
+            {activeEvent?.registration_open && activeEvent.invite_code && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/95 p-4 shadow-sm">
+                <p className="text-sm font-medium text-amber-950">
+                  {activeEvent.name} – påmelding er åpen
+                </p>
+                {activeEvent.formatted_date && (
+                  <p className="mt-1 text-xs text-amber-900/80">{activeEvent.formatted_date}</p>
+                )}
+                <a
+                  href={`/invitasjon/${encodeURIComponent(activeEvent.invite_code)}`}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white active:opacity-90"
+                >
+                  Åpne invitasjon & påmelding
+                </a>
+              </div>
+            )}
             <h2 className="text-xl font-semibold">Logg inn eller opprett PIN</h2>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <label className="mb-2 block text-sm text-zinc-600">4-sifret PIN</label>
@@ -1247,7 +1298,7 @@ export default function Home() {
                 placeholder="____"
                 className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-center text-2xl tracking-widest"
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\\D/g, "").slice(0, 4))}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               />
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <button
@@ -2475,6 +2526,7 @@ export default function Home() {
                 Tilbake til lobby
               </button>
             </div>
+            <HostRegistrations hostPin={pin} />
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
               <div className="text-sm text-zinc-600">
                 Runde: <span className="font-medium">{round}</span> ·

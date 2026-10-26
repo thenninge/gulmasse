@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { getDemoStore, isLocalDemo } from '@/lib/demoStore';
 import { supabase } from '@/lib/supabase';
+import {
+  YEAR_2025_BEER,
+  YEAR_2025_COMBINED,
+  YEAR_2025_EXTRA,
+  YEAR_2025_STANDINGS,
+  type ScoreMatrix,
+} from '@/lib/year2025';
 
 export type YearEdition = {
   id: string;
@@ -8,6 +15,10 @@ export type YearEdition = {
   name: string;
   event_date: string | null;
   notes: string | null;
+  sum_factor?: number | null;
+  beer_matrix?: ScoreMatrix | null;
+  extra_matrix?: ScoreMatrix | null;
+  combined_matrix?: ScoreMatrix | null;
 };
 
 export type YearStanding = {
@@ -25,7 +36,7 @@ export type YearStanding = {
 };
 
 export const standingPatchSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
   rank: z.number().int().positive().optional(),
   name: z.string().trim().min(1).max(80).optional(),
   beer_name: z.string().trim().max(120).optional().nullable(),
@@ -56,6 +67,10 @@ export const archiveBodySchema = z.object({
       }),
     )
     .min(1),
+  beer_matrix: z.any().optional().nullable(),
+  extra_matrix: z.any().optional().nullable(),
+  combined_matrix: z.any().optional().nullable(),
+  sum_factor: z.number().optional().nullable(),
 });
 
 type DemoEdition = YearEdition & { standings: YearStanding[] };
@@ -63,43 +78,54 @@ type DemoEdition = YearEdition & { standings: YearStanding[] };
 function demoHistory(): DemoEdition[] {
   const store = getDemoStore() as ReturnType<typeof getDemoStore> & {
     history?: DemoEdition[];
+    historyVersion?: number;
   };
-  if (!store.history) {
+  // Bump when canonical 2025 seed changes
+  if (!store.history || store.historyVersion !== 2) {
     const editionId = '00000000-0000-4000-8000-000000002025';
-    const names = [
-      'Magnus',
-      'Kathinka',
-      'Tomas',
-      'Eirik',
-      'Adam',
-      'Martin',
-      'Konrad',
-      'Roald',
-    ];
+    store.historyVersion = 2;
     store.history = [
       {
         id: editionId,
         year: 2025,
         name: "Gulmasse '25",
         event_date: '2025-12-13',
-        notes: 'Christmas Beer Competition 2025 – fyll inn poeng i admin',
-        standings: names.map((name, i) => ({
-          id: `2025-standing-${i + 1}`,
+        notes: 'Endelig stilling – Martin vant med Postludium (43.5). Factor (extra) = 0.5.',
+        sum_factor: 0.5,
+        beer_matrix: YEAR_2025_BEER,
+        extra_matrix: YEAR_2025_EXTRA,
+        combined_matrix: YEAR_2025_COMBINED,
+        standings: YEAR_2025_STANDINGS.map((s) => ({
+          id: `2025-standing-${s.rank}`,
           edition_id: editionId,
-          rank: i + 1,
-          name,
-          beer_name: null,
+          rank: s.rank,
+          name: s.name,
+          beer_name: s.beer_name,
           producer: null,
           beer_type: null,
           abv: null,
-          points: 0,
-          given_points: 0,
-          is_winner: i === 0,
+          points: s.points,
+          given_points: s.given_points,
+          is_winner: s.is_winner,
         })),
       },
     ];
   }
   return store.history;
+}
+
+function mapEditionRow(row: Record<string, unknown>): YearEdition {
+  return {
+    id: String(row.id),
+    year: Number(row.year),
+    name: String(row.name),
+    event_date: (row.event_date as string | null) ?? null,
+    notes: (row.notes as string | null) ?? null,
+    sum_factor: row.sum_factor == null ? null : Number(row.sum_factor),
+    beer_matrix: (row.beer_matrix as ScoreMatrix | null) ?? null,
+    extra_matrix: (row.extra_matrix as ScoreMatrix | null) ?? null,
+    combined_matrix: (row.combined_matrix as ScoreMatrix | null) ?? null,
+  };
 }
 
 export async function listEditions(): Promise<YearEdition[]> {
@@ -110,14 +136,15 @@ export async function listEditions(): Promise<YearEdition[]> {
       name: e.name,
       event_date: e.event_date,
       notes: e.notes,
+      sum_factor: e.sum_factor ?? null,
     }));
   }
   const res = await supabase
     .from('year_editions')
-    .select('id,year,name,event_date,notes')
+    .select('id,year,name,event_date,notes,sum_factor')
     .order('year', { ascending: false });
   if (res.error) throw res.error;
-  return (res.data || []) as YearEdition[];
+  return ((res.data || []) as Record<string, unknown>[]).map(mapEditionRow);
 }
 
 export async function getEditionStandings(editionId: string): Promise<{
@@ -126,23 +153,17 @@ export async function getEditionStandings(editionId: string): Promise<{
 }> {
   if (isLocalDemo()) {
     const edition = demoHistory().find((e) => e.id === editionId) || null;
+    if (!edition) return { edition: null, standings: [] };
+    const { standings, ...meta } = edition;
     return {
-      edition: edition
-        ? {
-            id: edition.id,
-            year: edition.year,
-            name: edition.name,
-            event_date: edition.event_date,
-            notes: edition.notes,
-          }
-        : null,
-      standings: edition ? [...edition.standings].sort((a, b) => a.rank - b.rank) : [],
+      edition: meta,
+      standings: [...standings].sort((a, b) => a.rank - b.rank),
     };
   }
 
   const ed = await supabase
     .from('year_editions')
-    .select('id,year,name,event_date,notes')
+    .select('id,year,name,event_date,notes,sum_factor,beer_matrix,extra_matrix,combined_matrix')
     .eq('id', editionId)
     .maybeSingle();
   if (ed.error) throw ed.error;
@@ -158,7 +179,7 @@ export async function getEditionStandings(editionId: string): Promise<{
   if (st.error) throw st.error;
 
   return {
-    edition: ed.data as YearEdition,
+    edition: mapEditionRow(ed.data as Record<string, unknown>),
     standings: ((st.data || []) as YearStanding[]).map((row) => ({
       ...row,
       points: Number(row.points),
@@ -192,7 +213,6 @@ export async function patchStanding(
           row.is_winner = false;
         }
       }
-      // Re-rank by points after edits
       edition.standings
         .slice()
         .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
@@ -250,6 +270,10 @@ export async function archiveEdition(
       name,
       event_date: null,
       notes: body.notes ?? null,
+      sum_factor: body.sum_factor ?? 0.5,
+      beer_matrix: (body.beer_matrix as ScoreMatrix | null) ?? null,
+      extra_matrix: (body.extra_matrix as ScoreMatrix | null) ?? null,
+      combined_matrix: (body.combined_matrix as ScoreMatrix | null) ?? null,
       standings: body.standings.map((s, i) => ({
         id: `${editionId}-${i + 1}`,
         edition_id: editionId,
@@ -265,16 +289,8 @@ export async function archiveEdition(
       })),
     };
     history.unshift(edition);
-    return {
-      edition: {
-        id: edition.id,
-        year: edition.year,
-        name: edition.name,
-        event_date: edition.event_date,
-        notes: edition.notes,
-      },
-      standings: edition.standings,
-    };
+    const { standings, ...meta } = edition;
+    return { edition: meta, standings };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -283,8 +299,12 @@ export async function archiveEdition(
       year: body.year,
       name,
       notes: body.notes ?? null,
+      sum_factor: body.sum_factor ?? 0.5,
+      beer_matrix: body.beer_matrix ?? null,
+      extra_matrix: body.extra_matrix ?? null,
+      combined_matrix: body.combined_matrix ?? null,
     })
-    .select('id,year,name,event_date,notes')
+    .select('id,year,name,event_date,notes,sum_factor,beer_matrix,extra_matrix,combined_matrix')
     .single();
   if (edIns.error) {
     if ((edIns.error as { code?: string }).code === '23505') {
@@ -316,7 +336,7 @@ export async function archiveEdition(
   if (stIns.error) throw stIns.error;
 
   return {
-    edition: edIns.data as YearEdition,
+    edition: mapEditionRow(edIns.data as Record<string, unknown>),
     standings: ((stIns.data || []) as YearStanding[]).map((row) => ({
       ...row,
       points: Number(row.points),

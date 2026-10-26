@@ -2,12 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+type ScoreMatrix = {
+  order: string[];
+  cells: Record<string, Record<string, number>>;
+};
+
 type Edition = {
   id: string;
   year: number;
   name: string;
   event_date: string | null;
   notes: string | null;
+  sum_factor?: number | null;
+  beer_matrix?: ScoreMatrix | null;
+  extra_matrix?: ScoreMatrix | null;
+  combined_matrix?: ScoreMatrix | null;
 };
 
 type Standing = {
@@ -40,6 +49,8 @@ type Props = {
   liveStandings?: LiveStanding[];
 };
 
+type MatrixTab = "combined" | "beer" | "extra";
+
 function beerImageForName(name: string): string | null {
   const key = name.trim().toLowerCase();
   const map: Record<string, string> = {
@@ -55,6 +66,89 @@ function beerImageForName(name: string): string | null {
   return map[key] || null;
 }
 
+function MatrixTable({ matrix, title }: { matrix: ScoreMatrix; title: string }) {
+  const order = matrix.order || [];
+  const colReceived = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const to of order) {
+      let sum = 0;
+      for (const from of order) {
+        const v = matrix.cells?.[from]?.[to];
+        if (typeof v === "number") sum += v;
+      }
+      acc[to] = sum;
+    }
+    return acc;
+  }, [matrix, order]);
+
+  const rowGiven = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const from of order) {
+      let sum = 0;
+      for (const to of order) {
+        const v = matrix.cells?.[from]?.[to];
+        if (typeof v === "number") sum += v;
+      }
+      acc[from] = sum;
+    }
+    return acc;
+  }, [matrix, order]);
+
+  const grand = Object.values(colReceived).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-zinc-200">
+      <div className="border-b border-zinc-100 bg-zinc-50 px-2 py-1.5 text-[11px] font-medium text-zinc-700">
+        {title}
+      </div>
+      <table className="min-w-full text-[10px]">
+        <thead>
+          <tr className="bg-white text-zinc-500">
+            <th className="sticky left-0 z-10 bg-white p-1 text-left">Giver ↓ / Mottaker →</th>
+            {order.map((n) => (
+              <th key={n} className="p-1 text-center font-medium text-zinc-700">
+                {n}
+              </th>
+            ))}
+            <th className="p-1 text-right">Gitt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {order.map((from) => (
+            <tr key={from} className="border-t border-zinc-100">
+              <td className="sticky left-0 z-10 bg-white p-1 font-medium text-zinc-800">{from}</td>
+              {order.map((to) => {
+                const v = matrix.cells?.[from]?.[to];
+                return (
+                  <td key={to} className="p-1 text-center tabular-nums text-zinc-700">
+                    {typeof v === "number" ? v : "—"}
+                  </td>
+                );
+              })}
+              <td className="p-1 text-right font-medium tabular-nums">
+                {rowGiven[from]?.toFixed?.(1)?.replace(/\.0$/, "") ?? rowGiven[from]}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t border-zinc-200 bg-zinc-50">
+            <td className="sticky left-0 z-10 bg-zinc-50 p-1 font-semibold">Sum mottatt</td>
+            {order.map((to) => (
+              <td key={to} className="p-1 text-center font-semibold tabular-nums">
+                {colReceived[to]?.toFixed?.(1)?.replace(/\.0$/, "") ?? colReceived[to]}
+              </td>
+            ))}
+            <td className="p-1 text-right font-semibold tabular-nums">
+              {grand.toFixed(1).replace(/\.0$/, "")}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
 export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
   const [editions, setEditions] = useState<Edition[]>([]);
   const [editionId, setEditionId] = useState<string>("");
@@ -65,6 +159,7 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [archiveYear, setArchiveYear] = useState(String(new Date().getFullYear()));
   const [message, setMessage] = useState<string | null>(null);
+  const [matrixTab, setMatrixTab] = useState<MatrixTab>("combined");
 
   const headers = useCallback(
     () => ({ "Content-Type": "application/json", "x-host-pin": hostPin }),
@@ -104,6 +199,13 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
     () => Math.max(1, ...podium.map((p) => Number(p.points) || 0)),
     [podium],
   );
+
+  const activeMatrix = useMemo(() => {
+    if (!edition) return null;
+    if (matrixTab === "beer") return edition.beer_matrix || null;
+    if (matrixTab === "extra") return edition.extra_matrix || null;
+    return edition.combined_matrix || null;
+  }, [edition, matrixTab]);
 
   async function savePoints(row: Standing, points: number) {
     setSavingId(row.id);
@@ -180,7 +282,7 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
         <div>
           <h3 className="text-sm font-medium text-zinc-800">Tidligere år</h3>
           <p className="text-xs text-zinc-500">
-            Poeng og podium fra tidligere Gulmasse
+            Poeng, podium og hvem-ga-hvem
             {loading ? " …" : ""}
           </p>
         </div>
@@ -225,7 +327,6 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
             )}
           </div>
 
-          {/* Podium */}
           <div className="rounded-xl bg-zinc-50 p-3">
             <h4 className="mb-3 text-center text-sm font-semibold text-zinc-800">
               Podium {edition?.name || ""}
@@ -269,8 +370,7 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
             )}
           </div>
 
-          {/* Full standings */}
-          <div className="max-h-72 overflow-y-auto">
+          <div className="max-h-56 overflow-y-auto">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-white text-zinc-500">
                 <tr>
@@ -310,6 +410,47 @@ export default function HostHistory({ hostPin, liveStandings = [] }: Props) {
               </tbody>
             </table>
           </div>
+
+          {(edition?.combined_matrix || edition?.beer_matrix || edition?.extra_matrix) && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1">
+                {(
+                  [
+                    ["combined", "Sum of points"],
+                    ["beer", "Beer points"],
+                    ["extra", "Extra points"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`rounded-lg px-2 py-1 text-[11px] ${
+                      matrixTab === key
+                        ? "bg-zinc-900 text-white"
+                        : "border border-zinc-300 bg-white text-zinc-700"
+                    }`}
+                    onClick={() => setMatrixTab(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {activeMatrix ? (
+                <MatrixTable
+                  matrix={activeMatrix}
+                  title={
+                    matrixTab === "combined"
+                      ? `Sum of points (factor ${edition?.sum_factor ?? 0.5})`
+                      : matrixTab === "beer"
+                        ? "Beer points"
+                        : "Extra points"
+                  }
+                />
+              ) : (
+                <p className="text-[11px] text-zinc-500">Ingen matrise for denne fanen.</p>
+              )}
+            </div>
+          )}
         </>
       )}
 

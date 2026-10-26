@@ -1,6 +1,10 @@
--- Lim inn i Supabase → SQL Editor → Run
--- Fyller Gulmasse '25 (Martin 43.5 osv.) i historikk.
+-- ============================================================
+-- HELE FILEN: lim inn i Supabase → SQL Editor → Run
+-- Legger Gulmasse '25 inn i «Tidligere år» (Martin 43.5 …)
 -- Trygt å kjøre flere ganger.
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS year_editions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -37,9 +41,12 @@ ALTER TABLE year_editions
   ADD COLUMN IF NOT EXISTS combined_matrix JSONB,
   ADD COLUMN IF NOT EXISTS sum_factor NUMERIC(4,2) DEFAULT 0.5;
 
--- Anon-nøkkelen appen bruker må kunne lese/skrive
-GRANT SELECT, INSERT, UPDATE, DELETE ON year_editions TO anon, authenticated, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON year_standings TO anon, authenticated, service_role;
+-- Appen bruker anon-nøkkel — må kunne lese/skrive
+ALTER TABLE year_editions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE year_standings DISABLE ROW LEVEL SECURITY;
+
+GRANT ALL ON TABLE year_editions TO anon, authenticated, service_role;
+GRANT ALL ON TABLE year_standings TO anon, authenticated, service_role;
 
 INSERT INTO year_editions (year, name, event_date, notes, sum_factor)
 VALUES (
@@ -74,8 +81,8 @@ CROSS JOIN (
 ) AS s(rank, name, beer_name, points, given_points, is_winner)
 WHERE e.year = 2025;
 
--- Sjekk at det ble riktig (skal vise 6 rader, Martin først)
-SELECT ys.rank, ys.name, ys.beer_name, ys.points
+-- OK hvis du ser 6 rader her (Martin først)
+SELECT ys.rank, ys.name AS deltaker, ys.beer_name, ys.points
 FROM year_standings ys
 JOIN year_editions ye ON ye.id = ys.edition_id
 WHERE ye.year = 2025

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { inviteSignupBodySchema } from '@/lib/schemas';
-import { getActiveEvent } from '@/lib/events';
+import {
+  ensureAcceptedRegistration,
+  ensureDeclinedRegistration,
+  getActiveEvent,
+} from '@/lib/events';
 import {
   demoRegisterAccepted,
   demoRegisterDeclined,
@@ -88,7 +92,6 @@ export async function POST(request: Request) {
       event = await getActiveEvent();
     } catch (e: unknown) {
       if (!isMissingRelation(e)) throw e;
-      // Tables not migrated yet — continue with participant-only signup
       event = null;
     }
 
@@ -101,25 +104,12 @@ export async function POST(request: Request) {
           pending_migration: true,
         });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const regs = supabase.from('event_registrations') as any;
       const name = (parsed.name || '').trim() || 'Anonym';
-      const ins = await regs
-        .insert({
-          event_id: event.id,
-          name,
-          status: 'declined',
-          bringing_beer: false,
-          responded_at: new Date().toISOString(),
-        })
-        .select('id,status,name')
-        .single();
-      if (ins.error) throw ins.error;
+      await ensureDeclinedRegistration({ eventId: event.id, name });
       return NextResponse.json({
         ok: true,
         status: 'declined',
         message: 'Takk for svaret – hyggelig om du får det til en annen gang!',
-        registration: ins.data,
       });
     }
 
@@ -158,25 +148,17 @@ export async function POST(request: Request) {
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const regs = supabase.from('event_registrations') as any;
-    const regIns = await regs
-      .insert({
-        event_id: event.id,
+    try {
+      await ensureAcceptedRegistration({
+        eventId: event.id,
+        pin: parsed.pin,
         name: parsed.name,
-        status: 'accepted',
-        bringing_beer: true,
-        participant_pin: parsed.pin,
-        responded_at: new Date().toISOString(),
-      })
-      .select('id,status,name,participant_pin,invite_token')
-      .single();
-
-    if (regIns.error) {
-      // Best-effort cleanup of orphan pin
+      });
+    } catch (e: unknown) {
+      // Best-effort cleanup of orphan pin if registration failed
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('participants') as any).delete().eq('pin', parsed.pin);
-      throw regIns.error;
+      throw e;
     }
 
     return NextResponse.json({
@@ -185,7 +167,6 @@ export async function POST(request: Request) {
       pin: parsed.pin,
       name: parsed.name,
       message: 'Du er påmeldt! Husk PIN-koden din til kvelden.',
-      registration: regIns.data,
     });
   } catch (e: unknown) {
     const hasIssues = typeof e === 'object' && e !== null && 'issues' in e;

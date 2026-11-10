@@ -25,6 +25,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Ingen aktivt event' }, { status: 404 });
     }
 
+    // Block duplicate invite for same name (case-insensitive) unless cancelled
+    const nameKey = parsed.name.trim().toLowerCase();
+    const existing = await supabase
+      .from('event_registrations')
+      .select('id,name,status,invite_token,email')
+      .eq('event_id', event.id)
+      .neq('status', 'cancelled');
+    if (existing.error) throw existing.error;
+    const clash = ((existing.data || []) as Array<{
+      id: string;
+      name: string;
+      status: string;
+      invite_token: string;
+      email: string | null;
+    }>).find((r) => r.name.trim().toLowerCase() === nameKey);
+    if (clash) {
+      if (clash.status === 'invited') {
+        const origin = new URL(request.url).origin;
+        return NextResponse.json({
+          ok: true,
+          registration: clash,
+          invite_url: `${origin}/invite?token=${clash.invite_token}`,
+          event_invite_url: `${origin}/invite`,
+          already_invited: true,
+        });
+      }
+      return NextResponse.json(
+        { error: `${parsed.name} er allerede i listen (${clash.status})` },
+        { status: 409 },
+      );
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ins = await (supabase.from('event_registrations') as any)
       .insert({

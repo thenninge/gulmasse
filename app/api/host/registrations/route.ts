@@ -64,13 +64,15 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: true });
     if (res.error) throw res.error;
 
-    const registrations = (res.data || []) as RegistrationRow[];
+    const all = (res.data || []) as RegistrationRow[];
+    // Hide cancelled duplicates from admin list / counts
+    const registrations = all.filter((r) => r.status !== 'cancelled');
     const counts = {
       accepted: registrations.filter((r) => r.status === 'accepted').length,
       invited: registrations.filter((r) => r.status === 'invited').length,
       declined: registrations.filter((r) => r.status === 'declined').length,
       waitlist: registrations.filter((r) => r.status === 'waitlist').length,
-      cancelled: registrations.filter((r) => r.status === 'cancelled').length,
+      cancelled: all.filter((r) => r.status === 'cancelled').length,
       total: registrations.length,
     };
 

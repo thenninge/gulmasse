@@ -140,6 +140,28 @@ export function demoRegisterAccepted(name: string, pin: string) {
     created_at: new Date().toISOString(),
   });
 
+  const key = name.trim().toLowerCase();
+  const existing = store.registrations.find(
+    (r) =>
+      r.event_id === event.id &&
+      r.status !== 'cancelled' &&
+      (r.participant_pin === pin || r.name.trim().toLowerCase() === key),
+  );
+  if (existing) {
+    existing.status = 'accepted';
+    existing.name = name;
+    existing.participant_pin = pin;
+    existing.responded_at = new Date().toISOString();
+    // Drop other same-name duplicates
+    store.registrations = store.registrations.filter((r) => {
+      if (r.id === existing.id) return true;
+      if (r.event_id !== event.id) return true;
+      if (r.name.trim().toLowerCase() !== key) return true;
+      return false;
+    });
+    return existing;
+  }
+
   const registration: DemoRegistration = {
     id: id(),
     event_id: event.id,
@@ -169,10 +191,26 @@ export function demoRegisterDeclined(name?: string) {
     throw err;
   }
 
+  const display = (name || '').trim() || 'Anonym';
+  const key = display.toLowerCase();
+  const existing = store.registrations.find(
+    (r) =>
+      r.event_id === event.id &&
+      r.status !== 'cancelled' &&
+      r.name.trim().toLowerCase() === key,
+  );
+  if (existing) {
+    if (existing.status === 'accepted' || existing.participant_pin) return existing;
+    existing.status = 'declined';
+    existing.bringing_beer = false;
+    existing.responded_at = new Date().toISOString();
+    return existing;
+  }
+
   const registration: DemoRegistration = {
     id: id(),
     event_id: event.id,
-    name: (name || '').trim() || 'Anonym',
+    name: display,
     email: null,
     phone: null,
     status: 'declined',
@@ -191,13 +229,17 @@ export function demoRegisterDeclined(name?: string) {
 export function demoListRegistrations() {
   const event = demoActiveEvent();
   if (!event) return { event: null, registrations: [], counts: {} };
-  const registrations = getDemoStore().registrations.filter((r) => r.event_id === event.id);
+  const registrations = getDemoStore().registrations.filter(
+    (r) => r.event_id === event.id && r.status !== 'cancelled',
+  );
   const counts = {
     accepted: registrations.filter((r) => r.status === 'accepted').length,
     invited: registrations.filter((r) => r.status === 'invited').length,
     declined: registrations.filter((r) => r.status === 'declined').length,
     waitlist: registrations.filter((r) => r.status === 'waitlist').length,
-    cancelled: registrations.filter((r) => r.status === 'cancelled').length,
+    cancelled: getDemoStore().registrations.filter(
+      (r) => r.event_id === event.id && r.status === 'cancelled',
+    ).length,
     total: registrations.length,
   };
   return { event, registrations, counts };

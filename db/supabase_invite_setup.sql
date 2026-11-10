@@ -51,6 +51,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_event_registrations_email_unique
   ON event_registrations(event_id, lower(email))
   WHERE email IS NOT NULL AND email <> '';
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_registrations_pin_unique
+  ON event_registrations(event_id, participant_pin)
+  WHERE participant_pin IS NOT NULL;
+
 INSERT INTO app_state(key, text_value) VALUES ('active_event_slug', 'gulmasse-2026')
 ON CONFLICT (key) DO UPDATE SET text_value = EXCLUDED.text_value;
 

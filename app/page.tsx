@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 import HostRegistrations from "@/components/HostRegistrations";
 import HostHistory from "@/components/HostHistory";
+import HostParticipantEditor from "@/components/HostParticipantEditor";
 import { resolveBeerImage } from "@/lib/beerImages";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
@@ -2859,32 +2860,28 @@ export default function Home() {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>
-                <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200">
-                  {participants.map((p) => {
-                    const name = (p.nickname || "").trim() || p.pin;
-                    return (
-                      <li key={p.pin} className="flex items-center justify-between px-3 py-2 text-sm">
-                        <div className="truncate">
-                          {name} {p.beer_name ? `— ${p.beer_name}` : ""}
-                        </div>
-                        <button
-                          className="rounded-md border border-red-300 px-3 py-1 text-red-700 hover:bg-red-50"
-                          onClick={() =>
-                            confirmAdmin(async () => {
-                              await fetch("/api/host/admin/delete-participant", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json", "x-host-pin": pin },
-                                body: JSON.stringify({ pin: p.pin }),
-                              });
-                              fetchStatus();
-                            })
-                          }
-                        >
-                          Slett
-                        </button>
-                      </li>
-                    );
-                  })}
+                <p className="mb-2 text-[11px] text-zinc-500">
+                  Trykk Rediger for å endre navn, øl, %, bilde m.m.
+                </p>
+                <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
+                  {participants.map((p) => (
+                    <HostParticipantEditor
+                      key={p.pin}
+                      hostPin={pin}
+                      participant={p}
+                      onChanged={() => fetchStatus()}
+                      onDelete={() =>
+                        confirmAdmin(async () => {
+                          await fetch("/api/host/admin/delete-participant", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "x-host-pin": pin },
+                            body: JSON.stringify({ pin: p.pin }),
+                          });
+                          fetchStatus();
+                        })
+                      }
+                    />
+                  ))}
                 </ul>
               </div>
             </div>

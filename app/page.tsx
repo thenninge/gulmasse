@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 import HostRegistrations from "@/components/HostRegistrations";
 import HostHistory from "@/components/HostHistory";
+import { resolveBeerImage } from "@/lib/beerImages";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -31,7 +32,11 @@ export default function Home() {
   const [participants, setParticipants] = useState<Array<{
     pin: string; nickname: string | null; active: boolean;
     beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
+    beer_image_url?: string | null;
   }>>([]);
+  const [beerImageUrl, setBeerImageUrl] = useState<string | null>(null);
+  const [beerImageBusy, setBeerImageBusy] = useState(false);
+  const [beerImageError, setBeerImageError] = useState<string | null>(null);
   const [activeCount, setActiveCount] = useState(0);
   const [votedCount, setVotedCount] = useState(0);
   const [round, setRound] = useState(1);
@@ -265,20 +270,67 @@ export default function Home() {
     combinedReceivedByPin,
     combinedGivenByPin,
   ]);
+  function beerImageForParticipant(p: {
+    nickname?: string | null;
+    beer_image_url?: string | null;
+  } | null | undefined): string | null {
+    if (!p) return null;
+    return resolveBeerImage({
+      beer_image_url: p.beer_image_url,
+      name: p.nickname,
+    });
+  }
+
   function beerImageForName(name: string): string | null {
-    const key = (name || "").toLowerCase().trim();
-    const first = key.split(/\s+/)[0] || key;
-    const map: Record<string, string> = {
-      adam: "/img/adam.png",
-      eirik: "/img/eirik.png",
-      konrad: "/img/konrad.jpg",
-      martin: "/img/martin.jpg",
-      tomas: "/img/tomas.jpg",
-      roald: "/img/roald.png",
-      kathinka: "/img/kathinka.png",
-      magnus: "/img/magnus.png",
-    };
-    return map[first] || null;
+    return resolveBeerImage({ name });
+  }
+
+  async function uploadBeerImage(file: File) {
+    setBeerImageError(null);
+    if (pin.length !== 4) {
+      setBeerImageError("Logg inn først");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setBeerImageError("Velg et bilde");
+      return;
+    }
+    setBeerImageBusy(true);
+    try {
+      const body = new FormData();
+      body.append("pin", pin);
+      body.append("file", file);
+      const res = await fetch("/api/pin/beer-image", { method: "POST", body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Opplasting feilet");
+      setBeerImageUrl(data.beer_image_url || null);
+      fetchStatus();
+    } catch (e: unknown) {
+      setBeerImageError(e instanceof Error ? e.message : "Opplasting feilet");
+    } finally {
+      setBeerImageBusy(false);
+    }
+  }
+
+  async function removeBeerImage() {
+    setBeerImageError(null);
+    if (pin.length !== 4) return;
+    setBeerImageBusy(true);
+    try {
+      const res = await fetch("/api/pin/beer-image", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Kunne ikke fjerne bilde");
+      setBeerImageUrl(null);
+      fetchStatus();
+    } catch (e: unknown) {
+      setBeerImageError(e instanceof Error ? e.message : "Feil");
+    } finally {
+      setBeerImageBusy(false);
+    }
   }
 
   const selected = useMemo(() => {
@@ -290,7 +342,7 @@ export default function Home() {
     const producer = (p?.producer || "").trim();
     const abv = p?.abv != null ? Number(p.abv) : undefined;
     const beerType = (p?.beer_type || "").trim();
-    const image = beerImageForName(name);
+    const image = beerImageForParticipant(p);
     return { pin: pinSel, name, beerName, producer, beerType, abv, image };
   }, [picks, participants]);
 
@@ -801,8 +853,10 @@ export default function Home() {
         producer?: string | null;
         beer_type?: string | null;
         abv?: number | null;
+        beer_image_url?: string | null;
       };
       if (p.nickname !== undefined) setNickname(p.nickname || "");
+      if (p.beer_image_url !== undefined) setBeerImageUrl(p.beer_image_url || null);
       if (p.beer_name !== undefined) {
         setCompetitor(p.beer_name || "");
         localStorage.setItem("competitor", p.beer_name || "");
@@ -1202,6 +1256,51 @@ export default function Home() {
                   <span className="text-sm text-zinc-600">%</span>
                 </div>
               </div>
+              <div className="space-y-2">
+                <label className="mb-1 block text-sm text-zinc-600">Bilde av ølen</label>
+                {(beerImageUrl || resolveBeerImage({ beer_image_url: beerImageUrl, name: nickname })) && (
+                  <img
+                    src={beerImageUrl || resolveBeerImage({ name: nickname }) || ""}
+                    alt="Ølbilde"
+                    className="mx-auto max-h-48 w-auto rounded-xl object-contain ring-1 ring-zinc-200"
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  capture="environment"
+                  disabled={beerImageBusy || pin.length !== 4}
+                  className="block w-full text-xs text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:text-white"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) uploadBeerImage(f);
+                  }}
+                />
+                <div className="flex flex-wrap gap-2">
+                  {beerImageUrl && (
+                    <button
+                      type="button"
+                      disabled={beerImageBusy}
+                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs active:bg-zinc-50 disabled:opacity-60"
+                      onClick={removeBeerImage}
+                    >
+                      Fjern opplastet bilde
+                    </button>
+                  )}
+                  {beerImageBusy && (
+                    <span className="text-xs text-zinc-500">Laster opp…</span>
+                  )}
+                </div>
+                {beerImageError && (
+                  <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {beerImageError}
+                  </div>
+                )}
+                <p className="text-[11px] text-zinc-500">
+                  JPEG/PNG/WebP, max 5 MB. Vises i lobby og ved presentasjon.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
@@ -1485,7 +1584,7 @@ export default function Home() {
                         <div className="col-span-1 truncate">{name}</div>
                         <div className="col-span-1 truncate">
                           {(() => {
-                            const img = beerImageForName(name);
+                            const img = beerImageForParticipant(p);
                             if (img && p.beer_name) {
                               return (
                                 <button
@@ -1564,6 +1663,7 @@ export default function Home() {
                   pin: p.pin,
                   name: (p.nickname || "").trim() || p.pin,
                   beer: (p.beer_name || "").trim(),
+                  image: beerImageForParticipant(p),
                   received: combinedReceivedByPin[p.pin] ?? 0,
                   given: combinedGivenByPin[p.pin] ?? 0,
                 }));
@@ -1581,7 +1681,7 @@ export default function Home() {
                       // order: 2nd, 1st, 3rd visually (left, center, right)
                       const orderClass = i === 0 ? "order-2" : i === 1 ? "order-1" : "order-3";
                       const crown = i === 0 ? " 👑" : "";
-                      const img = beerImageForName(t.name);
+                      const img = t.image;
                       return (
                         <div key={t.pin} className={`flex flex-col items-center ${orderClass}`}>
                           <div className="w-full flex flex-col items-center">

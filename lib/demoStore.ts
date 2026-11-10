@@ -40,6 +40,7 @@ export type DemoParticipant = {
   nickname: string | null;
   active: boolean;
   beer_name?: string | null;
+  beer_image_url?: string | null;
   producer?: string | null;
   beer_type?: string | null;
   abv?: number | null;

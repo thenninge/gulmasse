@@ -31,16 +31,30 @@ export async function GET() {
     const awardUnlocked = (awardUnlockedRes.data as any)?.bool_value === true;
 
     // Participants
-    const participantsRes = await supabase
-      .from('participants')
-      .select('pin,nickname,active,beer_name,producer,beer_type,abv,given_offset,received_offset')
-      .order('created_at', { ascending: true });
-    if (participantsRes.error) throw participantsRes.error;
-    const participants = ((participantsRes.data as any[]) || []) as Array<{
+    type ParticipantRow = {
       pin: string; nickname: string | null; active: boolean;
       beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
+      beer_image_url?: string | null;
       given_offset?: number | null; received_offset?: number | null;
-    }>;
+    };
+    let participants: ParticipantRow[] = [];
+    {
+      const withImage = await supabase
+        .from('participants')
+        .select('pin,nickname,active,beer_name,producer,beer_type,abv,beer_image_url,given_offset,received_offset')
+        .order('created_at', { ascending: true });
+      if (!withImage.error) {
+        participants = ((withImage.data as ParticipantRow[]) || []);
+      } else {
+        // Older schema without beer_image_url
+        const fallback = await supabase
+          .from('participants')
+          .select('pin,nickname,active,beer_name,producer,beer_type,abv,given_offset,received_offset')
+          .order('created_at', { ascending: true });
+        if (fallback.error) throw fallback.error;
+        participants = ((fallback.data as ParticipantRow[]) || []);
+      }
+    }
 
     const activePins = participants.filter((p) => p.active).map((p) => p.pin);
     const activeCount = activePins.length;

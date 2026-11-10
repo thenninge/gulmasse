@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { staticBeerImageForName } from "@/lib/beerImages";
 
 type ScoreMatrix = {
   order: string[];
@@ -52,18 +53,7 @@ type Props = {
 type MatrixTab = "combined" | "beer" | "extra";
 
 function beerImageForName(name: string): string | null {
-  const key = name.trim().toLowerCase();
-  const map: Record<string, string> = {
-    adam: "/img/adam.png",
-    eirik: "/img/eirik.png",
-    konrad: "/img/konrad.jpg",
-    martin: "/img/martin.jpg",
-    tomas: "/img/tomas.jpg",
-    roald: "/img/roald.png",
-    kathinka: "/img/kathinka.png",
-    magnus: "/img/magnus.png",
-  };
-  return map[key] || null;
+  return staticBeerImageForName(name);
 }
 
 function MatrixTable({ matrix, title }: { matrix: ScoreMatrix; title: string }) {

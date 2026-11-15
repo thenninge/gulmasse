@@ -18,6 +18,16 @@ export async function POST(request: Request) {
     const last = rows[0] as any;
     const del = await supabase.from('picks').delete().eq('id', last.id);
     if (del.error) throw del.error;
+    // Votes already cast this round belonged to the undone pick: remove them so
+    // nobody is locked out of voting for the re-picked beer and no points stick
+    // to the beer that was put back.
+    const roundRes = await supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle();
+    if (roundRes.error && roundRes.error.code !== 'PGRST116') throw roundRes.error;
+    const round = Number((roundRes.data as { int_value?: number } | null)?.int_value ?? 1);
+    const delVotes = await supabase.from('votes').delete().eq('round', round);
+    if (delVotes.error) throw delVotes.error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('app_state') as any).upsert({ key: `revealed_pins_round_${round}`, text_value: '[]' }, { onConflict: 'key' });
     // clear picked_round and mark round_started=true so pick is unlocked again
     await (supabase.from('app_state') as any).upsert({ key: 'picked_round', int_value: 0 }, { onConflict: 'key' });
     await (supabase.from('app_state') as any).upsert({ key: 'round_started', bool_value: true }, { onConflict: 'key' });

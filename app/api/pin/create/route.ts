@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createPinBodySchema, pinSchema } from '@/lib/schemas';
-import { ensureAcceptedRegistration, getActiveEvent } from '@/lib/events';
+import {
+  duplicateNameMessage,
+  ensureAcceptedRegistration,
+  findParticipantPinByName,
+  getActiveEvent,
+} from '@/lib/events';
 import { supabase } from '@/lib/supabase';
 
 async function isPinTaken(pin: string) {
@@ -43,6 +48,12 @@ export async function POST(request: Request) {
     }
 
     const nickname = parsed.nickname ?? null;
+    if (nickname) {
+      const existingPin = await findParticipantPinByName(nickname);
+      if (existingPin && existingPin !== pin) {
+        return NextResponse.json({ error: duplicateNameMessage(nickname) }, { status: 409 });
+      }
+    }
     const ins = await (supabase.from('participants') as any).insert({ pin, nickname, active: true });
     if (ins.error) throw ins.error;
 

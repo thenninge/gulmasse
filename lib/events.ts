@@ -171,6 +171,27 @@ function normName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+/**
+ * Returns the PIN of an existing participant with the same name (case/space
+ * insensitive), or null. Used to stop the same person creating a second,
+ * "ghost" participant with a new PIN — a ghost stays active, ends up on the
+ * wheel and blocks «alle har stemt».
+ */
+export async function findParticipantPinByName(name: string): Promise<string | null> {
+  const key = normName(name || '');
+  if (!key || isLocalDemo()) return null;
+  const res = await supabase.from('participants').select('pin,nickname');
+  if (res.error) return null;
+  const hit = ((res.data as Array<{ pin: string; nickname: string | null }>) || []).find(
+    (p) => normName(p.nickname || '') === key,
+  );
+  return hit ? String(hit.pin) : null;
+}
+
+export function duplicateNameMessage(name: string): string {
+  return `Det finnes allerede en deltaker som heter «${name.trim()}». Er det deg: logg inn med PIN-en du valgte (spør verten om du har glemt den). Er du en annen person: legg til etternavn eller initial.`;
+}
+
 type RegLite = {
   id: string;
   name: string;

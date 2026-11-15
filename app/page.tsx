@@ -451,8 +451,15 @@ export default function Home() {
     if (saved) {
       setPin(saved);
       setView("lobby");
-      // Prefill from DB for existing session
-      loadProfile(saved);
+      // Prefill from DB for existing session. If the saved PIN no longer exists
+      // (e.g. deleted by an admin wipe, or left over from last year), send the user
+      // back to login instead of letting them sit on a page where voting fails.
+      loadProfile(saved).then((found) => {
+        if (found === false) {
+          goToLogin();
+          setError("Fant ikke brukeren din – logg inn med PIN-en du har fått, eller opprett bruker på nytt.");
+        }
+      });
     }
     const savedCompetitor = localStorage.getItem("competitor") || "";
     const savedProducer = localStorage.getItem("producer") || "";
@@ -855,14 +862,16 @@ export default function Home() {
     }
   }
 
-  async function loadProfile(currentPin: string) {
+  /** Returns false only when the server says the PIN does not exist. */
+  async function loadProfile(currentPin: string): Promise<boolean | null> {
     try {
       const res = await fetch("/api/pin/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin: currentPin }),
       });
-      if (!res.ok) return;
+      if (res.status === 404) return false;
+      if (!res.ok) return null;
       const data = await res.json();
       const p = data.participant as {
         nickname?: string | null;
@@ -903,8 +912,10 @@ export default function Home() {
         setStrength(s);
         localStorage.setItem("strength", s);
       }
+      return true;
     } catch {
-      // ignore
+      // ignore (network) – keep session
+      return null;
     }
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { assertHost } from '@/lib/host';
 import { supabase } from '@/lib/supabase';
+import { revealAllVotesInRound } from '@/lib/revealRound';
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
     if (revealedRound === round) {
       return NextResponse.json({ error: 'Already revealed this round' }, { status: 409 });
     }
+    // Count every vote cast so far in this round (covers voters who forgot to reveal)
+    await revealAllVotesInRound(round);
     const up1 = await (supabase.from('app_state') as any)
       .upsert({ key: 'reveal_results', bool_value: true }, { onConflict: 'key' });
     if (up1.error) throw up1.error;

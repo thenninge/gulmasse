@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { inviteSignupBodySchema } from '@/lib/schemas';
 import {
   ensureAcceptedRegistration,
+  duplicateNameMessage,
   ensureDeclinedRegistration,
+  findParticipantPinByName,
   getActiveEvent,
 } from '@/lib/events';
 import {
@@ -133,6 +135,11 @@ export async function POST(request: Request) {
         { error: 'PIN er allerede i bruk – velg en annen' },
         { status: 409 },
       );
+    }
+
+    const existingPin = await findParticipantPinByName(parsed.name);
+    if (existingPin && existingPin !== parsed.pin) {
+      return NextResponse.json({ error: duplicateNameMessage(parsed.name) }, { status: 409 });
     }
 
     await createParticipant(parsed.pin, parsed.name);

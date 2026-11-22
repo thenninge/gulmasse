@@ -447,7 +447,7 @@ export default function Home() {
     const saved = localStorage.getItem("pin") || "";
     if (saved) {
       setPin(saved);
-      setView("user");
+      setView("lobby");
       // Prefill from DB for existing session
       loadProfile(saved);
     }

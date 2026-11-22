@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getActiveEvent } from '@/lib/events';
 import { supabase } from '@/lib/supabase';
 
 export async function GET() {
@@ -242,8 +243,47 @@ export async function GET() {
     if (picksRes.error) throw picksRes.error;
     const picks = (((picksRes.data as any[]) || []) as Array<{ pin: string }>).map((r) => r.pin as string);
 
+    // Expected guests: påmeldt/invitert uten koblet PIN (eller PIN som ikke finnes ennå)
+    let expectedGuests: Array<{ name: string; status: string }> = [];
+    try {
+      const event = await getActiveEvent();
+      if (event) {
+        const regs = await supabase
+          .from('event_registrations')
+          .select('name,status,participant_pin')
+          .eq('event_id', event.id)
+          .in('status', ['accepted', 'invited']);
+        if (!regs.error) {
+          const participantPins = new Set(participants.map((p) => p.pin));
+          const participantNames = new Set(
+            participants
+              .map((p) => (p.nickname || '').trim().toLowerCase())
+              .filter(Boolean),
+          );
+          const seen = new Set<string>();
+          for (const r of (regs.data || []) as Array<{
+            name: string;
+            status: string;
+            participant_pin: string | null;
+          }>) {
+            const name = (r.name || '').trim();
+            if (!name) continue;
+            const key = name.toLowerCase();
+            if (seen.has(key) || participantNames.has(key)) continue;
+            if (r.participant_pin && participantPins.has(r.participant_pin)) continue;
+            seen.add(key);
+            expectedGuests.push({ name, status: r.status });
+          }
+          expectedGuests.sort((a, b) => a.name.localeCompare(b.name, 'nb'));
+        }
+      }
+    } catch {
+      expectedGuests = [];
+    }
+
     return NextResponse.json({
       participants,
+      expectedGuests,
       votes: {
         histogram,
         count: cnt,

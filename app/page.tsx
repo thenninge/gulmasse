@@ -35,6 +35,7 @@ export default function Home() {
     beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
     beer_image_url?: string | null;
   }>>([]);
+  const [expectedGuests, setExpectedGuests] = useState<Array<{ name: string; status: string }>>([]);
   const [beerImageUrl, setBeerImageUrl] = useState<string | null>(null);
   const [beerImageBusy, setBeerImageBusy] = useState(false);
   const [beerImageError, setBeerImageError] = useState<string | null>(null);
@@ -354,6 +355,7 @@ export default function Home() {
       if (!res.ok) throw new Error("Status fetch failed");
       const data = await res.json();
       setParticipants(data.participants || []);
+      setExpectedGuests(Array.isArray(data.expectedGuests) ? data.expectedGuests : []);
       setActiveCount(data.activeCount || 0);
       setVotedCount(data.votedCount || 0);
       setRound(data.round || 1);
@@ -1458,6 +1460,9 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <p className="text-sm text-zinc-500">
                   Deltakere: {activeCount}/{participants.length} aktive
+                  {expectedGuests.length > 0
+                    ? ` · ${expectedGuests.length} forventet`
+                    : ""}
                 </p>
                 <p className="text-xs text-zinc-500">
                   Runde {round} {statusLoading ? "…" : ""}
@@ -1536,7 +1541,7 @@ export default function Home() {
                 </button>
               </div>
               <ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
-                {participants.length === 0 && (
+                {participants.length === 0 && expectedGuests.length === 0 && (
                   <li className="px-3 py-2 text-sm text-zinc-500">Ingen deltakere</li>
                 )}
                 {participants
@@ -1613,6 +1618,21 @@ export default function Home() {
                       </li>
                     );
                   })}
+                {expectedGuests.map((g) => (
+                  <li
+                    key={`expected-${g.name}`}
+                    className="grid [grid-template-columns:28px_1.1fr_1.9fr_56px] items-center gap-1 bg-amber-50/70 px-3 py-2 text-sm text-zinc-600"
+                  >
+                    <div className="col-span-1 tabular-nums text-zinc-400">—</div>
+                    <div className="col-span-1 truncate font-medium text-zinc-800">
+                      {g.name}
+                    </div>
+                    <div className="col-span-1 truncate text-xs text-amber-900/80">
+                      Kommer · oppretter bruker på kvelden
+                    </div>
+                    <div className="col-span-1 text-right text-zinc-400">—</div>
+                  </li>
+                ))}
               </ul>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

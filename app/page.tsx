@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
-import HostRegistrations from "@/components/HostRegistrations";
-import HostHistory from "@/components/HostHistory";
 import HostParticipantEditor from "@/components/HostParticipantEditor";
 import { resolveBeerImage } from "@/lib/beerImages";
 
@@ -253,28 +251,6 @@ export default function Home() {
     });
     return map;
   }, [participants, combinedReceivedByPin, combinedGivenByPin]);
-  const liveStandingsForArchive = useMemo(() => {
-    if (!canShowScores) return [];
-    const items = participants.map((p) => ({
-      rank: combinedRankMap[p.pin] || 0,
-      name: (p.nickname || "").trim() || p.pin,
-      beer_name: p.beer_name || null,
-      producer: p.producer || null,
-      beer_type: p.beer_type || null,
-      abv: p.abv == null ? null : Number(p.abv),
-      points: combinedReceivedByPin[p.pin] ?? 0,
-      given_points: combinedGivenByPin[p.pin] ?? 0,
-    }));
-    return items
-      .filter((i) => i.rank > 0)
-      .sort((a, b) => a.rank - b.rank);
-  }, [
-    canShowScores,
-    participants,
-    combinedRankMap,
-    combinedReceivedByPin,
-    combinedGivenByPin,
-  ]);
   function beerImageForParticipant(p: {
     nickname?: string | null;
     beer_image_url?: string | null;
@@ -644,15 +620,10 @@ export default function Home() {
     }
   }
 
-  const revealResults = () => hostPost("/api/host/reveal");
   const nextRound = async () => {
     const r = await hostPost("/api/host/next-round");
     if (r) setVoted(null);
   };
-  const pickOne = () => hostPost("/api/host/pick");
-  const resetPicks = () => hostPost("/api/host/reset-picks");
-  const lockLogins = () => hostPost("/api/host/lock-logins");
-  const unlockLogins = () => hostPost("/api/host/unlock-logins");
 
   const [profileSaved, setProfileSaved] = useState(false);
   const [isPicking, setIsPicking] = useState(false);
@@ -693,7 +664,31 @@ export default function Home() {
   const [adminConfirmMessage, setAdminConfirmMessage] = useState("Denne handlingen kan ikke angres.");
   const [adminConfirmPhrase, setAdminConfirmPhrase] = useState<string | null>(null);
   const [adminConfirmTyped, setAdminConfirmTyped] = useState("");
-  const [showInviteHistory, setShowInviteHistory] = useState(false);
+  const [adminNotice, setAdminNotice] = useState<string | null>(null);
+  /** POST a host action; shows the server's error (or a success note) in Admin tools. */
+  async function adminCall(path: string, successMsg: string, body?: unknown): Promise<boolean> {
+    setAdminNotice(null);
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "x-host-pin": pin, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || `Feil (${res.status})`);
+        return false;
+      }
+      setError(null);
+      setAdminNotice(successMsg);
+      return true;
+    } catch {
+      setError("Nettverksfeil – prøv igjen");
+      return false;
+    } finally {
+      fetchStatus();
+    }
+  }
   const adminConfirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
   function confirmAdmin(
     action: () => void | Promise<void>,
@@ -1661,8 +1656,10 @@ export default function Home() {
               {(() => {
                 // Flow: Start ny runde → Finn en utvalgt → Til Votéring
                 const hasChosenThisRound = pickedRound === round;
-                const canFindChosen = !statusLoading && roundStarted && !hasChosenThisRound;
-                const canGoVote = !statusLoading && hasChosenThisRound;
+                // Not gated on statusLoading: that flips on every 2s poll and made the
+                // buttons flicker/ignore taps. Initial state already keeps both locked.
+                const canFindChosen = roundStarted && !hasChosenThisRound;
+                const canGoVote = hasChosenThisRound;
                 return (
                   <>
                     <button
@@ -2808,35 +2805,39 @@ export default function Home() {
                 {" "}Utvalg: <span className="font-medium">{roundStarted ? "åpent" : "låst"}</span>
               </div>
               <div className="text-sm text-zinc-600">
-                Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
+                Stemt: <span className="font-medium">{votedCount}/{activeCount}</span> ·
+                {" "}Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
                 {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
               </div>
+              {adminNotice && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  {adminNotice}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      const res = await fetch("/api/host/admin/reset-competition", {
-                        method: "POST",
-                        headers: { "x-host-pin": pin },
-                      });
-                      if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        setError(data.error || "Kunne ikke starte ny konkurranse");
-                        return;
-                      }
-                      setError(null);
-                      setVoted(null);
-                      setPendingVote(null);
-                      setShowMyReveal(false);
-                      setRevealedVotesMap({});
-                      setVotedPins([]);
-                      setPairTotalsMap({});
-                      setPairTotalsExtraMap({});
-                      setPairTotalsAllMap({});
-                      setPairTotalsExtraAllMap({});
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => {
+                        const ok = await adminCall("/api/host/admin/reset-competition", "Kveldens poeng og trekninger er nullstilt. Deltakere er beholdt.");
+                        if (!ok) return;
+                        setVoted(null);
+                        setPendingVote(null);
+                        setShowMyReveal(false);
+                        setRevealedVotesMap({});
+                        setVotedPins([]);
+                        setPairTotalsMap({});
+                        setPairTotalsExtraMap({});
+                        setPairTotalsAllMap({});
+                        setPairTotalsExtraAllMap({});
+                      },
+                      {
+                        title: "Ny konkurranse",
+                        message: "Sletter ALLE stemmer og trekninger i kveld og starter på runde 1. Deltakere og ølinfo beholdes.",
+                        confirmPhrase: "NY KONKURRANSE",
+                      },
+                    )
                   }
                 >
                   Ny konkurranse
@@ -2844,19 +2845,13 @@ export default function Home() {
                 <button
                   className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      const res = await fetch("/api/host/unlock-selection", {
-                        method: "POST",
-                        headers: { "x-host-pin": pin },
-                      });
-                      if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        setError(data.error || "Kunne ikke låse opp utvalg");
-                        return;
-                      }
-                      setError(null);
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/unlock-selection", "Utvalget er låst opp."); },
+                      {
+                        title: "Lås opp utvalg",
+                        message: "Åpner hjulet. Er det allerede trukket en øl i denne runden (og ingen har stemt), legges den tilbake så du kan snurre på nytt.",
+                      },
+                    )
                   }
                 >
                   Lås opp utvalg
@@ -2865,10 +2860,10 @@ export default function Home() {
                   className="rounded-xl px-4 py-3 text-white active:opacity-90"
                   style={{ backgroundColor: "#d4af37" }}
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/unlock-award", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/unlock-award", "Award ceremony er låst opp."); },
+                      { title: "Unlock award ceremony", message: "Gjør premieutdelingen tilgjengelig fra Podium for alle." },
+                    )
                   }
                 >
                   Unlock award ceremony
@@ -2880,8 +2875,13 @@ export default function Home() {
                   Snurrehjul
                 </button>
                 <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={() => confirmAdmin(async () => { await revealResults(); })}
+                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50 disabled:opacity-50"
+                  onClick={() =>
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/reveal", "Alle stemmer i denne runden er avslørt og telles med."); },
+                      { title: "Avslør resultater", message: "Avslører alle stemmer i denne runden, også for de som ikke har trykket «Avslør min stemme». Bruk etter siste runde." },
+                    )
+                  }
                   disabled={revealedRound === round}
                 >
                   Avslør resultater (én gang)
@@ -2889,12 +2889,15 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/reset-votes", { method: "POST", headers: { "x-host-pin": pin } });
-                      setVoted(null);
-                      setPendingVote(null);
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => {
+                        const ok = await adminCall("/api/host/reset-votes", `Stemmene i runde ${round} er slettet – alle kan stemme på nytt.`);
+                        if (!ok) return;
+                        setVoted(null);
+                        setPendingVote(null);
+                      },
+                      { title: "Reset stemmer", message: `Sletter alle stemmer i runde ${round}, så alle må stemme på nytt. Tidligere runder røres ikke.` },
+                    )
                   }
                 >
                   Reset stemmer
@@ -2902,10 +2905,14 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/admin/reset-received", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/admin/reset-received", "Poeng fått er nullstilt i visningen."); },
+                      {
+                        title: "Reset poeng fått = 0",
+                        message: "Skjuler alle poeng som er gitt hittil i lobby/podium (stemmene ligger fortsatt i databasen). Kan ikke angres uten «Ny konkurranse».",
+                        confirmPhrase: "NULLSTILL",
+                      },
+                    )
                   }
                 >
                   Reset poeng fått = 0
@@ -2913,19 +2920,10 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      const res = await fetch("/api/host/reset-picks", {
-                        method: "POST",
-                        headers: { "x-host-pin": pin },
-                      });
-                      if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        setError(data.error || "Kunne ikke resette utvalg");
-                        return;
-                      }
-                      setError(null);
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/reset-picks", "Alle deltakere er tilbake på hjulet."); },
+                      { title: "Resett alle deltakere", message: "Legger alle tilbake på hjulet. Sperret når det finnes stemmer (bruk da «Ny konkurranse»)." },
+                    )
                   }
                 >
                   Resett alle deltakere
@@ -2933,10 +2931,10 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/allow-reveal", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/allow-reveal", "«Avslør min stemme» er åpnet for alle som har stemt."); },
+                      { title: "Tillat avslør stemme", message: "Lar de som har stemt avsløre stemmen sin selv om ikke alle har stemt ennå." },
+                    )
                   }
                 >
                   Tillat avslør stemme
@@ -2944,10 +2942,14 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/admin/reset-given", { method: "POST", headers: { "x-host-pin": pin } });
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/admin/reset-given", "Poeng gitt er nullstilt i visningen."); },
+                      {
+                        title: "Reset poeng gitt = 0",
+                        message: "Nullstiller «poeng gitt»-tellerne (stemmene ligger fortsatt i databasen).",
+                        confirmPhrase: "NULLSTILL",
+                      },
+                    )
                   }
                 >
                   Reset poeng gitt = 0
@@ -2955,19 +2957,10 @@ export default function Home() {
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      const res = await fetch("/api/host/admin/reset-round", {
-                        method: "POST",
-                        headers: { "x-host-pin": pin },
-                      });
-                      if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        setError(data.error || "Kunne ikke resette runde");
-                        return;
-                      }
-                      setError(null);
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/admin/reset-round", "Rundenummer er nullstilt."); },
+                      { title: "Reset rundenr = 0", message: "Setter rundetelleren tilbake. Sperret når det finnes stemmer (de ville blitt overskrevet)." },
+                    )
                   }
                 >
                   Reset rundenr = 0
@@ -2975,54 +2968,33 @@ export default function Home() {
                 {loginsLocked ? (
                   <button
                     className="rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
-                    onClick={() => confirmAdmin(async () => { await unlockLogins(); })}
+                    onClick={() =>
+                      confirmAdmin(
+                        async () => { await adminCall("/api/host/unlock-logins", "Pålogging er åpnet."); },
+                        { title: "Åpne pålogging", message: "Nye brukere kan logge inn / opprette PIN igjen." },
+                      )
+                    }
                   >
                     Åpne pålogging
                   </button>
                 ) : (
                   <button
                     className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                    onClick={() => confirmAdmin(async () => { await lockLogins(); })}
+                    onClick={() =>
+                      confirmAdmin(
+                        async () => { await adminCall("/api/host/lock-logins", "Pålogging er låst."); },
+                        { title: "Lås pålogging", message: "Hindrer nye innlogginger og nye brukere. De som er logget inn fortsetter som før." },
+                      )
+                    }
                   >
                     Lås pålogging
                   </button>
                 )}
-                <button
-                  className="rounded-xl border border-sky-300 bg-sky-50 px-4 py-3 text-sky-950 active:bg-sky-100 col-span-2"
-                  onClick={() =>
-                    confirmAdmin(async () => {
-                      const res = await fetch("/api/host/admin/restore-from-registrations", {
-                        method: "POST",
-                        headers: { "x-host-pin": pin },
-                      });
-                      const data = await res.json().catch(() => ({}));
-                      if (!res.ok) {
-                        setError(data.error || "Kunne ikke gjenopprette");
-                        return;
-                      }
-                      setError(null);
-                      fetchStatus();
-                      const lines = (data.restored || []).map(
-                        (r: { name: string; pin: string }) => `${r.name}: ${r.pin}`,
-                      );
-                      alert(
-                        [
-                          data.message || "Ferdig",
-                          lines.length ? "\nNye PIN-er:\n" + lines.join("\n") : "",
-                        ]
-                          .filter(Boolean)
-                          .join(""),
-                      );
-                    })
-                  }
-                >
-                  Gjenopprett fra påmelding
-                </button>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>
                 <p className="mb-2 text-[11px] text-zinc-500">
-                  Trykk Rediger for å endre navn, øl, %, bilde m.m.
+                  Trykk Rediger for å endre navn, øl, %, bilde eller sette en som ikke kommer til inaktiv.
                 </p>
                 <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
                   {participants.map((p) => (
@@ -3032,43 +3004,25 @@ export default function Home() {
                       participant={p}
                       onChanged={() => fetchStatus()}
                       onDelete={() =>
-                        confirmAdmin(async () => {
-                          await fetch("/api/host/admin/delete-participant", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", "x-host-pin": pin },
-                            body: JSON.stringify({ pin: p.pin }),
-                          });
-                          fetchStatus();
-                        })
+                        confirmAdmin(
+                          async () => {
+                            await adminCall(
+                              "/api/host/admin/delete-participant",
+                              `${(p.nickname || "").trim() || p.pin} er slettet.`,
+                              { pin: p.pin },
+                            );
+                          },
+                          {
+                            title: `Slett ${(p.nickname || "").trim() || p.pin}?`,
+                            message: "Fjerner deltakeren helt. Er det gitt eller fått stemmer blir slettingen avvist – sett deltakeren som inaktiv i stedet.",
+                            confirmPhrase: "SLETT",
+                          },
+                        )
                       }
                     />
                   ))}
                 </ul>
               </div>
-            </div>
-            <div className="rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left active:bg-amber-50/80"
-                onClick={() => setShowInviteHistory((v) => !v)}
-                aria-expanded={showInviteHistory}
-              >
-                <div>
-                  <h3 className="text-sm font-semibold text-zinc-900">Invite &amp; History</h3>
-                  <p className="text-xs text-zinc-500">
-                    Påmelding og historikk for tidligere år (&apos;25)
-                  </p>
-                </div>
-                <span className="text-zinc-500 text-sm tabular-nums" aria-hidden>
-                  {showInviteHistory ? "▾" : "▸"}
-                </span>
-              </button>
-              {showInviteHistory && (
-                <div className="space-y-4 border-t border-amber-100 px-4 pb-4 pt-3">
-                  <HostRegistrations hostPin={pin} />
-                  <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
-                </div>
-              )}
             </div>
           </section>
         )}

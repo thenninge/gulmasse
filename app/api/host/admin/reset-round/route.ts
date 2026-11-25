@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import { assertHost } from '@/lib/host';
 import { supabase } from '@/lib/supabase';
+import { conflict, countVotes } from '@/lib/voteGuards';
 
 /** Reset round counter and unlock picking (does not delete picks/votes). */
 export async function POST(request: Request) {
   try {
     assertHost(request);
+    // Round numbers key the votes (unique round+pin): restarting the counter with
+    // votes stored would overwrite earlier rounds' votes.
+    if ((await countVotes()) > 0) {
+      return conflict(
+        'Det finnes allerede stemmer. Rundenummer kan ikke nullstilles uten å overskrive dem – bruk «Ny konkurranse» hvis alt skal startes på nytt.',
+      );
+    }
     const { error: e1 } = await (supabase.from('app_state') as any)
       .upsert({ key: 'current_round', int_value: 0 }, { onConflict: 'key' });
     if (e1) throw e1;

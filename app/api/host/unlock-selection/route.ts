@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { assertHost } from '@/lib/host';
 import { supabase } from '@/lib/supabase';
+import { conflict, countVotes, getIntState } from '@/lib/voteGuards';
 
 /**
  * Re-open picking for the current round:
@@ -12,6 +13,18 @@ export async function POST(request: Request) {
   try {
     assertHost(request);
 
+    const round = await getIntState('current_round', 1);
+    const pickedRound = await getIntState('picked_round', 0);
+    const pickedThisRound = pickedRound === round;
+
+    // Never undo a pick that already has votes: those points would stay with
+    // the beer and it could be drawn (and scored) a second time.
+    if (pickedThisRound && (await countVotes({ round })) > 0) {
+      return conflict(
+        'Det er allerede stemt i denne runden. Bruk «Reset stemmer» først hvis du virkelig vil trekke på nytt.',
+      );
+    }
+
     const lastRes = await supabase
       .from('picks')
       .select('id,pin,created_at')
@@ -20,7 +33,8 @@ export async function POST(request: Request) {
     if (lastRes.error) throw lastRes.error;
     const rows = (lastRes.data as any[]) || [];
     let undonePin: string | null = null;
-    if (rows.length > 0) {
+    // Only put back a pick made in *this* round (never last round's beer)
+    if (pickedThisRound && rows.length > 0) {
       const last = rows[0] as any;
       const del = await supabase.from('picks').delete().eq('id', last.id);
       if (del.error) throw del.error;

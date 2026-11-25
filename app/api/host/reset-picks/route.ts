@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import { assertHost } from '@/lib/host';
 import { supabase } from '@/lib/supabase';
+import { conflict, countVotes } from '@/lib/voteGuards';
 
 /** Clear all picks and unlock selection for a fresh draw. */
 export async function POST(request: Request) {
   try {
     assertHost(request);
+    // With votes stored, putting everyone back on the wheel lets beers be scored twice
+    if ((await countVotes()) > 0) {
+      return conflict(
+        'Det finnes allerede stemmer. Resett av deltakere er sperret for å hindre dobbel poenggiving – bruk «Ny konkurranse» hvis alt skal startes på nytt.',
+      );
+    }
     const del = await supabase.from('picks').delete().neq('pin', ''); // delete all
     if (del.error) throw del.error;
 

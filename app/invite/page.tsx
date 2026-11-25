@@ -3,8 +3,8 @@ import InvitePage from "@/components/InvitePage";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Invitasjon – Gulmasse '26",
-  description: "Velkommen til Gulmasse '26! Meld deg på juleøl-eventet.",
+  title: "Om Gulmasse '26",
+  description: "Hva er Gulmasse? Christmas Beer Competition – info om juleøl-eventet.",
 };
 
 export default function InviteRoutePage() {

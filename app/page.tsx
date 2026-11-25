@@ -1409,22 +1409,6 @@ export default function Home() {
         )}
         {view === "login" && (
           <section className="space-y-5">
-            {activeEvent?.registration_open && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/95 p-4 shadow-sm">
-                <p className="text-sm font-medium text-amber-950">
-                  {activeEvent.name || "Gulmasse '26"} – påmelding er åpen
-                </p>
-                {activeEvent.formatted_date && (
-                  <p className="mt-1 text-xs text-amber-900/80">{activeEvent.formatted_date}</p>
-                )}
-                <a
-                  href="/invite"
-                  className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white active:opacity-90"
-                >
-                  Åpne invitasjon & påmelding
-                </a>
-              </div>
-            )}
             <h2 className="text-xl font-semibold">Logg inn eller opprett PIN</h2>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <label className="mb-2 block text-sm text-zinc-600">4-sifret PIN</label>
@@ -1679,6 +1663,12 @@ export default function Home() {
               >
                 Full oversikt
               </button>
+              <a
+                href="/invite"
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-4 text-center text-zinc-900 active:bg-zinc-50 sm:col-span-2"
+              >
+                Om Gulmasse
+              </a>
             </div>
           </section>
         )}

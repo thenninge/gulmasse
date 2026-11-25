@@ -23,6 +23,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Participant not active' }, { status: 400 });
     }
 
+    const round = await getCurrentRound();
+    // Require an official pick for this round before accepting votes
+    const pickedRoundRes = await supabase
+      .from('app_state')
+      .select('int_value')
+      .eq('key', 'picked_round')
+      .maybeSingle();
+    if (pickedRoundRes.error && pickedRoundRes.error.code !== 'PGRST116') throw pickedRoundRes.error;
+    const pickedRound = Number((pickedRoundRes.data as any)?.int_value ?? 0);
+    if (pickedRound !== round) {
+      return NextResponse.json({ error: 'No chosen participant this round' }, { status: 409 });
+    }
+
     // Find currently selected participant (last pick)
     const pickRes = await supabase
       .from('picks')
@@ -35,8 +48,6 @@ export async function POST(request: Request) {
     if (!recipientPin) {
       return NextResponse.json({ error: 'No selected participant to receive points' }, { status: 400 });
     }
-
-    const round = await getCurrentRound();
     const payload: any = { pin, round, value, recipient_pin: recipientPin };
     let resErr = null as any;
     if (typeof extra === 'number') {

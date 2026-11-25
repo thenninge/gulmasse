@@ -152,6 +152,9 @@ export async function GET() {
     }
     const pairTotals: Array<{ from: string; to: string; total: number }> = [];
     const pairTotalsExtra: Array<{ from: string; to: string; total: number }> = [];
+    // Live (all votes) — used by host Full oversikt so scores can be verified before reveal
+    const pairTotalsAll: Array<{ from: string; to: string; total: number }> = [];
+    const pairTotalsExtraAll: Array<{ from: string; to: string; total: number }> = [];
     {
       const rows = votesPairsRows;
       // Gather revealed pins per round
@@ -176,17 +179,24 @@ export async function GET() {
       }
       const pairAgg = new Map<string, number>();
       const pairAggExtra = new Map<string, number>();
+      const pairAggAll = new Map<string, number>();
+      const pairAggExtraAll = new Map<string, number>();
       for (const r of rows) {
         const from = String((r as any).pin || '');
         const to = String((r as any).recipient_pin || '');
         const rnd = Number((r as any).round || 0);
         if (!from || !to) continue;
-        const revealedSet = roundToRevealed.get(rnd) || new Set<string>();
-        if (!revealedSet.has(from)) continue; // only include votes from givers who have revealed in that round
         const key = `${from}|${to}`;
         const v = Number((r as any).value) || 0;
-        pairAgg.set(key, (pairAgg.get(key) ?? 0) + v);
+        pairAggAll.set(key, (pairAggAll.get(key) ?? 0) + v);
         const vx = (r as any).extra_value;
+        if (typeof vx === 'number') {
+          const vv = Number(vx) || 0;
+          pairAggExtraAll.set(key, (pairAggExtraAll.get(key) ?? 0) + vv);
+        }
+        const revealedSet = roundToRevealed.get(rnd) || new Set<string>();
+        if (!revealedSet.has(from)) continue; // public matrices: only revealed givers
+        pairAgg.set(key, (pairAgg.get(key) ?? 0) + v);
         if (typeof vx === 'number') {
           const vv = Number(vx) || 0;
           pairAggExtra.set(key, (pairAggExtra.get(key) ?? 0) + vv);
@@ -209,11 +219,21 @@ export async function GET() {
         const adj = Math.max(0, total - baseline);
         if (adj > 0) pairTotals.push({ from, to, total: adj });
       }
-      // For extra totals, no offsetting currently (kept independent)
       for (const [k, total] of pairAggExtra.entries()) {
         const [from, to] = k.split('|');
         const adj = Math.max(0, total);
         if (adj > 0) pairTotalsExtra.push({ from, to, total: adj });
+      }
+      for (const [k, total] of pairAggAll.entries()) {
+        const [from, to] = k.split('|');
+        const baseline = Number(offsets[k] ?? 0);
+        const adj = Math.max(0, total - baseline);
+        if (adj > 0) pairTotalsAll.push({ from, to, total: adj });
+      }
+      for (const [k, total] of pairAggExtraAll.entries()) {
+        const [from, to] = k.split('|');
+        const adj = Math.max(0, total);
+        if (adj > 0) pairTotalsExtraAll.push({ from, to, total: adj });
       }
     }
 
@@ -309,6 +329,8 @@ export async function GET() {
       awardUnlocked,
       pairTotals,
       pairTotalsExtra,
+      pairTotalsAll,
+      pairTotalsExtraAll,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

@@ -1,4 +1,8 @@
-/** Fallback static images keyed by first name (legacy). */
+/**
+ * Legacy static map (Gulmasse '25 assets). Do NOT use as automatic fallback —
+ * matching by first name shows the wrong bottle for new participants.
+ * Kept only for explicit/admin migration helpers.
+ */
 const STATIC_BY_NAME: Record<string, string> = {
   adam: '/img/adam.png',
   eirik: '/img/eirik.png',
@@ -16,14 +20,13 @@ export function staticBeerImageForName(name: string): string | null {
   return STATIC_BY_NAME[first] || null;
 }
 
-/** Prefer uploaded URL, then legacy static map. */
+/** Only the participant's uploaded image — never legacy name-based static files. */
 export function resolveBeerImage(opts: {
   beer_image_url?: string | null;
   name?: string | null;
 }): string | null {
   const url = (opts.beer_image_url || '').trim();
-  if (url) return url;
-  return staticBeerImageForName(opts.name || '');
+  return url || null;
 }
 
 export const BEER_IMAGE_BUCKET = 'beer-images';

@@ -61,6 +61,9 @@ export default function Home() {
   const [awardUnlocked, setAwardUnlocked] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
+  /** Live (unrevealed) pair totals — host Full oversikt uses these to verify scoring */
+  const [pairTotalsAllMap, setPairTotalsAllMap] = useState<Record<string, Record<string, number>>>({});
+  const [pairTotalsExtraAllMap, setPairTotalsExtraAllMap] = useState<Record<string, Record<string, number>>>({});
   const [sumFactor, setSumFactor] = useState<number>(0.5);
   const [showWelcome, setShowWelcome] = useState(false);
   const extraGivenByPin = useMemo(() => {
@@ -387,31 +390,29 @@ export default function Home() {
       });
       setUserReceived(recvMap);
       setRevealedRound(data.revealedRound || 0);
-      setPickedRound(data.pickedRound || 0);
+      setPickedRound(typeof data.pickedRound === "number" ? data.pickedRound : 0);
       setRoundStarted(Boolean(data.roundStarted));
       setAllowReveal(Boolean(data.allowReveal));
       setAwardUnlocked(Boolean(data.awardUnlocked));
       // build pair totals map: from -> to -> total
-      const pMap: Record<string, Record<string, number>> = {};
-      (data.pairTotals || []).forEach((pt: { from: string; to: string; total: number }) => {
-        const f = String(pt?.from || "");
-        const t = String(pt?.to || "");
-        const val = Number(pt?.total || 0);
-        if (!f || !t) return;
-        if (!pMap[f]) pMap[f] = {};
-        pMap[f][t] = (pMap[f][t] ?? 0) + val;
-      });
-      setPairTotalsMap(pMap);
-      const pxMap: Record<string, Record<string, number>> = {};
-      (data.pairTotalsExtra || []).forEach((pt: { from: string; to: string; total: number }) => {
-        const f = String(pt?.from || "");
-        const t = String(pt?.to || "");
-        const val = Number(pt?.total || 0);
-        if (!f || !t) return;
-        if (!pxMap[f]) pxMap[f] = {};
-        pxMap[f][t] = (pxMap[f][t] ?? 0) + val;
-      });
-      setPairTotalsExtraMap(pxMap);
+      function buildPairMap(
+        rows: Array<{ from: string; to: string; total: number }> | undefined,
+      ): Record<string, Record<string, number>> {
+        const m: Record<string, Record<string, number>> = {};
+        (rows || []).forEach((pt) => {
+          const f = String(pt?.from || "");
+          const t = String(pt?.to || "");
+          const val = Number(pt?.total || 0);
+          if (!f || !t) return;
+          if (!m[f]) m[f] = {};
+          m[f][t] = (m[f][t] ?? 0) + val;
+        });
+        return m;
+      }
+      setPairTotalsMap(buildPairMap(data.pairTotals));
+      setPairTotalsExtraMap(buildPairMap(data.pairTotalsExtra));
+      setPairTotalsAllMap(buildPairMap(data.pairTotalsAll));
+      setPairTotalsExtraAllMap(buildPairMap(data.pairTotalsExtraAll));
     } catch {
       // noop
     } finally {
@@ -1635,28 +1636,40 @@ export default function Home() {
               </ul>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                className="rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
-                onClick={() => setView("voting")}
-                disabled={pickedRound !== round}
-                title={pickedRound !== round ? "Finn en utvalgt først" : undefined}
-              >
-                Til Votéring!
-              </button>
-              <button
-                className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
-                onClick={() => setView("picker")}
-                disabled={!roundStarted || pickedRound === round}
-                title={
-                  !roundStarted
-                    ? "Verten må starte ny runde først"
-                    : pickedRound === round
-                      ? "Utvalgt er allerede funnet denne runden"
-                      : undefined
-                }
-              >
-                Finn en utvalgt
-              </button>
+              {(() => {
+                // Flow: Start ny runde → Finn en utvalgt → Til Votéring
+                const hasChosenThisRound = pickedRound === round;
+                const canFindChosen = !statusLoading && roundStarted && !hasChosenThisRound;
+                const canGoVote = !statusLoading && hasChosenThisRound;
+                return (
+                  <>
+                    <button
+                      className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
+                      onClick={() => setView("picker")}
+                      disabled={!canFindChosen}
+                      title={
+                        statusLoading
+                          ? "Laster…"
+                          : !roundStarted
+                            ? "Verten må starte ny runde først"
+                            : hasChosenThisRound
+                              ? "Utvalgt er allerede funnet denne runden"
+                              : undefined
+                      }
+                    >
+                      1. Finn en utvalgt
+                    </button>
+                    <button
+                      className="rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
+                      onClick={() => setView("voting")}
+                      disabled={!canGoVote}
+                      title={!canGoVote ? "Finn en utvalgt først" : undefined}
+                    >
+                      2. Til Votéring!
+                    </button>
+                  </>
+                );
+              })()}
               <button
                 className="rounded-xl bg-[#D94E53] px-4 py-4 text-white opacity-80 active:opacity-90"
                 onClick={() => setView("overview")}
@@ -1665,7 +1678,7 @@ export default function Home() {
               </button>
               <a
                 href="/invite"
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-4 text-center text-zinc-900 active:bg-zinc-50 sm:col-span-2"
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-4 text-center text-zinc-900 active:bg-zinc-50"
               >
                 Om Gulmasse
               </a>
@@ -2374,9 +2387,44 @@ export default function Home() {
                 Lobby
               </button>
             </div>
+            {(() => {
+              // Host sees live votes (all); others only after reveal — so host can verify scoring
+              const ovPair = isHost ? pairTotalsAllMap : pairTotalsMap;
+              const ovExtra = isHost ? pairTotalsExtraAllMap : pairTotalsExtraMap;
+              const ovGiven: Record<string, number> = {};
+              const ovRecv: Record<string, number> = {};
+              let ovTotal = 0;
+              for (const from of Object.keys(ovPair)) {
+                for (const to of Object.keys(ovPair[from] || {})) {
+                  const v = Number(ovPair[from][to] || 0);
+                  if (v <= 0) continue;
+                  ovGiven[from] = (ovGiven[from] ?? 0) + v;
+                  ovRecv[to] = (ovRecv[to] ?? 0) + v;
+                  ovTotal += v;
+                }
+              }
+              const ovExtraGiven: Record<string, number> = {};
+              const ovExtraRecv: Record<string, number> = {};
+              let ovExtraTotal = 0;
+              for (const from of Object.keys(ovExtra)) {
+                for (const to of Object.keys(ovExtra[from] || {})) {
+                  const v = Number(ovExtra[from][to] || 0);
+                  if (v <= 0) continue;
+                  ovExtraGiven[from] = (ovExtraGiven[from] ?? 0) + v;
+                  ovExtraRecv[to] = (ovExtraRecv[to] ?? 0) + v;
+                  ovExtraTotal += v;
+                }
+              }
+              return (
+            <>
             <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm overflow-x-auto">
-              <div className="mb-2 text-sm font-bold text-zinc-700">
+              <div className="mb-1 text-sm font-bold text-zinc-700">
                 Beer points:
+              </div>
+              <div className="mb-2 text-[11px] text-zinc-500">
+                {isHost
+                  ? "Vert: viser alle stemmer live (også før avsløring)."
+                  : "Viser kun stemmer som er avslørt."}
               </div>
               {isHost && (
                 <div className="mb-3 flex justify-end">
@@ -2408,7 +2456,7 @@ export default function Home() {
                         const abv = p?.abv != null ? Number(p.abv).toFixed(1) : "";
                         const givenTot = userGiven[fromPin] ?? 0;
                         const recvTot = userReceived[fromPin] ?? 0;
-                        const pairVals = toOrder.map(toPin => pairTotalsMap[fromPin]?.[toPin] ?? 0);
+                        const pairVals = toOrder.map(toPin => ovPair[fromPin]?.[toPin] ?? 0);
                         const row = [fromPin,name,beer,prod,type,abv, givenTot, recvTot, ...pairVals];
                         return row.map(cell).join(",");
                       });
@@ -2424,7 +2472,7 @@ export default function Home() {
                       ];
                       const rowsExtra = giverOrder.map(fromPin => {
                         const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
-                        const pairVals = toOrder.map(toPin => pairTotalsExtraMap[fromPin]?.[toPin] ?? 0);
+                        const pairVals = toOrder.map(toPin => ovExtra[fromPin]?.[toPin] ?? 0);
                         const sumGiven = pairVals.reduce((a, b) => a + (Number(b) || 0), 0);
                         const row = [name, ...pairVals, sumGiven];
                         return row.map(cell).join(",");
@@ -2442,8 +2490,8 @@ export default function Home() {
                       const rowsCombined = giverOrder.map(fromPin => {
                         const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
                         const pairVals = toOrder.map(toPin => {
-                          const main = pairTotalsMap[fromPin]?.[toPin] ?? 0;
-                          const extra = pairTotalsExtraMap[fromPin]?.[toPin] ?? 0;
+                          const main = ovPair[fromPin]?.[toPin] ?? 0;
+                          const extra = ovExtra[fromPin]?.[toPin] ?? 0;
                           const val = Number(main) + Number(sumFactor) * Number(extra);
                           return Number.isFinite(val) ? Number(val.toFixed(1)) : 0;
                         });
@@ -2499,7 +2547,7 @@ export default function Home() {
                             {giverName}
                           </th>
                           {participants.map((rec) => {
-                            const val = pairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
+                            const val = ovPair[giver.pin]?.[rec.pin] ?? 0;
                             return (
                               <td key={rec.pin} className="p-2 border-b border-zinc-200 tabular-nums text-center">
                                 {val > 0 ? val : "—"}
@@ -2507,7 +2555,7 @@ export default function Home() {
                             );
                           })}
                           <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
-                            {(revealedGivenByPin[giver.pin] ?? 0) > 0 ? (revealedGivenByPin[giver.pin] ?? 0) : "—"}
+                            {(ovGiven[giver.pin] ?? 0) > 0 ? (ovGiven[giver.pin] ?? 0) : "—"}
                           </td>
                         </tr>
                       );
@@ -2519,7 +2567,7 @@ export default function Home() {
                         Sum mottatt
                       </th>
                       {participants.map((rec) => {
-                        const colSum = revealedReceivedByPin[rec.pin] ?? 0;
+                        const colSum = ovRecv[rec.pin] ?? 0;
                         return (
                           <td key={`sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
                             {colSum > 0 ? colSum : "—"}
@@ -2527,7 +2575,7 @@ export default function Home() {
                         );
                       })}
                       <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
-                        {totalRevealedMain > 0 ? totalRevealedMain : "—"}
+                        {ovTotal > 0 ? ovTotal : "—"}
                       </td>
                     </tr>
                   </tfoot>
@@ -2569,7 +2617,7 @@ export default function Home() {
                             {giverName}
                           </th>
                           {participants.map((rec) => {
-                            const val = pairTotalsExtraMap[giver.pin]?.[rec.pin] ?? 0;
+                            const val = ovExtra[giver.pin]?.[rec.pin] ?? 0;
                             return (
                               <td key={`x-${rec.pin}`} className="p-2 border-b border-zinc-200 tabular-nums text-center">
                                 {val > 0 ? val : "—"}
@@ -2577,7 +2625,7 @@ export default function Home() {
                             );
                           })}
                           <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
-                            {(extraGivenByPin[giver.pin] ?? 0) > 0 ? (extraGivenByPin[giver.pin] ?? 0) : "—"}
+                            {(ovExtraGiven[giver.pin] ?? 0) > 0 ? (ovExtraGiven[giver.pin] ?? 0) : "—"}
                           </td>
                         </tr>
                       );
@@ -2589,7 +2637,7 @@ export default function Home() {
                         Sum mottatt (ekstra)
                       </th>
                       {participants.map((rec) => {
-                        const colSum = extraReceivedByPin[rec.pin] ?? 0;
+                        const colSum = ovExtraRecv[rec.pin] ?? 0;
                         return (
                           <td key={`x-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
                             {colSum > 0 ? colSum : "—"}
@@ -2597,7 +2645,7 @@ export default function Home() {
                         );
                       })}
                       <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
-                        {totalRevealedExtra > 0 ? totalRevealedExtra : "—"}
+                        {ovExtraTotal > 0 ? ovExtraTotal : "—"}
                       </td>
                     </tr>
                   </tfoot>
@@ -2650,14 +2698,17 @@ export default function Home() {
                   <tbody>
                     {participants.map((giver) => {
                       const giverName = (giver.nickname || "").trim() || giver.pin;
+                      let rowSum = 0;
                       return (
                         <tr key={`s-${giver.pin}`} className="odd:bg-white even:bg-zinc-50">
                           <th className="sticky left-0 z-10 bg-inherit p-2 text-left font-medium text-zinc-700 border-b border-zinc-200">
                             {giverName}
                           </th>
                           {participants.map((rec) => {
-                            const raw = combinedPairTotalsMap[giver.pin]?.[rec.pin] ?? 0;
-                            const val = Number(raw);
+                            const main = ovPair[giver.pin]?.[rec.pin] ?? 0;
+                            const extra = ovExtra[giver.pin]?.[rec.pin] ?? 0;
+                            const val = Number(main) + Number(sumFactor) * Number(extra);
+                            rowSum += Number.isFinite(val) ? val : 0;
                             const txt = Number.isFinite(val) ? val.toFixed(1) : "—";
                             return (
                               <td key={`s-${rec.pin}`} className="p-2 border-b border-zinc-200 tabular-nums text-center">
@@ -2666,7 +2717,7 @@ export default function Home() {
                             );
                           })}
                           <td className="p-2 border-b border-zinc-200 tabular-nums text-right font-medium">
-                            {(combinedGivenByPin[giver.pin] ?? 0) > 0 ? (combinedGivenByPin[giver.pin] ?? 0).toFixed(1) : "—"}
+                            {rowSum > 0 ? rowSum.toFixed(1) : "—"}
                           </td>
                         </tr>
                       );
@@ -2678,7 +2729,8 @@ export default function Home() {
                         Sum mottatt (sum)
                       </th>
                       {participants.map((rec) => {
-                        const colSum = combinedReceivedByPin[rec.pin] ?? 0;
+                        const colSum =
+                          (ovRecv[rec.pin] ?? 0) + Number(sumFactor) * (ovExtraRecv[rec.pin] ?? 0);
                         return (
                           <td key={`s-sum-${rec.pin}`} className="p-2 border-t border-zinc-200 tabular-nums text-center font-semibold">
                             {colSum > 0 ? colSum.toFixed(1) : "—"}
@@ -2686,13 +2738,19 @@ export default function Home() {
                         );
                       })}
                       <td className="p-2 border-t border-zinc-200 tabular-nums text-right font-semibold">
-                        {totalCombined > 0 ? totalCombined.toFixed(1) : "—"}
+                        {(() => {
+                          const t = ovTotal + Number(sumFactor) * ovExtraTotal;
+                          return t > 0 ? t.toFixed(1) : "—";
+                        })()}
                       </td>
                     </tr>
                   </tfoot>
                 </table>
               )}
             </div>
+            </>
+              );
+            })()}
           </section>
         )}
 

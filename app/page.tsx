@@ -681,7 +681,7 @@ export default function Home() {
     }
   }, [votedPins, pin, voted]);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
-  const [showInviteHistory, setShowInviteHistory] = useState(true);
+  const [showInviteHistory, setShowInviteHistory] = useState(false);
   const adminConfirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
   function confirmAdmin(action: () => void | Promise<void>) {
     adminConfirmActionRef.current = action;
@@ -1483,7 +1483,11 @@ export default function Home() {
                 {isHost ? (
                   <button
                     className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white active:opacity-90"
-                    onClick={() => confirmAdmin(async () => { await nextRound(); fetchStatus(); })}
+                    onClick={() => confirmAdmin(async () => {
+                      setError(null);
+                      await nextRound();
+                      fetchStatus();
+                    })}
                   >
                     Start ny runde
                   </button>
@@ -2282,8 +2286,21 @@ export default function Home() {
                   <button
                     className="rounded-lg border border-zinc-300 px-3 py-2 text-sm active:bg-zinc-50"
                     onClick={async () => {
-                      await fetch("/api/host/undo-pick", { method: "POST", headers: { "x-host-pin": pin } }).catch(()=>null);
-                      fetchStatus();
+                      try {
+                        const res = await fetch("/api/host/undo-pick", {
+                          method: "POST",
+                          headers: { "x-host-pin": pin },
+                        });
+                        if (!res.ok) {
+                          const data = await res.json().catch(() => ({}));
+                          setError(data.error || "Kunne ikke legge tilbake");
+                          return;
+                        }
+                        setError(null);
+                        fetchStatus();
+                      } catch {
+                        setError("Nettverksfeil ved legg tilbake");
+                      }
                     }}
                     disabled={picks.length === 0}
                   >
@@ -2714,69 +2731,14 @@ export default function Home() {
                 Tilbake til lobby
               </button>
             </div>
-            <div className="rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left active:bg-amber-50/80"
-                onClick={() => setShowInviteHistory((v) => !v)}
-                aria-expanded={showInviteHistory}
-              >
-                <div>
-                  <h3 className="text-sm font-semibold text-zinc-900">Invite &amp; History</h3>
-                  <p className="text-xs text-zinc-500">
-                    Påmelding, fjorårshistorikk og start av Gulmasse &apos;26
-                  </p>
-                </div>
-                <span className="text-zinc-500 text-sm tabular-nums" aria-hidden>
-                  {showInviteHistory ? "▾" : "▸"}
-                </span>
-              </button>
-              {showInviteHistory && (
-                <div className="space-y-4 border-t border-amber-100 px-4 pb-4 pt-3">
-                  <HostRegistrations hostPin={pin} />
-                  <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm space-y-3">
-                    <h3 className="text-sm font-medium text-emerald-950">Gulmasse &apos;26 – clean slate</h3>
-                    <p className="text-xs text-emerald-900/80">
-                      Nullstiller live-poeng og fjorårets deltakere. Beholder historikk for &apos;25 under «Tidligere år».
-                      Påmeldte til &apos;26 (og host) beholdes.
-                    </p>
-                    <button
-                      className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-white active:opacity-90"
-                      onClick={() =>
-                        confirmAdmin(async () => {
-                          const res = await fetch("/api/host/admin/start-year", {
-                            method: "POST",
-                            headers: { "x-host-pin": pin },
-                          });
-                          const data = await res.json().catch(() => ({}));
-                          if (!res.ok) {
-                            setError(data.error || "Kunne ikke starte '26");
-                            return;
-                          }
-                          setVoted(null);
-                          setPendingVote(null);
-                          setShowMyReveal(false);
-                          setRevealedVotesMap({});
-                          setVotedPins([]);
-                          setParticipants([]);
-                          setPairTotalsMap({});
-                          setPairTotalsExtraMap({});
-                          fetchStatus();
-                          alert(data.message || "Gulmasse '26 er nullstilt");
-                        })
-                      }
-                    >
-                      Start Gulmasse &apos;26 (slett live-data)
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-3">
               <div className="text-sm text-zinc-600">
                 Runde: <span className="font-medium">{round}</span> ·
-                {" "}Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
+                {" "}Valgt i runde: <span className="font-medium">{pickedRound > 0 ? pickedRound : "—"}</span> ·
+                {" "}Utvalg: <span className="font-medium">{roundStarted ? "åpent" : "låst"}</span>
+              </div>
+              <div className="text-sm text-zinc-600">
+                Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
                 {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -2789,6 +2751,7 @@ export default function Home() {
                         headers: { "x-host-pin": pin },
                       });
                       // local clears
+                      setError(null);
                       setVoted(null);
                       setPendingVote(null);
                       setShowMyReveal(false);
@@ -2804,7 +2767,16 @@ export default function Home() {
                   className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>
                     confirmAdmin(async () => {
-                      await fetch("/api/host/unlock-selection", { method: "POST", headers: { "x-host-pin": pin } });
+                      const res = await fetch("/api/host/unlock-selection", {
+                        method: "POST",
+                        headers: { "x-host-pin": pin },
+                      });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        setError(data.error || "Kunne ikke låse opp utvalg");
+                        return;
+                      }
+                      setError(null);
                       fetchStatus();
                     })
                   }
@@ -2865,7 +2837,16 @@ export default function Home() {
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
                     confirmAdmin(async () => {
-                      await fetch("/api/host/reset-picks", { method: "POST", headers: { "x-host-pin": pin } });
+                      const res = await fetch("/api/host/reset-picks", {
+                        method: "POST",
+                        headers: { "x-host-pin": pin },
+                      });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        setError(data.error || "Kunne ikke resette utvalg");
+                        return;
+                      }
+                      setError(null);
                       fetchStatus();
                     })
                   }
@@ -2898,7 +2879,16 @@ export default function Home() {
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
                   onClick={() =>
                     confirmAdmin(async () => {
-                      await fetch("/api/host/admin/reset-round", { method: "POST", headers: { "x-host-pin": pin } });
+                      const res = await fetch("/api/host/admin/reset-round", {
+                        method: "POST",
+                        headers: { "x-host-pin": pin },
+                      });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        setError(data.error || "Kunne ikke resette runde");
+                        return;
+                      }
+                      setError(null);
                       fetchStatus();
                     })
                   }
@@ -2948,7 +2938,66 @@ export default function Home() {
                 </ul>
               </div>
             </div>
-            <div className="grid grid-cols-1" />
+            <div className="rounded-2xl border border-amber-200 bg-white shadow-sm overflow-hidden">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left active:bg-amber-50/80"
+                onClick={() => setShowInviteHistory((v) => !v)}
+                aria-expanded={showInviteHistory}
+              >
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900">Invite &amp; History</h3>
+                  <p className="text-xs text-zinc-500">
+                    Påmelding, fjorårshistorikk og start av Gulmasse &apos;26
+                  </p>
+                </div>
+                <span className="text-zinc-500 text-sm tabular-nums" aria-hidden>
+                  {showInviteHistory ? "▾" : "▸"}
+                </span>
+              </button>
+              {showInviteHistory && (
+                <div className="space-y-4 border-t border-amber-100 px-4 pb-4 pt-3">
+                  <HostRegistrations hostPin={pin} />
+                  <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm space-y-3">
+                    <h3 className="text-sm font-medium text-emerald-950">Gulmasse &apos;26 – clean slate</h3>
+                    <p className="text-xs text-emerald-900/80">
+                      Nullstiller live-poeng og fjorårets deltakere. Beholder historikk for &apos;25 under «Tidligere år».
+                      Påmeldte til &apos;26 (og host) beholdes.
+                    </p>
+                    <button
+                      className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-white active:opacity-90"
+                      onClick={() =>
+                        confirmAdmin(async () => {
+                          const res = await fetch("/api/host/admin/start-year", {
+                            method: "POST",
+                            headers: { "x-host-pin": pin },
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            setError(data.error || "Kunne ikke starte '26");
+                            return;
+                          }
+                          setVoted(null);
+                          setPendingVote(null);
+                          setShowMyReveal(false);
+                          setRevealedVotesMap({});
+                          setVotedPins([]);
+                          setParticipants([]);
+                          setPairTotalsMap({});
+                          setPairTotalsExtraMap({});
+                          setError(null);
+                          fetchStatus();
+                          alert(data.message || "Gulmasse '26 er nullstilt");
+                        })
+                      }
+                    >
+                      Start Gulmasse &apos;26 (slett live-data)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
         )}
         {showAdminConfirm && (

@@ -2800,100 +2800,35 @@ export default function Home() {
                 Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
                 {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
               </div>
-              <div className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-3 text-xs text-sky-950 space-y-2 col-span-2">
-                <p className="font-semibold text-sm">Gjenoppretting etter utilsiktet sletting</p>
-                <p className="text-sky-900/90">
-                  Historikk for &apos;25 ligger i egne tabeller (Invite &amp; History → Tidligere år / «Importer Gulmasse &apos;25»).
-                  Årets <span className="font-medium">påmeldinger</span> skal fortsatt finnes. Trykk under for å lage
-                  nye PIN-er til alle som er «Kommer» men mangler live-bruker.
-                </p>
-                <button
-                  className="w-full rounded-xl bg-sky-700 px-4 py-3 text-sm font-medium text-white active:opacity-90"
-                  onClick={() =>
-                    confirmAdmin(
-                      async () => {
-                        const res = await fetch("/api/host/admin/restore-from-registrations", {
-                          method: "POST",
-                          headers: { "x-host-pin": pin },
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok) {
-                          setError(data.error || "Kunne ikke gjenopprette");
-                          return;
-                        }
-                        setError(null);
-                        fetchStatus();
-                        const lines = (data.restored || []).map(
-                          (r: { name: string; pin: string }) => `${r.name}: ${r.pin}`,
-                        );
-                        alert(
-                          [
-                            data.message || "Ferdig",
-                            lines.length ? "\nNye PIN-er:\n" + lines.join("\n") : "",
-                            data.already_linked?.length
-                              ? `\nAllerede koblet: ${data.already_linked.length}`
-                              : "",
-                            data.skipped?.length ? `\nHoppet over: ${data.skipped.length}` : "",
-                          ]
-                            .filter(Boolean)
-                            .join(""),
-                        );
-                      },
-                      {
-                        title: "Gjenopprett deltakere fra påmelding?",
-                        message:
-                          "Oppretter nye PIN-er for «Kommer»-påmeldinger som mangler live-bruker. Sletter ingenting. Ølinfo må fylles inn på nytt.",
-                      },
-                    )
-                  }
-                >
-                  Gjenopprett deltakere fra påmelding
-                </button>
-              </div>
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-950">
-                <p className="font-medium">Start kvelden trygt</p>
-                <p className="mt-0.5 text-emerald-900/80">
-                  «Nullstill kveldens poeng» sletter bare stemmer/utvalg — deltakere og ølprofiler blir værende.
-                  Historikk for &apos;25 ligger under Invite &amp; History → Tidligere år.
-                </p>
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90 col-span-2"
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
                   onClick={() =>
-                    confirmAdmin(
-                      async () => {
-                        const res = await fetch("/api/host/admin/reset-competition", {
-                          method: "POST",
-                          headers: { "x-host-pin": pin },
-                        });
+                    confirmAdmin(async () => {
+                      const res = await fetch("/api/host/admin/reset-competition", {
+                        method: "POST",
+                        headers: { "x-host-pin": pin },
+                      });
+                      if (!res.ok) {
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok) {
-                          setError(data.error || "Kunne ikke nullstille");
-                          return;
-                        }
-                        setError(null);
-                        setVoted(null);
-                        setPendingVote(null);
-                        setShowMyReveal(false);
-                        setRevealedVotesMap({});
-                        setVotedPins([]);
-                        setPairTotalsMap({});
-                        setPairTotalsExtraMap({});
-                        setPairTotalsAllMap({});
-                        setPairTotalsExtraAllMap({});
-                        fetchStatus();
-                        alert(data.message || "Kveldens poeng er nullstilt. Deltakere er beholdt.");
-                      },
-                      {
-                        title: "Nullstill kveldens poeng?",
-                        message:
-                          "Sletter alle stemmer og utvalg, og setter runde til 1. Deltakere, PIN-er og ølprofiler beholdes. Historikk for '25 røres ikke.",
-                      },
-                    )
+                        setError(data.error || "Kunne ikke starte ny konkurranse");
+                        return;
+                      }
+                      setError(null);
+                      setVoted(null);
+                      setPendingVote(null);
+                      setShowMyReveal(false);
+                      setRevealedVotesMap({});
+                      setVotedPins([]);
+                      setPairTotalsMap({});
+                      setPairTotalsExtraMap({});
+                      setPairTotalsAllMap({});
+                      setPairTotalsExtraAllMap({});
+                      fetchStatus();
+                    })
                   }
                 >
-                  Nullstill kveldens poeng
+                  Ny konkurranse
                 </button>
                 <button
                   className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
@@ -2917,7 +2852,7 @@ export default function Home() {
                 </button>
                 <button
                   className="rounded-xl px-4 py-3 text-white active:opacity-90"
-                  style={{ backgroundColor: '#d4af37' }}
+                  style={{ backgroundColor: "#d4af37" }}
                   onClick={() =>
                     confirmAdmin(async () => {
                       await fetch("/api/host/unlock-award", { method: "POST", headers: { "x-host-pin": pin } });
@@ -2945,7 +2880,6 @@ export default function Home() {
                   onClick={() =>
                     confirmAdmin(async () => {
                       await fetch("/api/host/reset-votes", { method: "POST", headers: { "x-host-pin": pin } });
-                      // local hint: clear my local locked state immediately
                       setVoted(null);
                       setPendingVote(null);
                       fetchStatus();
@@ -2983,7 +2917,7 @@ export default function Home() {
                     })
                   }
                 >
-                  Nullstill utvalg (picks)
+                  Resett alle deltakere
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
@@ -3042,6 +2976,37 @@ export default function Home() {
                     Lås pålogging
                   </button>
                 )}
+                <button
+                  className="rounded-xl border border-sky-300 bg-sky-50 px-4 py-3 text-sky-950 active:bg-sky-100 col-span-2"
+                  onClick={() =>
+                    confirmAdmin(async () => {
+                      const res = await fetch("/api/host/admin/restore-from-registrations", {
+                        method: "POST",
+                        headers: { "x-host-pin": pin },
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) {
+                        setError(data.error || "Kunne ikke gjenopprette");
+                        return;
+                      }
+                      setError(null);
+                      fetchStatus();
+                      const lines = (data.restored || []).map(
+                        (r: { name: string; pin: string }) => `${r.name}: ${r.pin}`,
+                      );
+                      alert(
+                        [
+                          data.message || "Ferdig",
+                          lines.length ? "\nNye PIN-er:\n" + lines.join("\n") : "",
+                        ]
+                          .filter(Boolean)
+                          .join(""),
+                      );
+                    })
+                  }
+                >
+                  Gjenopprett fra påmelding
+                </button>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-zinc-700 mb-2">Deltakere</h4>
@@ -3091,58 +3056,6 @@ export default function Home() {
                 <div className="space-y-4 border-t border-amber-100 px-4 pb-4 pt-3">
                   <HostRegistrations hostPin={pin} />
                   <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
-                  <div className="rounded-2xl border border-red-300 bg-red-50 p-4 shadow-sm space-y-3">
-                    <h3 className="text-sm font-medium text-red-950">Farezone – slett live deltakere</h3>
-                    <p className="text-xs text-red-900/90">
-                      Dette er <span className="font-semibold">ikke</span> «slett 2025». Det sletter
-                      årets live deltakere, stemmer og utvalg i konkurranse-databasen. Historikk for
-                      &apos;25 under «Tidligere år» beholdes. Bruk bare hvis du bevisst vil tømme
-                      årets live-oppsett. For å starte kvelden på nytt: bruk «Nullstill kveldens poeng» over.
-                    </p>
-                    <button
-                      className="w-full rounded-xl bg-red-700 px-4 py-3 text-white active:opacity-90"
-                      onClick={() =>
-                        confirmAdmin(
-                          async () => {
-                            const res = await fetch("/api/host/admin/start-year", {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                "x-host-pin": pin,
-                              },
-                              body: JSON.stringify({ confirm: "SLETT LIVE DELTAKERE" }),
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (!res.ok) {
-                              setError(data.error || "Kunne ikke slette live-data");
-                              return;
-                            }
-                            setVoted(null);
-                            setPendingVote(null);
-                            setShowMyReveal(false);
-                            setRevealedVotesMap({});
-                            setVotedPins([]);
-                            setParticipants([]);
-                            setPairTotalsMap({});
-                            setPairTotalsExtraMap({});
-                            setPairTotalsAllMap({});
-                            setPairTotalsExtraAllMap({});
-                            setError(null);
-                            fetchStatus();
-                            alert(data.message || "Live deltakere/poeng er slettet");
-                          },
-                          {
-                            title: "Slett årets live deltakere?",
-                            message:
-                              "Dette sletter årets live deltakere, stemmer og utvalg. Det sletter IKKE historikk for '25. For å bekrefte: skriv SLETT LIVE DELTAKERE under.",
-                            confirmPhrase: "SLETT LIVE DELTAKERE",
-                          },
-                        )
-                      }
-                    >
-                      Slett årets live deltakere…
-                    </button>
-                  </div>
                 </div>
               )}
             </div>

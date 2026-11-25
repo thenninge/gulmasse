@@ -2800,6 +2800,56 @@ export default function Home() {
                 Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
                 {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
               </div>
+              <div className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-3 text-xs text-sky-950 space-y-2 col-span-2">
+                <p className="font-semibold text-sm">Gjenoppretting etter utilsiktet sletting</p>
+                <p className="text-sky-900/90">
+                  Historikk for &apos;25 ligger i egne tabeller (Invite &amp; History → Tidligere år / «Importer Gulmasse &apos;25»).
+                  Årets <span className="font-medium">påmeldinger</span> skal fortsatt finnes. Trykk under for å lage
+                  nye PIN-er til alle som er «Kommer» men mangler live-bruker.
+                </p>
+                <button
+                  className="w-full rounded-xl bg-sky-700 px-4 py-3 text-sm font-medium text-white active:opacity-90"
+                  onClick={() =>
+                    confirmAdmin(
+                      async () => {
+                        const res = await fetch("/api/host/admin/restore-from-registrations", {
+                          method: "POST",
+                          headers: { "x-host-pin": pin },
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setError(data.error || "Kunne ikke gjenopprette");
+                          return;
+                        }
+                        setError(null);
+                        fetchStatus();
+                        const lines = (data.restored || []).map(
+                          (r: { name: string; pin: string }) => `${r.name}: ${r.pin}`,
+                        );
+                        alert(
+                          [
+                            data.message || "Ferdig",
+                            lines.length ? "\nNye PIN-er:\n" + lines.join("\n") : "",
+                            data.already_linked?.length
+                              ? `\nAllerede koblet: ${data.already_linked.length}`
+                              : "",
+                            data.skipped?.length ? `\nHoppet over: ${data.skipped.length}` : "",
+                          ]
+                            .filter(Boolean)
+                            .join(""),
+                        );
+                      },
+                      {
+                        title: "Gjenopprett deltakere fra påmelding?",
+                        message:
+                          "Oppretter nye PIN-er for «Kommer»-påmeldinger som mangler live-bruker. Sletter ingenting. Ølinfo må fylles inn på nytt.",
+                      },
+                    )
+                  }
+                >
+                  Gjenopprett deltakere fra påmelding
+                </button>
+              </div>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-950">
                 <p className="font-medium">Start kvelden trygt</p>
                 <p className="mt-0.5 text-emerald-900/80">

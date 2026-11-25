@@ -682,10 +682,21 @@ export default function Home() {
     }
   }, [votedPins, pin, voted]);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
+  const [adminConfirmTitle, setAdminConfirmTitle] = useState("Er du sikker?");
+  const [adminConfirmMessage, setAdminConfirmMessage] = useState("Denne handlingen kan ikke angres.");
+  const [adminConfirmPhrase, setAdminConfirmPhrase] = useState<string | null>(null);
+  const [adminConfirmTyped, setAdminConfirmTyped] = useState("");
   const [showInviteHistory, setShowInviteHistory] = useState(false);
   const adminConfirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
-  function confirmAdmin(action: () => void | Promise<void>) {
+  function confirmAdmin(
+    action: () => void | Promise<void>,
+    opts?: { title?: string; message?: string; confirmPhrase?: string },
+  ) {
     adminConfirmActionRef.current = action;
+    setAdminConfirmTitle(opts?.title || "Er du sikker?");
+    setAdminConfirmMessage(opts?.message || "Denne handlingen kan ikke angres.");
+    setAdminConfirmPhrase(opts?.confirmPhrase || null);
+    setAdminConfirmTyped("");
     setShowAdminConfirm(true);
   }
 
@@ -2789,27 +2800,50 @@ export default function Home() {
                 Revealed: <span className="font-medium">{reveal ? "ja" : "nei"}</span> ·
                 {" "}Pålogging: <span className="font-medium">{loginsLocked ? "låst" : "åpen"}</span>
               </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-950">
+                <p className="font-medium">Start kvelden trygt</p>
+                <p className="mt-0.5 text-emerald-900/80">
+                  «Nullstill kveldens poeng» sletter bare stemmer/utvalg — deltakere og ølprofiler blir værende.
+                  Historikk for &apos;25 ligger under Invite &amp; History → Tidligere år.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"
+                  className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90 col-span-2"
                   onClick={() =>
-                    confirmAdmin(async () => {
-                      await fetch("/api/host/admin/reset-competition", {
-                        method: "POST",
-                        headers: { "x-host-pin": pin },
-                      });
-                      // local clears
-                      setError(null);
-                      setVoted(null);
-                      setPendingVote(null);
-                      setShowMyReveal(false);
-                      setRevealedVotesMap({});
-                      setVotedPins([]);
-                      fetchStatus();
-                    })
+                    confirmAdmin(
+                      async () => {
+                        const res = await fetch("/api/host/admin/reset-competition", {
+                          method: "POST",
+                          headers: { "x-host-pin": pin },
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setError(data.error || "Kunne ikke nullstille");
+                          return;
+                        }
+                        setError(null);
+                        setVoted(null);
+                        setPendingVote(null);
+                        setShowMyReveal(false);
+                        setRevealedVotesMap({});
+                        setVotedPins([]);
+                        setPairTotalsMap({});
+                        setPairTotalsExtraMap({});
+                        setPairTotalsAllMap({});
+                        setPairTotalsExtraAllMap({});
+                        fetchStatus();
+                        alert(data.message || "Kveldens poeng er nullstilt. Deltakere er beholdt.");
+                      },
+                      {
+                        title: "Nullstill kveldens poeng?",
+                        message:
+                          "Sletter alle stemmer og utvalg, og setter runde til 1. Deltakere, PIN-er og ølprofiler beholdes. Historikk for '25 røres ikke.",
+                      },
+                    )
                   }
                 >
-                  Ny konkurranse
+                  Nullstill kveldens poeng
                 </button>
                 <button
                   className="rounded-xl bg-pink-600 px-4 py-3 text-white active:opacity-90"
@@ -2899,7 +2933,7 @@ export default function Home() {
                     })
                   }
                 >
-                  Resett alle deltakere
+                  Nullstill utvalg (picks)
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
@@ -2996,7 +3030,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900">Invite &amp; History</h3>
                   <p className="text-xs text-zinc-500">
-                    Påmelding, fjorårshistorikk og start av Gulmasse &apos;26
+                    Påmelding og historikk for tidligere år (&apos;25)
                   </p>
                 </div>
                 <span className="text-zinc-500 text-sm tabular-nums" aria-hidden>
@@ -3007,40 +3041,56 @@ export default function Home() {
                 <div className="space-y-4 border-t border-amber-100 px-4 pb-4 pt-3">
                   <HostRegistrations hostPin={pin} />
                   <HostHistory hostPin={pin} liveStandings={liveStandingsForArchive} />
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm space-y-3">
-                    <h3 className="text-sm font-medium text-emerald-950">Gulmasse &apos;26 – clean slate</h3>
-                    <p className="text-xs text-emerald-900/80">
-                      Nullstiller live-poeng og fjorårets deltakere. Beholder historikk for &apos;25 under «Tidligere år».
-                      Påmeldte til &apos;26 (og host) beholdes.
+                  <div className="rounded-2xl border border-red-300 bg-red-50 p-4 shadow-sm space-y-3">
+                    <h3 className="text-sm font-medium text-red-950">Farezone – slett live deltakere</h3>
+                    <p className="text-xs text-red-900/90">
+                      Dette er <span className="font-semibold">ikke</span> «slett 2025». Det sletter
+                      årets live deltakere, stemmer og utvalg i konkurranse-databasen. Historikk for
+                      &apos;25 under «Tidligere år» beholdes. Bruk bare hvis du bevisst vil tømme
+                      årets live-oppsett. For å starte kvelden på nytt: bruk «Nullstill kveldens poeng» over.
                     </p>
                     <button
-                      className="w-full rounded-xl bg-emerald-700 px-4 py-3 text-white active:opacity-90"
+                      className="w-full rounded-xl bg-red-700 px-4 py-3 text-white active:opacity-90"
                       onClick={() =>
-                        confirmAdmin(async () => {
-                          const res = await fetch("/api/host/admin/start-year", {
-                            method: "POST",
-                            headers: { "x-host-pin": pin },
-                          });
-                          const data = await res.json().catch(() => ({}));
-                          if (!res.ok) {
-                            setError(data.error || "Kunne ikke starte '26");
-                            return;
-                          }
-                          setVoted(null);
-                          setPendingVote(null);
-                          setShowMyReveal(false);
-                          setRevealedVotesMap({});
-                          setVotedPins([]);
-                          setParticipants([]);
-                          setPairTotalsMap({});
-                          setPairTotalsExtraMap({});
-                          setError(null);
-                          fetchStatus();
-                          alert(data.message || "Gulmasse '26 er nullstilt");
-                        })
+                        confirmAdmin(
+                          async () => {
+                            const res = await fetch("/api/host/admin/start-year", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                "x-host-pin": pin,
+                              },
+                              body: JSON.stringify({ confirm: "SLETT LIVE DELTAKERE" }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok) {
+                              setError(data.error || "Kunne ikke slette live-data");
+                              return;
+                            }
+                            setVoted(null);
+                            setPendingVote(null);
+                            setShowMyReveal(false);
+                            setRevealedVotesMap({});
+                            setVotedPins([]);
+                            setParticipants([]);
+                            setPairTotalsMap({});
+                            setPairTotalsExtraMap({});
+                            setPairTotalsAllMap({});
+                            setPairTotalsExtraAllMap({});
+                            setError(null);
+                            fetchStatus();
+                            alert(data.message || "Live deltakere/poeng er slettet");
+                          },
+                          {
+                            title: "Slett årets live deltakere?",
+                            message:
+                              "Dette sletter årets live deltakere, stemmer og utvalg. Det sletter IKKE historikk for '25. For å bekrefte: skriv SLETT LIVE DELTAKERE under.",
+                            confirmPhrase: "SLETT LIVE DELTAKERE",
+                          },
+                        )
                       }
                     >
-                      Start Gulmasse &apos;26 (slett live-data)
+                      Slett årets live deltakere…
                     </button>
                   </div>
                 </div>
@@ -3053,33 +3103,58 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            onClick={() => setShowAdminConfirm(false)}
+            onClick={() => {
+              setShowAdminConfirm(false);
+              adminConfirmActionRef.current = null;
+            }}
           >
             <div
               className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold">Er du sikker?</h3>
-              <p className="mt-2 text-sm text-zinc-700">Denne handlingen kan ikke angres.</p>
+              <h3 className="text-lg font-semibold">{adminConfirmTitle}</h3>
+              <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">{adminConfirmMessage}</p>
+              {adminConfirmPhrase && (
+                <div className="mt-3">
+                  <label className="mb-1 block text-xs font-medium text-red-800">
+                    Skriv <span className="font-mono">{adminConfirmPhrase}</span> for å bekrefte
+                  </label>
+                  <input
+                    className="w-full rounded-xl border border-red-300 bg-white px-3 py-2 text-sm font-mono"
+                    value={adminConfirmTyped}
+                    onChange={(e) => setAdminConfirmTyped(e.target.value)}
+                    placeholder={adminConfirmPhrase}
+                    autoFocus
+                  />
+                </div>
+              )}
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   className="rounded-lg border border-zinc-300 px-4 py-2 active:bg-zinc-50"
-                  onClick={() => setShowAdminConfirm(false)}
+                  onClick={() => {
+                    setShowAdminConfirm(false);
+                    adminConfirmActionRef.current = null;
+                  }}
                 >
-                  Nei
+                  Avbryt
                 </button>
                 <button
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white active:opacity-90"
+                  className={`rounded-lg px-4 py-2 text-white active:opacity-90 disabled:opacity-40 ${
+                    adminConfirmPhrase ? "bg-red-700" : "bg-blue-600"
+                  }`}
+                  disabled={Boolean(adminConfirmPhrase) && adminConfirmTyped.trim() !== adminConfirmPhrase}
                   onClick={async () => {
                     try {
                       await (adminConfirmActionRef.current?.() as any);
                     } finally {
                       setShowAdminConfirm(false);
                       adminConfirmActionRef.current = null;
+                      setAdminConfirmTyped("");
+                      setAdminConfirmPhrase(null);
                     }
                   }}
                 >
-                  Ja
+                  Bekreft
                 </button>
               </div>
             </div>

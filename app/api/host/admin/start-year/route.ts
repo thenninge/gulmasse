@@ -11,9 +11,24 @@ const HOST_PIN = process.env.HOST_PIN || '0808';
  * - Clears live votes, picks, and old participants
  * - Keeps host PIN and anyone already påmeldt to gulmasse-2026
  */
+const CONFIRM_PHRASE = 'SLETT LIVE DELTAKERE';
+
 export async function POST(request: Request) {
   try {
     assertHost(request);
+
+    const body = await request.json().catch(() => ({}));
+    const confirm = typeof (body as { confirm?: unknown })?.confirm === 'string'
+      ? String((body as { confirm: string }).confirm).trim()
+      : '';
+    if (confirm !== CONFIRM_PHRASE) {
+      return NextResponse.json(
+        {
+          error: `Bekreft med confirm: "${CONFIRM_PHRASE}". Dette sletter årets live deltakere/poeng (ikke historikk for '25).`,
+        },
+        { status: 400 },
+      );
+    }
 
     if (isLocalDemo()) {
       const store = getDemoStore();
@@ -24,12 +39,13 @@ export async function POST(request: Request) {
         year: 2026,
         kept_pins: [HOST_PIN],
         deleted_participants: 0,
-        message: "Gulmasse '26 er klar (demo) – live-data nullstilt. Historikk for '25 er beholdt.",
+        message:
+          "FARE: Live deltakere/poeng er slettet (demo). Historikk under Tidligere år er uendret.",
         demo: true,
       });
     }
 
-    // 1) Clear live competition scores
+    // 1) Clear LIVE competition scores (current year DB — NOT the archived '25 tables)
     const delVotes = await supabase.from('votes').delete().neq('pin', '');
     if (delVotes.error) throw delVotes.error;
     const delPicks = await supabase.from('picks').delete().neq('pin', '');
@@ -158,7 +174,10 @@ export async function POST(request: Request) {
       year: 2026,
       kept_pins: Array.from(keepPins),
       deleted_participants: toDelete.length,
-      message: "Gulmasse '26 er klar – live-poeng og gamle deltakere er nullstilt. Historikk for '25 er beholdt.",
+      message:
+        "Live deltakere/poeng er slettet. Historikk for '25 under Tidligere år er beholdt. Opprett deltakere på nytt for kvelden.",
+      warning:
+        "Dette slettet årets live-database (participants/votes/picks), ikke year_standings for 2025.",
     });
   } catch (e: unknown) {
     const status =

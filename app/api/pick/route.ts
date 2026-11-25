@@ -15,6 +15,13 @@ export async function POST(request: Request) {
     if (pickedRound === round) {
       return NextResponse.json({ error: 'Already picked this round' }, { status: 409 });
     }
+    // Require host to have started the round (lobby unlocks "Finn en utvalgt")
+    const roundStartedRes = await supabase.from('app_state').select('bool_value').eq('key', 'round_started').maybeSingle();
+    if (roundStartedRes.error) throw roundStartedRes.error;
+    const roundStarted = (roundStartedRes.data as any)?.bool_value === true;
+    if (!roundStarted) {
+      return NextResponse.json({ error: 'Round not started' }, { status: 409 });
+    }
     const requestedPin = typeof (body as any)?.pin === 'string' ? (body as any).pin : undefined;
 
     // Active participants

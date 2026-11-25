@@ -511,18 +511,15 @@ export default function Home() {
     }
   }, [showWelcome]);
   
-  // Drop hat on voter view when selected changes; keep until leaving voting
+  // Hat on voting: drop when this round has an official pick; do NOT clear while on
+  // picker (celebration uses the same hatDrop flag). Clear only when leaving both.
   useEffect(() => {
-    if (view === "voting" && selected) {
+    if (view === "voting" && selected && pickedRound === round) {
       setHatDrop(true);
-    }
-  }, [view, selected?.pin]);
-  // Clear hat when leaving voting
-  useEffect(() => {
-    if (view !== "voting") {
+    } else if (view !== "voting" && view !== "picker") {
       setHatDrop(false);
     }
-  }, [view]);
+  }, [view, selected?.pin, pickedRound, round]);
 
   // When round changes, reset local voting state so everyone can vote again
   useEffect(() => {
@@ -700,7 +697,12 @@ export default function Home() {
         audioCtxRef.current = null;
       }
     }
-    return audioCtxRef.current;
+    const ctx = audioCtxRef.current;
+    // Browsers suspend AudioContext until a user gesture; resume on spin click
+    if (ctx && ctx.state === "suspended") {
+      void ctx.resume().catch(() => {});
+    }
+    return ctx;
   }
 
   function playBeep(freq: number, durationMs: number, gainLevel = 0.06) {
@@ -1038,10 +1040,10 @@ export default function Home() {
               <img
                 src="/img/mcga.png"
                 alt=""
-                className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
-                style={{ top: "-80px" } as any}
+                className="pointer-events-none absolute left-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
+                style={{ top: "8px" } as any}
               />
-              <div className="text-2xl font-extrabold tracking-wide text-emerald-700">
+              <div className="mt-14 text-2xl font-extrabold tracking-wide text-emerald-700">
                 WELCOME TO GULMASSE!
               </div>
               <div className="mt-1 text-lg font-semibold text-zinc-800">
@@ -1087,12 +1089,20 @@ export default function Home() {
               <PickerWheel
                 participants={participants
                   .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: false }))}
+                onSpinStart={() => {
+                  getAudio();
+                  startDrumroll();
+                }}
+                onSpinEnd={() => {
+                  stopDrumroll();
+                }}
                 onPick={async (picked) => {
                   const match = participants.find(x => x.pin === picked.id);
                   setLastPicked({
                     name: (match?.nickname || "").trim() || picked.name,
                     beerName: (match?.beer_name || "").trim() || undefined,
                   });
+                  stopDrumroll();
                   playFanfare();
                   setHatDrop(true);
                   setShowCelebration(true);
@@ -1104,16 +1114,17 @@ export default function Home() {
                 }}
               />
               {showCelebration && (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
-                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl relative">
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-white/85 backdrop-blur-sm">
+                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 pt-16 text-center shadow-xl relative">
                     <div className="text-xs uppercase tracking-wide text-emerald-700">Valgt</div>
                     <div className="mt-1 relative">
                       {hatDrop && (
                         <img
+                          key={`wheel-hat-${lastPicked?.name || "x"}`}
                           src="/img/mcga.png"
                           alt=""
-                          className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
-                          style={{ top: "-80px" } as any}
+                          className="pointer-events-none absolute left-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
+                          style={{ top: "-72px" } as any}
                         />
                       )}
                       <div className="text-2xl font-bold text-emerald-900">
@@ -1637,8 +1648,10 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
-                className="rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90"
+                className="rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={() => setView("voting")}
+                disabled={pickedRound !== round}
+                title={pickedRound !== round ? "Finn en utvalgt først" : undefined}
               >
                 Til Votéring!
               </button>
@@ -1646,8 +1659,15 @@ export default function Home() {
                 className="rounded-xl bg-emerald-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={() => setView("picker")}
                 disabled={!roundStarted || pickedRound === round}
+                title={
+                  !roundStarted
+                    ? "Verten må starte ny runde først"
+                    : pickedRound === round
+                      ? "Utvalgt er allerede funnet denne runden"
+                      : undefined
+                }
               >
-                Find the chosen one
+                Finn en utvalgt
               </button>
               <button
                 className="rounded-xl bg-[#D94E53] px-4 py-4 text-white opacity-80 active:opacity-90"
@@ -1758,9 +1778,9 @@ export default function Home() {
                 Lobby
               </button>
         </div>
-            {selected && (
+            {pickedRound === round && selected ? (
               <>
-                <div className="rounded-xl border border-zinc-200 bg-white px-4 py-4">
+                <div className="rounded-xl border border-zinc-200 bg-white px-4 py-4 overflow-visible">
                   <div className="text-xs uppercase tracking-wide text-zinc-500">Vi stemmer over:</div>
                   <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-4">
                     {selected.image && (
@@ -1776,13 +1796,14 @@ export default function Home() {
                         />
                       </button>
                     )}
-                  <div className="relative min-w-0 text-center">
+                  <div className="relative min-w-0 pt-16 text-center">
                     {hatDrop && (
                       <img
+                        key={`vote-hat-${selected.pin}-${pickedRound}`}
                         src="/img/mcga.png"
                         alt=""
-                        className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-[4.5rem] w-[4.5rem] md:h-[5.25rem] md:w-[5.25rem]"
-                        style={{ top: "-84px" } as any}
+                        className="pointer-events-none absolute left-1/2 animate-hatdrop h-[4.5rem] w-[4.5rem] md:h-[5.25rem] md:w-[5.25rem]"
+                        style={{ top: "0px" } as any}
                       />
                     )}
                       <div className="text-2xl md:text-3xl font-bold text-zinc-900 truncate">
@@ -1845,6 +1866,10 @@ export default function Home() {
                   </div>
                 )}
               </>
+            ) : (
+              <div className="rounded-xl border border-zinc-200 bg-white px-4 py-6 text-center text-sm text-zinc-600">
+                Ingen utvalgt denne runden ennå. Gå til <span className="font-medium">Finn en utvalgt</span> først.
+              </div>
             )}
             <div className="text-center text-sm font-medium text-zinc-700">Beer points:</div>
             <div className="grid grid-cols-3 gap-3">
@@ -2138,7 +2163,7 @@ export default function Home() {
                 Lobby
               </button>
             </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4 relative overflow-hidden">
+              <div className={`rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4 relative ${showCelebration ? "overflow-visible" : "overflow-hidden"}`}>
               <div className="flex items-center justify-between">
                 <div className="text-sm text-zinc-600">
                   Gjenstående:{" "}
@@ -2149,10 +2174,17 @@ export default function Home() {
               </div>
               {/* PickerWheel component */}
               <PickerWheel
-                disabled={pickedRound === round}
+                disabled={pickedRound === round || !roundStarted}
                 participants={participants
                   .filter(p => p.active)
                   .map(p => ({ id: p.pin, name: (p.nickname || "").trim() || p.pin, selected: picks.includes(p.pin) }))}
+                onSpinStart={() => {
+                  getAudio();
+                  startDrumroll();
+                }}
+                onSpinEnd={() => {
+                  stopDrumroll();
+                }}
                 onPick={async (picked) => {
                   // Persist pick server-side; only proceed if it succeeds so voting recipient is authoritative
                   let persistedPin: string | null = null;
@@ -2171,12 +2203,15 @@ export default function Home() {
                         const jerr = await res.json();
                         msg = jerr?.error || "";
                       } catch {}
+                      stopDrumroll();
                       if (res.status === 409) {
                         // Known conflict cases: already picked this round or no candidates left
                         if (/already picked/i.test(msg)) {
                           setError("Det er allerede gjort et valg i denne runden.");
                         } else if (/No candidates left/i.test(msg)) {
                           setError("Ingen deltakere igjen å velge. Bruk 'Resett alle deltakere'.");
+                        } else if (/Round not started/i.test(msg)) {
+                          setError("Runden er ikke startet. Verten må trykke «Start ny runde».");
                         } else {
                           setError(msg || "Kan ikke gjøre nytt valg nå.");
                         }
@@ -2190,6 +2225,7 @@ export default function Home() {
                     // network error handled below
                   }
                   if (!persistedPin) {
+                    stopDrumroll();
                     setError("Kunne ikke lagre utvalg – prøv igjen");
                     return;
                   }
@@ -2204,6 +2240,7 @@ export default function Home() {
                   setShowMyReveal(false);
                   setRevealedVotesMap({});
                   setVotedPins([]);
+                  stopDrumroll();
                   playFanfare();
                   setHatDrop(true);
                   setShowCelebration(true);
@@ -2211,7 +2248,7 @@ export default function Home() {
                     // @ts-ignore
                     navigator.vibrate?.([60, 40, 80]);
                   }
-                  setTimeout(() => { setShowCelebration(false); setHatDrop(false); }, 3000);
+                  setTimeout(() => { setShowCelebration(false); /* keep hat for voting view */ }, 3000);
                   // Oppdater status slik at "Ferdig dystet!" og Votering reflekterer valget
                   fetchStatus();
                 }}
@@ -2263,16 +2300,17 @@ export default function Home() {
                 </button>
               </div>
               {showCelebration && (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm">
-                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 text-center shadow-xl relative">
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-white/85 backdrop-blur-sm">
+                  <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 pt-16 text-center shadow-xl relative">
                     <div className="text-xs uppercase tracking-wide text-emerald-700">Valgt</div>
                     <div className="mt-1 relative">
                       {hatDrop && (
                         <img
+                          key={`pick-hat-${lastPicked?.name || selected?.name || "x"}`}
                           src="/img/mcga.png"
                           alt=""
-                          className="pointer-events-none absolute left-1/2 -translate-x-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
-                          style={{ top: "-80px" } as any}
+                          className="pointer-events-none absolute left-1/2 animate-hatdrop h-16 w-16 md:h-20 md:w-20"
+                          style={{ top: "-72px" } as any}
                         />
                       )}
                       <div className="text-2xl font-bold text-emerald-900">
@@ -2307,6 +2345,11 @@ export default function Home() {
               {pickedRound === round && (
                 <div className="pt-2 text-center text-sm text-zinc-600">
                   Denne runden er valgt. Vent til neste runde eller bruk "Legg tilbake".
+                </div>
+              )}
+              {!roundStarted && pickedRound !== round && (
+                <div className="pt-2 text-center text-sm text-zinc-600">
+                  Verten må trykke «Start ny runde» før dere kan spinne.
                 </div>
               )}
             </div>

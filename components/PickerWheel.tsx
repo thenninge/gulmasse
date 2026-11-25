@@ -7,6 +7,9 @@ export type Participant = { id: string; name: string; selected: boolean };
 export type PickerWheelProps = {
   participants: Participant[];
   onPick: (picked: Participant) => void;
+  /** Fired synchronously on the Spin click (user gesture) — use for AudioContext / drumroll */
+  onSpinStart?: () => void;
+  onSpinEnd?: () => void;
   disabled?: boolean;
   spinDurationMs?: number;
 };
@@ -26,6 +29,8 @@ function arcPath(cx: number, cy: number, r: number, startAngle: number, endAngle
 export function PickerWheel({
   participants,
   onPick,
+  onSpinStart,
+  onSpinEnd,
   disabled,
   spinDurationMs = 3500,
 }: PickerWheelProps) {
@@ -70,11 +75,14 @@ export function PickerWheel({
     const absoluteTarget = indexToTargetAngle(idxInVisible, n, turns, jitter);
     const deltaToAlign = ((absoluteTarget - base) + 360 * 16) % 360 + (absoluteTarget >= 360 ? Math.floor(absoluteTarget / 360) * 360 : 0);
     const target = angle + deltaToAlign;
+    // Must run in the click gesture so AudioContext can start/resume
+    onSpinStart?.();
     setSpinning(true);
     setAngle(target);
     setTimeout(() => {
       setSpinning(false);
       setPostPause(true);
+      onSpinEnd?.();
       onPick(picked);
       // keep hat resting and wheel paused briefly
       setTimeout(() => setPostPause(false), 1500);

@@ -18,6 +18,12 @@ export async function POST(request: Request) {
     if (pickedRound === round) {
       return NextResponse.json({ error: 'Already picked this round' }, { status: 409 });
     }
+    const roundStartedRes = await supabase.from('app_state').select('bool_value').eq('key', 'round_started').maybeSingle();
+    if (roundStartedRes.error) throw roundStartedRes.error;
+    const roundStarted = (roundStartedRes.data as any)?.bool_value === true;
+    if (!roundStarted) {
+      return NextResponse.json({ error: 'Round not started' }, { status: 409 });
+    }
     const participantsRes = await supabase
       .from('participants')
       .select('pin')

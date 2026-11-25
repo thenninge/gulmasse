@@ -26,14 +26,18 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Animations used in picker and effects */
+/* Animations used in picker and effects.
+   Use translate/rotate properties (Tailwind v4) so we don't fight
+   utility classes that also set `translate` instead of `transform`. */
 @keyframes hatdrop {
-  0% { transform: translate(-50%, -120px) rotate(-10deg); opacity: 0; }
-  80% { transform: translate(-50%, 4px) rotate(2deg); opacity: 1; }
-  100% { transform: translate(-50%, 0) rotate(0deg); opacity: 1; }
+  0% { translate: -50% -120px; rotate: -10deg; opacity: 0; }
+  80% { translate: -50% 4px; rotate: 2deg; opacity: 1; }
+  100% { translate: -50% 0; rotate: 0deg; opacity: 1; }
 }
 .animate-hatdrop {
   animation: hatdrop 900ms ease-out both;
+  /* left-1/2 positions the anchor; keyframes handle the -50% self-center */
+  left: 50%;
 }
 
 @keyframes confetti-fall {

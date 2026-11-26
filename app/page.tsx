@@ -5,6 +5,7 @@ import PickerWheel from "@/components/PickerWheel";
 import HostParticipantEditor from "@/components/HostParticipantEditor";
 import { resolveBeerImage } from "@/lib/beerImages";
 import { shrinkImageForUpload } from "@/lib/resizeImage";
+import { buildResultsCsv } from "@/lib/exportCsv";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -2512,81 +2513,18 @@ export default function Home() {
                   <button
                     className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs text-white active:opacity-90"
                     onClick={() => {
-                      // build CSV of beer info + totals + pairwise given
-                      const giverOrder = participants.map(p => p.pin);
-                      const toOrder = participants.map(p => p.pin);
-                      const header = [
-                        "PIN","Navn","Ølnavn","Produsent","Øltype","ABV",
-                        "Poeng gitt (total)","Poeng fått (total)",
-                        ...toOrder.map(pin => {
-                          const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
-                          return `Gitt til ${name}`;
-                        })
-                      ];
-                      function cell(v: any) {
-                        const s = v === null || v === undefined ? "" : String(v);
-                        if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
-                        return s;
-                      }
-                      const rows = giverOrder.map(fromPin => {
-                        const p = participants.find(x=>x.pin===fromPin);
-                        const name = (p?.nickname || "").trim() || fromPin;
-                        const beer = (p?.beer_name || "").trim();
-                        const prod = (p?.producer || "").trim();
-                        const type = (p?.beer_type || "").trim();
-                        const abv = p?.abv != null ? Number(p.abv).toFixed(1) : "";
-                        const givenTot = userGiven[fromPin] ?? 0;
-                        const recvTot = userReceived[fromPin] ?? 0;
-                        const pairVals = toOrder.map(toPin => ovPair[fromPin]?.[toPin] ?? 0);
-                        const row = [fromPin,name,beer,prod,type,abv, givenTot, recvTot, ...pairVals];
-                        return row.map(cell).join(",");
+                      // Results + who-gave-what matrices, Excel-friendly (see lib/exportCsv)
+                      const csv = buildResultsCsv({
+                        participants,
+                        pair: ovPair,
+                        extra: ovExtra,
+                        factor: Number(sumFactor) || 0,
                       });
-                      const csvMain = [header.map(cell).join(","), ...rows].join("\n");
-                      // Extra matrix (no totals for now)
-                      const headerExtra = [
-                        "Giver",
-                        ...toOrder.map(pin => {
-                          const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
-                          return `${name}`;
-                        }),
-                        "Sum gitt (ekstra)"
-                      ];
-                      const rowsExtra = giverOrder.map(fromPin => {
-                        const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
-                        const pairVals = toOrder.map(toPin => ovExtra[fromPin]?.[toPin] ?? 0);
-                        const sumGiven = pairVals.reduce((a, b) => a + (Number(b) || 0), 0);
-                        const row = [name, ...pairVals, sumGiven];
-                        return row.map(cell).join(",");
-                      });
-                      const csvExtra = [headerExtra.map(cell).join(","), ...rowsExtra].join("\n");
-                      // Combined (factor)
-                      const headerCombined = [
-                        `Giver (Sum of points; factor=${sumFactor})`,
-                        ...toOrder.map(pin => {
-                          const name = (participants.find(x=>x.pin===pin)?.nickname || "").trim() || pin;
-                          return `${name}`;
-                        }),
-                        "Sum gitt (sum)"
-                      ];
-                      const rowsCombined = giverOrder.map(fromPin => {
-                        const name = (participants.find(x=>x.pin===fromPin)?.nickname || "").trim() || fromPin;
-                        const pairVals = toOrder.map(toPin => {
-                          const main = ovPair[fromPin]?.[toPin] ?? 0;
-                          const extra = ovExtra[fromPin]?.[toPin] ?? 0;
-                          const val = Number(main) + Number(sumFactor) * Number(extra);
-                          return Number.isFinite(val) ? Number(val.toFixed(1)) : 0;
-                        });
-                        const sumGiven = pairVals.reduce((a, b) => a + (Number(b) || 0), 0);
-                        const row = [name, ...pairVals, Number(sumGiven.toFixed(1))];
-                        return row.map(cell).join(",");
-                      });
-                      const csvCombined = [headerCombined.map(cell).join(","), ...rowsCombined].join("\n");
-                      const csv = [csvMain, "", csvExtra, "", csvCombined].join("\n");
                       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `poengtabell.csv`;
+                      a.download = `gulmasse-26-resultat-${new Date().toISOString().slice(0, 10)}.csv`;
                       document.body.appendChild(a);
                       a.click();
                       a.remove();

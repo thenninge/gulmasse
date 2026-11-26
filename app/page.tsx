@@ -677,6 +677,7 @@ export default function Home() {
   const drumRef = useRef<number | null>(null);
   const [showBeerImage, setShowBeerImage] = useState(false);
   const [lobbyImageSrc, setLobbyImageSrc] = useState<string | null>(null);
+  const [lobbyBeerOpen, setLobbyBeerOpen] = useState(false);
   const [lobbyImageTitle, setLobbyImageTitle] = useState<string>("");
   const [lobbyImageProducer, setLobbyImageProducer] = useState<string>("");
   const [lobbyImageBeerType, setLobbyImageBeerType] = useState<string>("");
@@ -1436,47 +1437,63 @@ export default function Home() {
           </section>
         )}
 
-        {/* Lobby beer image modal */}
-        {lobbyImageSrc && (
+        {/* Lobby beer info modal: image (if any) shrinks to fit, info always visible */}
+        {lobbyBeerOpen && (
           <div
             role="dialog"
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-            onClick={() => setLobbyImageSrc(null)}
+            onClick={() => { setLobbyBeerOpen(false); setLobbyImageSrc(null); }}
           >
             <div
-              className="relative max-h-[90vh] max-w-[90vw] rounded-xl bg-white p-2"
+              className="relative flex max-h-[90dvh] w-full max-w-sm flex-col overflow-y-auto rounded-2xl bg-white shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                className="absolute right-2 top-2 rounded-md bg-white/90 px-2 py-1 text-sm shadow"
-                onClick={() => setLobbyImageSrc(null)}
+                className="absolute right-2 top-2 z-10 rounded-md bg-white/90 px-2 py-1 text-sm shadow"
+                onClick={() => { setLobbyBeerOpen(false); setLobbyImageSrc(null); }}
                 aria-label="Lukk"
               >
                 ✕
               </button>
-              <img
-                src={lobbyImageSrc}
-                alt={lobbyImageName || "Ølbilde"}
-                className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain"
-              />
-              {(lobbyImageName || lobbyImageBeerName || lobbyImageProducer || lobbyImageBeerType || lobbyImageAbv) && (
-                <div className="mt-2 px-2 text-center text-sm text-zinc-700">
-                  {lobbyImageName && <div className="font-semibold text-base">{lobbyImageName}</div>}
-                  {lobbyImageBeerName && (
-                    <div>Ølnavn: <span className="font-medium text-zinc-800">{lobbyImageBeerName}</span></div>
-                  )}
-                  {lobbyImageProducer && (
-                    <div>Produsent: <span className="font-medium text-zinc-800">{lobbyImageProducer}</span></div>
-                  )}
-                  {lobbyImageBeerType && (
-                    <div>Øltype: <span className="font-medium text-zinc-800">{lobbyImageBeerType}</span></div>
-                  )}
-                  {lobbyImageAbv && (
-                    <div>ABV: <span className="font-medium text-zinc-800">{lobbyImageAbv}%</span></div>
-                  )}
+              {lobbyImageSrc && (
+                <div className="flex shrink items-center justify-center bg-zinc-50 p-3">
+                  {/* Fixed max height (not %): tall, narrow photos can never push the info out */}
+                  <img
+                    src={lobbyImageSrc}
+                    alt={lobbyImageBeerName || lobbyImageName || "Ølbilde"}
+                    className="max-h-[min(55dvh,calc(90dvh-12rem))] w-auto max-w-full rounded-lg object-contain"
+                  />
                 </div>
               )}
+              <div className="shrink-0 border-t border-zinc-100 px-4 pb-4 pt-3 text-sm text-zinc-700">
+                {lobbyImageBeerName && (
+                  <div className="pr-8 text-lg font-semibold leading-tight text-zinc-900">{lobbyImageBeerName}</div>
+                )}
+                {lobbyImageName && <div className="text-zinc-500">{lobbyImageName}</div>}
+                {(lobbyImageProducer || lobbyImageBeerType || lobbyImageAbv) && (
+                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    {lobbyImageProducer && (
+                      <>
+                        <dt className="text-zinc-500">Produsent</dt>
+                        <dd className="font-medium text-zinc-800">{lobbyImageProducer}</dd>
+                      </>
+                    )}
+                    {lobbyImageBeerType && (
+                      <>
+                        <dt className="text-zinc-500">Øltype</dt>
+                        <dd className="font-medium text-zinc-800">{lobbyImageBeerType}</dd>
+                      </>
+                    )}
+                    {lobbyImageAbv && (
+                      <>
+                        <dt className="text-zinc-500">Alkohol</dt>
+                        <dd className="font-medium text-zinc-800">{lobbyImageAbv} %</dd>
+                      </>
+                    )}
+                  </dl>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1663,11 +1680,12 @@ export default function Home() {
                         <div className="col-span-1 truncate">
                           {(() => {
                             const img = beerImageForParticipant(p);
-                            if (img && p.beer_name) {
+                            if (p.beer_name) {
                               return (
                                 <button
                                   className="underline text-blue-700 hover:text-blue-800"
                                   onClick={() => {
+                                    setLobbyBeerOpen(true);
                                     setLobbyImageSrc(img);
                                     setLobbyImageName(name);
                                     setLobbyImageBeerName(p.beer_name || "");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { resolveBeerImage } from "@/lib/beerImages";
+import { shrinkImageForUpload } from "@/lib/resizeImage";
 
 export type HostParticipant = {
   pin: string;
@@ -132,7 +133,7 @@ export default function HostParticipantEditor({
     try {
       const body = new FormData();
       body.append("pin", participant.pin);
-      body.append("file", file);
+      body.append("file", await shrinkImageForUpload(file));
       const res = await fetch("/api/pin/beer-image", { method: "POST", body });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Opplasting feilet");

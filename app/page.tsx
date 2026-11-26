@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 import HostParticipantEditor from "@/components/HostParticipantEditor";
 import { resolveBeerImage } from "@/lib/beerImages";
+import { shrinkImageForUpload } from "@/lib/resizeImage";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -280,7 +281,7 @@ export default function Home() {
     try {
       const body = new FormData();
       body.append("pin", pin);
-      body.append("file", file);
+      body.append("file", await shrinkImageForUpload(file));
       const res = await fetch("/api/pin/beer-image", { method: "POST", body });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Opplasting feilet");

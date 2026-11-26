@@ -49,20 +49,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No selected participant to receive points' }, { status: 400 });
     }
     const payload: any = { pin, round, value, recipient_pin: recipientPin };
-    let resErr = null as any;
-    if (typeof extra === 'number') {
-      payload.extra_value = extra;
-      const r1 = await (supabase.from('votes') as any).upsert(payload, { onConflict: 'round,pin' });
-      if (r1.error) {
-        resErr = r1.error;
-        // Retry without extra_value if column does not exist
-        const fallbackPayload: any = { pin, round, value, recipient_pin: recipientPin };
-        const r2 = await (supabase.from('votes') as any).upsert(fallbackPayload, { onConflict: 'round,pin' });
-        if (r2.error) throw r2.error;
+    if (typeof extra === 'number') payload.extra_value = extra;
+    // A locked vote is final: insert (not upsert), so a second vote in the same
+    // round – reload, old tab, double tap – is refused instead of overwriting.
+    // «Reset stemmer» in Admin deletes the round's votes so everyone can vote again.
+    const ins = await (supabase.from('votes') as any).insert(payload);
+    if (ins.error) {
+      if (ins.error.code === '23505') {
+        return NextResponse.json({ error: 'Du har allerede låst stemmen din i denne runden.' }, { status: 409 });
       }
-    } else {
-      const { error } = await (supabase.from('votes') as any).upsert(payload, { onConflict: 'round,pin' });
-      if (error) throw error;
+      throw ins.error;
     }
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {

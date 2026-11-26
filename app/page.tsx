@@ -328,6 +328,7 @@ export default function Home() {
     return { pin: pinSel, name, beerName, producer, beerType, abv, image };
   }, [picks, participants]);
 
+  const lastRoundRef = useRef<number | null>(null);
   const fetchStatus = useCallback(async () => {
     try {
       setStatusLoading(true);
@@ -338,7 +339,18 @@ export default function Home() {
       setExpectedGuests(Array.isArray(data.expectedGuests) ? data.expectedGuests : []);
       setActiveCount(data.activeCount || 0);
       setVotedCount(data.votedCount || 0);
-      setRound(data.round || 1);
+      // When the round changes, reset local voting state so everyone can vote again.
+      // Done here (not in an effect on `round`) so the first load doesn't wipe the
+      // server's list of who has voted – that briefly unlocked the dice after a reload.
+      const newRound = Number(data.round || 1);
+      if (lastRoundRef.current !== null && lastRoundRef.current !== newRound) {
+        setVoted(null);
+        setPendingVote(null);
+        setPendingExtraVote(null);
+        setShowMyReveal(false);
+      }
+      lastRoundRef.current = newRound;
+      setRound(newRound);
       setReveal(data.reveal === true);
       setVotedPins(Array.isArray(data.votes?.votedPins) ? data.votes.votedPins : []);
       setHistogram(data.votes?.histogram || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
@@ -506,16 +518,6 @@ export default function Home() {
     }
   }, [view, selected?.pin, pickedRound, round]);
 
-  // When round changes, reset local voting state so everyone can vote again
-  useEffect(() => {
-    setVoted(null);
-    setPendingVote(null);
-    setPendingExtraVote(null);
-    setShowMyReveal(false);
-    setRevealedVotesMap({});
-    setRevealedExtraMap({});
-    setVotedPins([]);
-  }, [round]);
  
 
   async function login() {

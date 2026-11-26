@@ -24,8 +24,14 @@ async function loadRows(): Promise<Row[]> {
 
 /** round -> set of PINs that have revealed in that round */
 export async function loadRevealedByRound(): Promise<Map<number, Set<string>>> {
+  return revealedByRoundFromRows(await loadRows());
+}
+
+/** Same as loadRevealedByRound, from app_state rows already fetched (any keys). */
+export function revealedByRoundFromRows(rows: Array<{ key: string; text_value: string | null }>): Map<number, Set<string>> {
   const out = new Map<number, Set<string>>();
-  for (const r of await loadRows()) {
+  for (const r of rows) {
+    if (!KEY_RE.test(String(r.key))) continue;
     const m = String(r.key).match(KEY_RE);
     if (!m) continue;
     const round = Number(m[1]);

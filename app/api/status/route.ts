@@ -1,90 +1,109 @@
 import { NextResponse } from 'next/server';
-import { getActiveEvent } from '@/lib/events';
 import { supabase } from '@/lib/supabase';
-import { loadRevealedByRound } from '@/lib/reveals';
+import { revealedByRoundFromRows } from '@/lib/reveals';
+
+type ParticipantRow = {
+  pin: string; nickname: string | null; active: boolean;
+  beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
+  beer_image_url?: string | null;
+  given_offset?: number | null; received_offset?: number | null;
+};
+type AppStateRow = { key: string; int_value: number | null; bool_value: boolean | null; text_value: string | null };
+type VoteRow = { pin: string; recipient_pin: string | null; value: number; extra_value?: number | null; round: number };
+
+async function fetchParticipants(): Promise<ParticipantRow[]> {
+  const withImage = await supabase
+    .from('participants')
+    .select('pin,nickname,active,beer_name,producer,beer_type,abv,beer_image_url,given_offset,received_offset')
+    .order('created_at', { ascending: true });
+  if (!withImage.error) return (withImage.data as ParticipantRow[]) || [];
+  // Older schema without beer_image_url
+  const fallback = await supabase
+    .from('participants')
+    .select('pin,nickname,active,beer_name,producer,beer_type,abv,given_offset,received_offset')
+    .order('created_at', { ascending: true });
+  if (fallback.error) throw fallback.error;
+  return (fallback.data as ParticipantRow[]) || [];
+}
+
+async function fetchVotes(): Promise<VoteRow[]> {
+  const withExtra = await supabase.from('votes').select('pin,recipient_pin,value,extra_value,round');
+  if (!withExtra.error) return (withExtra.data as VoteRow[]) || [];
+  // Older schema without extra_value
+  const noExtra = await supabase.from('votes').select('pin,recipient_pin,value,round');
+  if (noExtra.error) throw noExtra.error;
+  return (noExtra.data as VoteRow[]) || [];
+}
+
+type EventLite = { id: string; slug: string; status: string | null; created_at: string | null };
+type RegLite = { event_id: string; name: string; status: string; participant_pin: string | null };
+
+/** Events + open registrations in parallel (tables may be missing → null). */
+async function fetchEventsAndRegistrations(): Promise<{ events: EventLite[]; regs: RegLite[] } | null> {
+  try {
+    const [ev, rg] = await Promise.all([
+      supabase.from('events').select('id,slug,status,created_at'),
+      supabase
+        .from('event_registrations')
+        .select('event_id,name,status,participant_pin')
+        .in('status', ['accepted', 'invited']),
+    ]);
+    if (ev.error || rg.error) return null;
+    return { events: (ev.data as EventLite[]) || [], regs: (rg.data as RegLite[]) || [] };
+  } catch {
+    return null;
+  }
+}
+
+/** Same choice as getActiveEvent(): active_event_slug, else newest non-archived. */
+function pickActiveEvent(events: EventLite[], slug: string | null | undefined): EventLite | null {
+  if (slug) {
+    const bySlug = events.find((e) => e.slug === slug);
+    if (bySlug) return bySlug;
+  }
+  const open = events
+    .filter((e) => e.status !== 'archived')
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+  return open[0] ?? null;
+}
 
 export async function GET() {
   try {
-    const [roundRes, revealRes, lockRes, revealedRoundRes, pickedRoundRes, roundStartedRes, allowRevealRes, awardUnlockedRes] = await Promise.all([
-      supabase.from('app_state').select('int_value').eq('key', 'current_round').maybeSingle(),
-      supabase.from('app_state').select('bool_value').eq('key', 'reveal_results').maybeSingle(),
-      supabase.from('app_state').select('bool_value').eq('key', 'logins_locked').maybeSingle(),
-      supabase.from('app_state').select('int_value').eq('key', 'revealed_round').maybeSingle(),
-      supabase.from('app_state').select('int_value').eq('key', 'picked_round').maybeSingle(),
-      supabase.from('app_state').select('bool_value').eq('key', 'round_started').maybeSingle(),
-      supabase.from('app_state').select('bool_value').eq('key', 'allow_reveal').maybeSingle(),
-      supabase.from('app_state').select('bool_value').eq('key', 'award_unlocked').maybeSingle(),
+    // Everything in ONE parallel round-trip to the database (was ~19 sequential
+    // calls). app_state and votes are each read once and derived in memory.
+    const [stateRes, participants, allVotes, picksRes, eventData] = await Promise.all([
+      supabase.from('app_state').select('key,int_value,bool_value,text_value'),
+      fetchParticipants(),
+      fetchVotes(),
+      supabase.from('picks').select('pin').order('created_at', { ascending: true }),
+      fetchEventsAndRegistrations(),
     ]);
-    if (roundRes.error) throw roundRes.error;
-    if (revealRes.error) throw revealRes.error;
-    if (lockRes.error) throw lockRes.error;
-    if (revealedRoundRes.error) throw revealedRoundRes.error;
-    if (pickedRoundRes.error) throw pickedRoundRes.error;
-    if (roundStartedRes.error) throw roundStartedRes.error;
-    if (allowRevealRes.error) throw allowRevealRes.error;
-    if (awardUnlockedRes.error) throw awardUnlockedRes.error;
-    const round = Number((roundRes.data as any)?.int_value ?? 1);
-    const reveal = (revealRes.data as any)?.bool_value === true;
-    const loginsLocked = (lockRes.data as any)?.bool_value === true;
-    const revealedRound = Number((revealedRoundRes.data as any)?.int_value ?? 0);
-    const pickedRound = Number((pickedRoundRes.data as any)?.int_value ?? 0);
-    const roundStarted = (roundStartedRes.data as any)?.bool_value === true;
-    const allowReveal = (allowRevealRes.data as any)?.bool_value === true;
-    const awardUnlocked = (awardUnlockedRes.data as any)?.bool_value === true;
+    if (stateRes.error) throw stateRes.error;
+    if (picksRes.error) throw picksRes.error;
+    const stateRows = (stateRes.data as AppStateRow[]) || [];
+    const state = new Map(stateRows.map((r) => [r.key, r]));
+    const intOf = (k: string, d: number) => Number(state.get(k)?.int_value ?? d);
+    const boolOf = (k: string) => state.get(k)?.bool_value === true;
 
-    // Participants
-    type ParticipantRow = {
-      pin: string; nickname: string | null; active: boolean;
-      beer_name?: string | null; producer?: string | null; beer_type?: string | null; abv?: number | null;
-      beer_image_url?: string | null;
-      given_offset?: number | null; received_offset?: number | null;
-    };
-    let participants: ParticipantRow[] = [];
-    {
-      const withImage = await supabase
-        .from('participants')
-        .select('pin,nickname,active,beer_name,producer,beer_type,abv,beer_image_url,given_offset,received_offset')
-        .order('created_at', { ascending: true });
-      if (!withImage.error) {
-        participants = ((withImage.data as ParticipantRow[]) || []);
-      } else {
-        // Older schema without beer_image_url
-        const fallback = await supabase
-          .from('participants')
-          .select('pin,nickname,active,beer_name,producer,beer_type,abv,given_offset,received_offset')
-          .order('created_at', { ascending: true });
-        if (fallback.error) throw fallback.error;
-        participants = ((fallback.data as ParticipantRow[]) || []);
-      }
-    }
+    const round = intOf('current_round', 1);
+    const reveal = boolOf('reveal_results');
+    const loginsLocked = boolOf('logins_locked');
+    const revealedRound = intOf('revealed_round', 0);
+    const pickedRound = intOf('picked_round', 0);
+    const roundStarted = boolOf('round_started');
+    const allowReveal = boolOf('allow_reveal');
+    const awardUnlocked = boolOf('award_unlocked');
 
     const activePins = participants.filter((p) => p.active).map((p) => p.pin);
     const activeCount = activePins.length;
 
     // Votes for current round
-    // Try to include extra_value; if column doesn't exist yet, fall back gracefully
-    let voteRows: Array<{ pin: string; value: number; extra_value?: number | null }> = [];
-    {
-      const tryWithExtra = await supabase
-        .from('votes')
-        .select('pin,value,extra_value')
-        .eq('round', round);
-      if (tryWithExtra.error) {
-        const tryWithoutExtra = await supabase
-          .from('votes')
-          .select('pin,value')
-          .eq('round', round);
-        if (tryWithoutExtra.error) throw tryWithoutExtra.error;
-        voteRows = ((tryWithoutExtra.data as any[]) || []) as Array<{ pin: string; value: number }>;
-      } else {
-        voteRows = ((tryWithExtra.data as any[]) || []) as Array<{ pin: string; value: number; extra_value?: number | null }>;
-      }
-    }
+    const voteRows = allVotes.filter((v) => Number(v.round) === round);
     const votedPins = voteRows.map((v) => v.pin as string);
     const votedCount = voteRows.filter((v) => activePins.includes(v.pin as string)).length;
 
     // Per-user reveals (one row per reveal; legacy per-round arrays still read)
-    const roundToRevealed = await loadRevealedByRound();
+    const roundToRevealed = revealedByRoundFromRows(stateRows);
     const revealedPins: string[] = Array.from(roundToRevealed.get(round) ?? []);
     const revealedVotes = voteRows
       .filter((v) => revealedPins.includes(v.pin))
@@ -105,12 +124,8 @@ export async function GET() {
     const average = cnt > 0 ? Number((sum / cnt).toFixed(2)) : 0;
 
     // Aggregate total given points per user (across all rounds)
-    const votesAllRes = await supabase
-      .from('votes')
-      .select('pin,value');
-    if (votesAllRes.error) throw votesAllRes.error;
     const totalsMap: Record<string, number> = {};
-    for (const r of (votesAllRes.data as any[]) || []) {
+    for (const r of allVotes) {
       const k = String(r.pin);
       const v = Number(r.value) || 0;
       totalsMap[k] = (totalsMap[k] ?? 0) + v;
@@ -122,22 +137,7 @@ export async function GET() {
     });
 
     // Pair totals (giver -> recipient across all rounds)
-    // Try to include extra_value in pairwise; fall back if column absent
-    let votesPairsRows: Array<{ pin: string; recipient_pin: string; value: number; extra_value?: number | null; round: number }> = [];
-    {
-      const resWithExtra = await supabase
-        .from('votes')
-        .select('pin,recipient_pin,value,extra_value,round');
-      if (resWithExtra.error) {
-        const resNoExtra = await supabase
-          .from('votes')
-          .select('pin,recipient_pin,value,round');
-        if (resNoExtra.error) throw resNoExtra.error;
-        votesPairsRows = ((resNoExtra.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; round: number }>;
-      } else {
-        votesPairsRows = ((resWithExtra.data as any[]) || []) as Array<{ pin: string; recipient_pin: string; value: number; extra_value?: number | null; round: number }>;
-      }
-    }
+    const votesPairsRows = allVotes;
     const pairTotals: Array<{ from: string; to: string; total: number }> = [];
     const pairTotalsExtra: Array<{ from: string; to: string; total: number }> = [];
     // Live (all votes) — used by host Full oversikt so scores can be verified before reveal
@@ -171,11 +171,9 @@ export async function GET() {
         }
       }
       // subtract pair offsets baseline if present
-      const pairOffsetsRes = await supabase.from('app_state').select('text_value').eq('key','pair_offsets').maybeSingle();
-      if (pairOffsetsRes.error && (pairOffsetsRes.error as any).code !== 'PGRST116') throw pairOffsetsRes.error;
       let offsets: Record<string, number> = {};
       try {
-        const txt = (pairOffsetsRes.data as any)?.text_value || '{}';
+        const txt = state.get('pair_offsets')?.text_value || '{}';
         const parsed = JSON.parse(txt);
         if (parsed && typeof parsed === 'object') offsets = parsed as Record<string, number>;
       } catch {
@@ -206,12 +204,8 @@ export async function GET() {
     }
 
     // Aggregate total received points per user (across all rounds)
-    const votesRecvRes = await supabase
-      .from('votes')
-      .select('recipient_pin,value');
-    if (votesRecvRes.error) throw votesRecvRes.error;
     const recvMap: Record<string, number> = {};
-    for (const r of (votesRecvRes.data as any[]) || []) {
+    for (const r of allVotes) {
       const k = String((r as any).recipient_pin || '');
       if (!k) continue;
       const v = Number((r as any).value) || 0;
@@ -224,49 +218,28 @@ export async function GET() {
     });
 
     // Picks history (order by created_at)
-    const picksRes = await supabase
-      .from('picks')
-      .select('pin')
-      .order('created_at', { ascending: true });
-    if (picksRes.error) throw picksRes.error;
     const picks = (((picksRes.data as any[]) || []) as Array<{ pin: string }>).map((r) => r.pin as string);
 
     // Expected guests: påmeldt/invitert uten koblet PIN (eller PIN som ikke finnes ennå)
     let expectedGuests: Array<{ name: string; status: string }> = [];
-    try {
-      const event = await getActiveEvent();
-      if (event) {
-        const regs = await supabase
-          .from('event_registrations')
-          .select('name,status,participant_pin')
-          .eq('event_id', event.id)
-          .in('status', ['accepted', 'invited']);
-        if (!regs.error) {
-          const participantPins = new Set(participants.map((p) => p.pin));
-          const participantNames = new Set(
-            participants
-              .map((p) => (p.nickname || '').trim().toLowerCase())
-              .filter(Boolean),
-          );
-          const seen = new Set<string>();
-          for (const r of (regs.data || []) as Array<{
-            name: string;
-            status: string;
-            participant_pin: string | null;
-          }>) {
-            const name = (r.name || '').trim();
-            if (!name) continue;
-            const key = name.toLowerCase();
-            if (seen.has(key) || participantNames.has(key)) continue;
-            if (r.participant_pin && participantPins.has(r.participant_pin)) continue;
-            seen.add(key);
-            expectedGuests.push({ name, status: r.status });
-          }
-          expectedGuests.sort((a, b) => a.name.localeCompare(b.name, 'nb'));
-        }
+    const activeEvent = eventData ? pickActiveEvent(eventData.events, state.get('active_event_slug')?.text_value) : null;
+    const regs = activeEvent && eventData ? eventData.regs.filter((r) => r.event_id === activeEvent.id) : null;
+    if (regs) {
+      const participantPins = new Set(participants.map((p) => p.pin));
+      const participantNames = new Set(
+        participants.map((p) => (p.nickname || '').trim().toLowerCase()).filter(Boolean),
+      );
+      const seen = new Set<string>();
+      for (const r of regs) {
+        const name = (r.name || '').trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (seen.has(key) || participantNames.has(key)) continue;
+        if (r.participant_pin && participantPins.has(r.participant_pin)) continue;
+        seen.add(key);
+        expectedGuests.push({ name, status: r.status });
       }
-    } catch {
-      expectedGuests = [];
+      expectedGuests.sort((a, b) => a.name.localeCompare(b.name, 'nb'));
     }
 
     return NextResponse.json({

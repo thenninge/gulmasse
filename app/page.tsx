@@ -329,12 +329,10 @@ export default function Home() {
   }, [picks, participants]);
 
   const lastRoundRef = useRef<number | null>(null);
-  const fetchStatus = useCallback(async () => {
-    try {
-      setStatusLoading(true);
-      const res = await fetch("/api/status", { cache: "no-store" });
-      if (!res.ok) throw new Error("Status fetch failed");
-      const data = await res.json();
+  const lastStatusTextRef = useRef<string | null>(null);
+  const statusInFlightRef = useRef(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const applyStatus = useCallback((data: any) => {
       setParticipants(data.participants || []);
       setExpectedGuests(Array.isArray(data.expectedGuests) ? data.expectedGuests : []);
       setActiveCount(data.activeCount || 0);
@@ -402,12 +400,38 @@ export default function Home() {
       setPairTotalsExtraMap(buildPairMap(data.pairTotalsExtra));
       setPairTotalsAllMap(buildPairMap(data.pairTotalsAll));
       setPairTotalsExtraAllMap(buildPairMap(data.pairTotalsExtraAll));
+  }, []);
+
+  /**
+   * Fetch /api/status. The 2s poll (`poll: true`) never overlaps a request still
+   * in flight and skips re-rendering when nothing changed. Explicit calls (after
+   * a button press) always apply, since the UI may have cleared local state.
+   * The last response is cached in localStorage so a reload renders instantly.
+   */
+  const fetchStatus = useCallback(async (opts?: { poll?: boolean }) => {
+    const poll = opts?.poll === true;
+    if (poll && statusInFlightRef.current) return;
+    statusInFlightRef.current = true;
+    try {
+      if (!poll) setStatusLoading(true);
+      const res = await fetch("/api/status", { cache: "no-store" });
+      if (!res.ok) throw new Error("Status fetch failed");
+      const text = await res.text();
+      if (poll && text === lastStatusTextRef.current) return;
+      lastStatusTextRef.current = text;
+      applyStatus(JSON.parse(text));
+      try {
+        localStorage.setItem("statusCache", text);
+      } catch {
+        // storage full / private mode – fine
+      }
     } catch {
       // noop
     } finally {
-      setStatusLoading(false);
+      statusInFlightRef.current = false;
+      if (!poll) setStatusLoading(false);
     }
-  }, []);
+  }, [applyStatus]);
 
   // Active event (invitasjon / påmelding)
   useEffect(() => {
@@ -472,14 +496,29 @@ export default function Home() {
 
   // polling status every 2s
   useEffect(() => {
-    // initial fetch
+    // Show the last known state immediately (stale-while-revalidate), then refresh
+    try {
+      const cached = localStorage.getItem("statusCache");
+      if (cached) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage only exists client-side
+        applyStatus(JSON.parse(cached));
+        lastStatusTextRef.current = cached;
+      }
+    } catch {
+      // ignore bad cache
+    }
     fetchStatus();
-    // interval
-    pollRef.current = window.setInterval(fetchStatus, 2000);
+    pollRef.current = window.setInterval(() => fetchStatus({ poll: true }), 2000);
+    // Phone unlocked / tab back in focus: refresh right away instead of waiting
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchStatus({ poll: true });
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [fetchStatus]);
+  }, [fetchStatus, applyStatus]);
   // Welcome splash lifecycle
   useEffect(() => {
     if (showWelcome) {

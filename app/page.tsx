@@ -1588,10 +1588,14 @@ export default function Home() {
                   </button>
                 ) : <span />}
                 <button
-                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90"
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white shadow-sm active:opacity-90 disabled:opacity-60 ${
+                    awardUnlocked ? "bg-amber-500" : "bg-zinc-400"
+                  }`}
                   onClick={() => setShowPodium(true)}
+                  disabled={!awardUnlocked}
+                  title={awardUnlocked ? undefined : "Låses opp når verten trykker «Unlock award ceremony»"}
                 >
-                  Podium
+                  {awardUnlocked ? "Podium" : "🔒 Podium"}
                 </button>
               </div>
               <div className="mt-2 grid [grid-template-columns:28px_1.1fr_1.9fr_56px] gap-1 px-3 py-2 text-xs font-medium text-zinc-600">
@@ -1800,7 +1804,7 @@ export default function Home() {
         )}
 
         {/* Podium modal */}
-        {showPodium && (
+        {showPodium && awardUnlocked && (
           <div
             role="dialog"
             aria-modal="true"

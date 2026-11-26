@@ -2904,6 +2904,17 @@ export default function Home() {
                   Snurrehjul
                 </button>
                 <button
+                  className="rounded-xl bg-teal-500 px-4 py-3 text-white active:opacity-90"
+                  onClick={() =>
+                    confirmAdmin(
+                      async () => { await adminCall("/api/host/allow-reveal", "«Avslør min stemme» er åpnet for alle som har stemt."); },
+                      { title: "Tillat avslør stemme", message: "Lar de som har stemt avsløre stemmen sin selv om ikke alle har stemt ennå." },
+                    )
+                  }
+                >
+                  Tillat avslør stemme
+                </button>
+                <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50 disabled:opacity-50"
                   onClick={() =>
                     confirmAdmin(
@@ -2956,17 +2967,6 @@ export default function Home() {
                   }
                 >
                   Resett alle deltakere
-                </button>
-                <button
-                  className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"
-                  onClick={() =>
-                    confirmAdmin(
-                      async () => { await adminCall("/api/host/allow-reveal", "«Avslør min stemme» er åpnet for alle som har stemt."); },
-                      { title: "Tillat avslør stemme", message: "Lar de som har stemt avsløre stemmen sin selv om ikke alle har stemt ennå." },
-                    )
-                  }
-                >
-                  Tillat avslør stemme
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50"

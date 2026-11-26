@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getActiveEvent } from '@/lib/events';
 import { supabase } from '@/lib/supabase';
+import { loadRevealedByRound } from '@/lib/reveals';
 
 export async function GET() {
   try {
@@ -82,22 +83,9 @@ export async function GET() {
     const votedPins = voteRows.map((v) => v.pin as string);
     const votedCount = voteRows.filter((v) => activePins.includes(v.pin as string)).length;
 
-    // Per-user reveals for current round (only those who chose to reveal)
-    const revealKey = `revealed_pins_round_${round}`;
-    const revealedPinsRes = await supabase
-      .from('app_state')
-      .select('text_value')
-      .eq('key', revealKey)
-      .maybeSingle();
-    if (revealedPinsRes.error && (revealedPinsRes.error as any).code !== 'PGRST116') throw revealedPinsRes.error;
-    let revealedPins: string[] = [];
-    try {
-      const txt = (revealedPinsRes.data as any)?.text_value || '[]';
-      const parsed = JSON.parse(txt);
-      if (Array.isArray(parsed)) revealedPins = parsed.filter((x) => typeof x === 'string');
-    } catch {
-      revealedPins = [];
-    }
+    // Per-user reveals (one row per reveal; legacy per-round arrays still read)
+    const roundToRevealed = await loadRevealedByRound();
+    const revealedPins: string[] = Array.from(roundToRevealed.get(round) ?? []);
     const revealedVotes = voteRows
       .filter((v) => revealedPins.includes(v.pin))
       .map((v) => ({ pin: v.pin, value: v.value }));
@@ -157,26 +145,6 @@ export async function GET() {
     const pairTotalsExtraAll: Array<{ from: string; to: string; total: number }> = [];
     {
       const rows = votesPairsRows;
-      // Gather revealed pins per round
-      const revealedAllRes = await supabase
-        .from('app_state')
-        .select('key,text_value')
-        .like('key', 'revealed_pins_round_%');
-      if (revealedAllRes.error && (revealedAllRes.error as any).code !== 'PGRST116') throw revealedAllRes.error;
-      const roundToRevealed = new Map<number, Set<string>>();
-      for (const r of ((revealedAllRes.data as any[]) || [])) {
-        const key: string = String((r as any).key || '');
-        const m = key.match(/revealed_pins_round_(\d+)/);
-        if (!m) continue;
-        const rnd = Number(m[1] || 0);
-        let arr: string[] = [];
-        try {
-          const txt = (r as any)?.text_value || '[]';
-          const parsed = JSON.parse(txt);
-          if (Array.isArray(parsed)) arr = parsed.filter((x: any) => typeof x === 'string');
-        } catch {}
-        roundToRevealed.set(rnd, new Set(arr));
-      }
       const pairAgg = new Map<string, number>();
       const pairAggExtra = new Map<string, number>();
       const pairAggAll = new Map<string, number>();

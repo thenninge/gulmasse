@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { assertHost } from '@/lib/host';
 import { supabase } from '@/lib/supabase';
+import { clearRevealsForRound } from '@/lib/reveals';
 
 export async function POST(request: Request) {
   try {
@@ -13,8 +14,7 @@ export async function POST(request: Request) {
     const del = await supabase.from('votes').delete().eq('round', round);
     if (del.error) throw del.error;
     // clear any per-user revealed votes store for this round
-    const key = `revealed_pins_round_${round}`;
-    await (supabase.from('app_state') as any).upsert({ key, text_value: '[]' }, { onConflict: 'key' });
+    await clearRevealsForRound(round);
     // also clear reveal_results flag for safety
     await (supabase.from('app_state') as any).upsert({ key: 'reveal_results', bool_value: false }, { onConflict: 'key' });
     return NextResponse.json({ ok: true, round });

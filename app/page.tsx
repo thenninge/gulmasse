@@ -58,6 +58,7 @@ export default function Home() {
   const [pickedRound, setPickedRound] = useState(0);
   const [roundStarted, setRoundStarted] = useState(false);
   const [allowReveal, setAllowReveal] = useState(false);
+  const [autoAllowReveal, setAutoAllowReveal] = useState(false);
   const [awardUnlocked, setAwardUnlocked] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
@@ -385,6 +386,7 @@ export default function Home() {
       setPickedRound(typeof data.pickedRound === "number" ? data.pickedRound : 0);
       setRoundStarted(Boolean(data.roundStarted));
       setAllowReveal(Boolean(data.allowReveal));
+      setAutoAllowReveal(Boolean(data.autoAllowReveal));
       setAwardUnlocked(Boolean(data.awardUnlocked));
       // build pair totals map: from -> to -> total
       function buildPairMap(
@@ -2913,6 +2915,35 @@ export default function Home() {
                   }
                 >
                   Tillat avslør stemme
+                </button>
+                <button
+                  className={`rounded-xl px-4 py-3 active:opacity-90 ${
+                    autoAllowReveal ? "bg-teal-600 text-white" : "border-2 border-teal-500 text-teal-700"
+                  }`}
+                  aria-pressed={autoAllowReveal}
+                  onClick={() =>
+                    confirmAdmin(
+                      async () => {
+                        const turnOn = !autoAllowReveal;
+                        const ok = await adminCall(
+                          "/api/host/auto-reveal",
+                          turnOn
+                            ? "Auto-allow avslør er ON – alle som har stemt kan alltid avsløre."
+                            : "Auto-allow avslør er OFF – avsløring åpnes når alle har stemt eller du tillater det.",
+                          { on: turnOn },
+                        );
+                        if (ok) setAutoAllowReveal(turnOn);
+                      },
+                      {
+                        title: autoAllowReveal ? "Slå av auto-allow avslør" : "Slå på auto-allow avslør",
+                        message: autoAllowReveal
+                          ? "Etter dette åpnes «Avslør min stemme» først når alle har stemt, eller når du trykker «Tillat avslør stemme»."
+                          : "Alle som har stemt kan alltid avsløre stemmen sin, i hver runde, uten at du må inn i Admin.",
+                      },
+                    )
+                  }
+                >
+                  Auto-allow avslør: <span className="font-bold">{autoAllowReveal ? "ON" : "OFF"}</span>
                 </button>
                 <button
                   className="rounded-xl border border-zinc-300 px-4 py-3 active:bg-zinc-50 disabled:opacity-50"

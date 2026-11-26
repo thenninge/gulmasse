@@ -93,7 +93,9 @@ export async function GET(request: Request) {
     const revealedRound = intOf('revealed_round', 0);
     const pickedRound = intOf('picked_round', 0);
     const roundStarted = boolOf('round_started');
-    const allowReveal = boolOf('allow_reveal');
+    // «Auto-allow avslør» ON makes reveal always allowed, every round
+    const autoAllowReveal = boolOf('auto_allow_reveal');
+    const allowReveal = boolOf('allow_reveal') || autoAllowReveal;
     const awardUnlocked = boolOf('award_unlocked');
 
     const activePins = participants.filter((p) => p.active).map((p) => p.pin);
@@ -269,6 +271,7 @@ export async function GET(request: Request) {
       pickedRound,
       roundStarted,
       allowReveal,
+      autoAllowReveal,
       awardUnlocked,
       pairTotals,
       pairTotalsExtra,

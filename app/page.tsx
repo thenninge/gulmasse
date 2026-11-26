@@ -1457,7 +1457,7 @@ export default function Home() {
                 ✕
               </button>
               {lobbyImageSrc && (
-                <div className="flex shrink items-center justify-center bg-zinc-50 p-3">
+                <div className="flex shrink items-center justify-center p-2">
                   {/* Fixed max height (not %): tall, narrow photos can never push the info out */}
                   <img
                     src={lobbyImageSrc}
@@ -1466,34 +1466,23 @@ export default function Home() {
                   />
                 </div>
               )}
-              <div className="shrink-0 border-t border-zinc-100 px-4 pb-4 pt-3 text-sm text-zinc-700">
-                {lobbyImageBeerName && (
-                  <div className="pr-8 text-lg font-semibold leading-tight text-zinc-900">{lobbyImageBeerName}</div>
-                )}
-                {lobbyImageName && <div className="text-zinc-500">{lobbyImageName}</div>}
-                {(lobbyImageProducer || lobbyImageBeerType || lobbyImageAbv) && (
-                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-                    {lobbyImageProducer && (
-                      <>
-                        <dt className="text-zinc-500">Produsent</dt>
-                        <dd className="font-medium text-zinc-800">{lobbyImageProducer}</dd>
-                      </>
-                    )}
-                    {lobbyImageBeerType && (
-                      <>
-                        <dt className="text-zinc-500">Øltype</dt>
-                        <dd className="font-medium text-zinc-800">{lobbyImageBeerType}</dd>
-                      </>
-                    )}
-                    {lobbyImageAbv && (
-                      <>
-                        <dt className="text-zinc-500">Alkohol</dt>
-                        <dd className="font-medium text-zinc-800">{lobbyImageAbv} %</dd>
-                      </>
-                    )}
-                  </dl>
-                )}
-              </div>
+              {(lobbyImageName || lobbyImageBeerName || lobbyImageProducer || lobbyImageBeerType || lobbyImageAbv) && (
+                <div className="shrink-0 px-4 pb-3 pt-2 text-center text-sm text-zinc-700">
+                  {lobbyImageName && <div className="font-semibold text-base">{lobbyImageName}</div>}
+                  {lobbyImageBeerName && (
+                    <div>Ølnavn: <span className="font-medium text-zinc-800">{lobbyImageBeerName}</span></div>
+                  )}
+                  {lobbyImageProducer && (
+                    <div>Produsent: <span className="font-medium text-zinc-800">{lobbyImageProducer}</span></div>
+                  )}
+                  {lobbyImageBeerType && (
+                    <div>Øltype: <span className="font-medium text-zinc-800">{lobbyImageBeerType}</span></div>
+                  )}
+                  {lobbyImageAbv && (
+                    <div>ABV: <span className="font-medium text-zinc-800">{lobbyImageAbv}%</span></div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

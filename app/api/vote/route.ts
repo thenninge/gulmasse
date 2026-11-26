@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'PIN not found' }, { status: 404 });
     }
     if ((exists.data as any).active !== true) {
-      return NextResponse.json({ error: 'Participant not active' }, { status: 400 });
+      return NextResponse.json({ error: 'Du står som inaktiv og kan ikke stemme. Logg ut og inn igjen, eller be verten aktivere deg.' }, { status: 400 });
     }
 
     const round = await getCurrentRound();

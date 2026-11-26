@@ -871,6 +871,19 @@ export default function Home() {
       if (res.status === 404) return false;
       if (!res.ok) return null;
       const data = await res.json();
+      // Opening the app with a saved PIN never went through «Logg inn», so someone
+      // who had logged out (or was set inactive) stayed unable to vote. Re-activate.
+      if (data.participant && data.participant.active === false) {
+        const act = await fetch("/api/pin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: currentPin }),
+        }).catch(() => null);
+        if (act && act.status === 423) {
+          setError("Du står som inaktiv og kan ikke stemme. Be verten aktivere deg (Admin → Rediger → Aktiv).");
+        }
+        fetchStatus();
+      }
       const p = data.participant as {
         nickname?: string | null;
         beer_name?: string | null;

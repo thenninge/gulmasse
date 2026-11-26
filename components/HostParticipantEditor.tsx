@@ -67,7 +67,11 @@ export default function HostParticipantEditor({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Refresh the form from the server only while the editor is closed. The parent
+  // re-fetches status every 2s; syncing while open wiped the host's edits (e.g. the
+  // «Aktiv» checkbox reset before «Lagre» could be pressed).
   useEffect(() => {
+    if (open) return;
     setNickname(participant.nickname || "");
     setBeerName(participant.beer_name || "");
     setProducer(participant.producer || "");
@@ -86,7 +90,7 @@ export default function HostParticipantEditor({
     );
     setActive(!!participant.active);
     setImageUrl(participant.beer_image_url || null);
-  }, [participant]);
+  }, [participant, open]);
 
   const preview = resolveBeerImage({
     beer_image_url: imageUrl,

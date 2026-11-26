@@ -213,6 +213,14 @@ export default function LeaderboardPage() {
       {announce && <AnnounceOverlay key={`announce-${announce.id}`} name={announce.name} beer={announce.beer} onClose={() => setAnnounce(null)} />}
       <Toasts toasts={toasts} />
       <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-end gap-3 sm:gap-4">
+          {/* The juleølhatt – always on the page, gently rocking */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/img/mcga.png"
+            alt="Juleølhatten"
+            className="lb-rock h-16 w-16 shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] sm:h-24 sm:w-24"
+          />
         <div>
           <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-widest text-[#f2c14e]">
             <span className="relative flex h-2.5 w-2.5">
@@ -223,7 +231,8 @@ export default function LeaderboardPage() {
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Gulmasse &apos;26</h1>
         </div>
-        <div className="text-right text-sm text-[#9c9c9c]">
+        </div>
+        <div className="text-left text-sm sm:text-right text-[#9c9c9c]">
           <div>
             <span className="text-[#efefef] font-semibold tabular-nums">{board.counts.presented}</span> av{" "}
             <span className="tabular-nums">{board.counts.participants}</span> øl presentert
@@ -291,6 +300,7 @@ export default function LeaderboardPage() {
 
 const STYLES = `
 @keyframes lb-snow { 0% { transform: translate3d(0,-10vh,0); } 100% { transform: translate3d(var(--drift),110vh,0); } }
+@keyframes lb-rock { 0%,100% { rotate: -9deg; } 50% { rotate: 9deg; } }
 @keyframes lb-bob { 0%,100% { rotate: -6deg; translate: 0 0; } 50% { rotate: 6deg; translate: 0 -3px; } }
 @keyframes lb-rise { 0% { transform: translateY(0) scale(.6); opacity: 0; } 15% { opacity: 1; transform: translateY(-20px) scale(1.15); } 100% { transform: translateY(-170px) scale(.9) rotate(25deg); opacity: 0; } }
 @keyframes lb-pop { 0% { transform: scale(.85); opacity: 0; } 60% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1); } }
@@ -300,13 +310,15 @@ const STYLES = `
 @keyframes lb-glow { 0%,100% { box-shadow: 0 0 0 rgba(242,193,78,0); } 50% { box-shadow: 0 0 28px rgba(242,193,78,.35); } }
 .lb-flake { position: absolute; top: 0; color: #fff; opacity: .55; animation: lb-snow linear infinite; }
 .lb-bob { animation: lb-bob 2.4s ease-in-out infinite; transform-origin: 50% 90%; }
+.lb-rock { animation: lb-rock 3.2s ease-in-out infinite; transform-origin: 50% 85%; }
 .lb-rise { animation: lb-rise 3s ease-out forwards; }
 .lb-pop { animation: lb-pop 500ms ease-out both; }
 .lb-toast { animation: lb-toast 5s ease-in-out forwards; }
 .lb-zoom { animation: lb-zoom 700ms cubic-bezier(.2,.9,.3,1.2) both; }
 .lb-glow { animation: lb-glow 2.5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .lb-flake, .lb-bob, .lb-glow, .animate-confetti { animation: none !important; display: none; }
+  .lb-flake, .animate-confetti { animation: none !important; display: none; }
+  .lb-bob, .lb-rock, .lb-glow { animation: none !important; }
   .lb-rise, .lb-pop, .lb-toast, .lb-zoom, .animate-hatdrop { animation-duration: 1ms !important; }
 }
 `;

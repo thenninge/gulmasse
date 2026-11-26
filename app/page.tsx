@@ -329,6 +329,10 @@ export default function Home() {
     return { pin: pinSel, name, beerName, producer, beerType, abv, image };
   }, [picks, participants]);
 
+  const pinRef = useRef("");
+  useEffect(() => {
+    pinRef.current = pin;
+  }, [pin]);
   const lastRoundRef = useRef<number | null>(null);
   const lastStatusTextRef = useRef<string | null>(null);
   const statusInFlightRef = useRef(false);
@@ -415,7 +419,12 @@ export default function Home() {
     statusInFlightRef.current = true;
     try {
       if (!poll) setStatusLoading(true);
-      const res = await fetch("/api/status", { cache: "no-store" });
+      // Host gets live totals incl. unrevealed votes; everyone else revealed only
+      const hostPin = pinRef.current === "0808" ? pinRef.current : "";
+      const res = await fetch("/api/status", {
+        cache: "no-store",
+        headers: hostPin ? { "x-host-pin": hostPin } : undefined,
+      });
       if (!res.ok) throw new Error("Status fetch failed");
       const text = await res.text();
       if (poll && text === lastStatusTextRef.current) return;
@@ -709,6 +718,26 @@ export default function Home() {
   const [adminConfirmPhrase, setAdminConfirmPhrase] = useState<string | null>(null);
   const [adminConfirmTyped, setAdminConfirmTyped] = useState("");
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
+  const [leaderboardKey, setLeaderboardKey] = useState<string | null>(null);
+  const [leaderboardCopied, setLeaderboardCopied] = useState(false);
+  const leaderboardUrl =
+    leaderboardKey && typeof window !== "undefined"
+      ? `${window.location.origin}/leaderboard?k=${leaderboardKey}`
+      : "";
+  async function loadLeaderboardKey(rotate = false) {
+    try {
+      const res = await fetch("/api/host/leaderboard-key", {
+        method: rotate ? "POST" : "GET",
+        headers: { "x-host-pin": pin },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Feil");
+      setLeaderboardKey(data.key || null);
+      if (rotate) setAdminNotice("Ny leaderboard-lenke laget. Den gamle virker ikke lenger.");
+    } catch {
+      setError("Kunne ikke hente leaderboard-lenke");
+    }
+  }
   /** POST a host action; shows the server's error (or a success note) in Admin tools. */
   async function adminCall(path: string, successMsg: string, body?: unknown): Promise<boolean> {
     setAdminNotice(null);
@@ -3023,6 +3052,59 @@ export default function Home() {
                   ))}
                 </ul>
               </div>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm space-y-2">
+              <h3 className="text-sm font-semibold text-zinc-900">Live Leaderboard</h3>
+              <p className="text-xs text-zinc-500">
+                Hemmelig lenke for folk utenfor. Viser alle stemmer live – ikke del den med deltakerne.
+              </p>
+              {leaderboardKey ? (
+                <>
+                  <div className="break-all rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-700">{leaderboardUrl}</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      className="rounded-lg bg-zinc-900 px-3 py-2 text-xs text-white active:opacity-90"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(leaderboardUrl);
+                          setLeaderboardCopied(true);
+                          setTimeout(() => setLeaderboardCopied(false), 2000);
+                        } catch {
+                          setError("Kunne ikke kopiere – merk og kopier lenken manuelt");
+                        }
+                      }}
+                    >
+                      {leaderboardCopied ? "Kopiert ✓" : "Kopier"}
+                    </button>
+                    <a
+                      className="rounded-lg border border-zinc-300 px-3 py-2 text-center text-xs active:bg-zinc-50"
+                      href={leaderboardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Åpne
+                    </a>
+                    <button
+                      className="rounded-lg border border-zinc-300 px-3 py-2 text-xs active:bg-zinc-50"
+                      onClick={() =>
+                        confirmAdmin(async () => { await loadLeaderboardKey(true); }, {
+                          title: "Lag ny lenke",
+                          message: "Den gamle leaderboard-lenken slutter å virke med en gang. Bruk dette hvis lenken har lekket til deltakerne.",
+                        })
+                      }
+                    >
+                      Lag ny lenke
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs text-white active:opacity-90"
+                  onClick={() => loadLeaderboardKey(false)}
+                >
+                  Vis leaderboard-lenke
+                </button>
+              )}
             </div>
           </section>
         )}

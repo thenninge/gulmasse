@@ -67,7 +67,9 @@ function pickActiveEvent(events: EventLite[], slug: string | null | undefined): 
   return open[0] ?? null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Live totals incl. unrevealed votes are for the host only (Full oversikt)
+  const isHost = (request.headers.get('x-host-pin') || '') === (process.env.HOST_PIN || '0808');
   try {
     // Everything in ONE parallel round-trip to the database (was ~19 sequential
     // calls). app_state and votes are each read once and derived in memory.
@@ -221,7 +223,7 @@ export async function GET() {
     const picks = (((picksRes.data as any[]) || []) as Array<{ pin: string }>).map((r) => r.pin as string);
 
     // Expected guests: påmeldt/invitert uten koblet PIN (eller PIN som ikke finnes ennå)
-    let expectedGuests: Array<{ name: string; status: string }> = [];
+    const expectedGuests: Array<{ name: string; status: string }> = [];
     const activeEvent = eventData ? pickActiveEvent(eventData.events, state.get('active_event_slug')?.text_value) : null;
     const regs = activeEvent && eventData ? eventData.regs.filter((r) => r.event_id === activeEvent.id) : null;
     if (regs) {
@@ -270,8 +272,8 @@ export async function GET() {
       awardUnlocked,
       pairTotals,
       pairTotalsExtra,
-      pairTotalsAll,
-      pairTotalsExtraAll,
+      pairTotalsAll: isHost ? pairTotalsAll : pairTotals,
+      pairTotalsExtraAll: isHost ? pairTotalsExtraAll : pairTotalsExtra,
     });
   } catch (e: any) {
     console.error('STATUS_ERROR', e);

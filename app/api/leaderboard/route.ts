@@ -26,7 +26,7 @@ export async function GET(request: Request) {
         .from('participants')
         .select('pin,nickname,active,beer_name,producer,beer_type,abv,beer_image_url')
         .order('created_at', { ascending: true }),
-      supabase.from('votes').select('pin,recipient_pin,value,extra_value,round'),
+      supabase.from('votes').select('pin,recipient_pin,value,extra_value,round,created_at').order('created_at', { ascending: true }),
       supabase.from('picks').select('pin,created_at').order('created_at', { ascending: true }),
       supabase.from('app_state').select('key,int_value,bool_value').in('key', ['current_round', 'picked_round', 'round_started']),
     ]);
@@ -84,6 +84,17 @@ export async function GET(request: Request) {
       progression.push({ label: b.name, totals: { ...running } });
     }
 
+    // Who has been most generous (sum of dice given, per category)
+    const givers = participants
+      .map((p) => {
+        const vs = votes.filter((v) => v.pin === p.pin);
+        const beerGiven = vs.reduce((a, v) => a + (Number(v.value) || 0), 0);
+        const extraGiven = vs.reduce((a, v) => a + (Number(v.extra_value) || 0), 0);
+        return { pin: p.pin, name: nameOf(p.pin), votes: vs.length, beerGiven, extraGiven, total: beerGiven + extraGiven };
+      })
+      .filter((g) => g.votes > 0)
+      .sort((a, b) => b.total - a.total || b.beerGiven - a.beerGiven || a.name.localeCompare(b.name, 'nb'));
+
     const activeCount = participants.filter((p) => p.active).length;
     const presenterPin = pickedRound === round && picks.length ? picks[picks.length - 1] : null;
     const presenter = presenterPin ? participants.find((p) => p.pin === presenterPin) : null;
@@ -100,6 +111,7 @@ export async function GET(request: Request) {
         status: presenter ? 'voting' : roundStarted ? 'spinning' : picks.length === 0 ? 'waiting' : 'between',
         presenter: presenter
           ? {
+              pin: presenter.pin,
               name: nameOf(presenter.pin),
               beer: (presenter.beer_name || '').trim(),
               producer: (presenter.producer || '').trim(),
@@ -108,6 +120,12 @@ export async function GET(request: Request) {
               image: presenter.beer_image_url || null,
               votes: votesThisRound.length,
               active: activeCount,
+              // Each locked vote this round as [øl, presentasjon], oldest first – anonymous.
+              // Lets the page animate new throws (both dice) as they come in.
+              throws: votesThisRound.map((v) => [Number(v.value) || 0, Number(v.extra_value) || 0]),
+              avgExtra: votesThisRound.length
+                ? votesThisRound.reduce((a, v) => a + (Number(v.extra_value) || 0), 0) / votesThisRound.length
+                : null,
               avgBeer: votesThisRound.length
                 ? votesThisRound.reduce((a, v) => a + (Number(v.value) || 0), 0) / votesThisRound.length
                 : null,
@@ -127,6 +145,7 @@ export async function GET(request: Request) {
         })),
         presented,
         progression,
+        givers,
         best: best ? { name: best.name, beer: best.beer, avgBeer: best.avgBeer, avgExtra: best.avgExtra } : null,
         counts: { presented: picks.length, participants: participants.length, votes: votes.length },
         updatedAt: new Date().toISOString(),

@@ -75,11 +75,11 @@ const PROFILES: Record<string, Profile> = {
     emoji: '🇯🇵',
     tagline: 'Adam-san',
     bio: [
-      'Halvt japansk, halvt manchesterianer, og helt juleølboss!',
+      'Helt engelsk – men han var i Japan i april, og Adam-san passer ham perfekt. Og helt juleølboss!',
       'Om ikke Adam får 6 på presentasjonen, så er feltet helt åpent!',
       'I 2022 stilte han Delirium Christmas – fjorårsvinneren den gang – og fikk 5. plass.',
     ],
-    facts: ['Halvt japansk, halvt Manchester', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass'],
+    facts: ['Helt engelsk', 'Japan i april', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass'],
   },
   martin: {
     emoji: '🏆',
@@ -105,15 +105,19 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Nora. Ikke Noora! Ikke «jeg trenger litt spæis!»-Nooorra. Ikke Skam-Nooora som klina med William!',
       'Dette er nemlig en mye bedre utgave: Nora. Konsis. Skarp. Nybegynnerflaksen er til å ta og føle på!',
-      'Ny i år – venninne av Kathinka.',
+      'Ny i år – venninne av Kathinka. Og her har vi gravd i arkivene: Nora er nevnt i en eldre artikkel i Tønsbergs Blad, i forbindelse med russerevy. Scenevant, med andre ord – det kan bli farlig på presentasjonen!',
+      'I oktober 2026 fikk hun en velkomsthilsen fra Top Himalaya guides, på fottur i Manaslu-regionen i Nepal. Hun har altså gått i Himalaya – da er vel en juleølkonkurranse en lett tur i parken?',
     ],
-    facts: ['Debutant', 'Ikke Noora', 'Konsis og skarp', 'Venninne av Kathinka'],
+    facts: ['Debutant', 'Ikke Noora', 'Konsis og skarp', 'Russerevy (Tønsbergs Blad)', 'Manaslu, Nepal 2026', 'Venninne av Kathinka'],
   },
   aurora: {
-    emoji: '🌌',
-    tagline: 'Nykommer',
-    bio: ['Ny i år – venninne av Kathinka. Vi vet lite om henne ennå, så hun er et helt ukjent kort i stokken!'],
-    facts: ['Debutant', 'Venninne av Kathinka'],
+    emoji: '🎤',
+    tagline: 'Sangstemmen',
+    bio: [
+      'Ny i år – venninne av Kathinka.',
+      'Steinerskolen, Berkeley – og en flott sangstemme! Får vi en presentasjon med sang i år? I så fall kan presentasjonsterningen trille rett på seksern!',
+    ],
+    facts: ['Debutant', 'Steinerskolen', 'Berkeley', 'Flott sangstemme', 'Venninne av Kathinka'],
   },
 };
 

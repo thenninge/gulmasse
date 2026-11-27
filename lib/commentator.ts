@@ -70,12 +70,18 @@ const NO_PEOPLE: Record<string, Lines> = {
       'Hjulet valgte Nora – {beer}! Ikke Noora! Ikke «jeg trenger litt spæis!»-Nooorra. Ikke Skam-Nooora som klina med William! Dette er nemlig en mye bedre utgave: Nora!',
       'Nora med {beer}! Konsis. Skarp. Nybegynnerflaksen er til å ta og føle på!',
       'Nykommer Nora med {beer}! På med hatten! Og husk: det er NORA, ikke Noora!',
+      'Nora med {beer}! Scenevant fra russerevyen – det sto i Tønsbergs Blad! Nå venter en ny scene!',
+      'Nora med {beer}! Hun har gått i Manaslu-regionen i Nepal – en øl-presentasjon er vel ingen sak etter Himalaya?!',
     ],
     leader: ['Nora tar ledelsen! Nybegynnerflaksen slår til – konsis, skarp og i tet!', 'Nora i tet! Ikke Noora – NORA! Den mye bedre utgaven!'],
   },
   aurora: {
-    pick: ['Hjulet valgte Aurora – {beer}! Ny i år, venninne av Kathinka – ingen vet hva vi har i vente!', 'Aurora med {beer}! På med hatten! Ut i dyst!'],
-    leader: ['Aurora tar ledelsen! Nykommeren gir veteranene kamp til døra!'],
+    pick: [
+      'Hjulet valgte Aurora – {beer}! Steinerskolen, Berkeley og en flott sangstemme – blir det SANG på presentasjonen?!',
+      'Aurora med {beer}! På med hatten! Ny i år, venninne av Kathinka – ingen vet hva vi har i vente!',
+    ],
+    leader: ['Aurora tar ledelsen! Nykommeren gir veteranene kamp til døra!', 'Aurora i tet! Nå synger hun seg til topps!'],
+    pres6: ['Sekser på presentasjonen til Aurora! Den sangstemmen gjør susen!'],
   },
   eirik: {
     pick: [
@@ -115,7 +121,7 @@ const NO_PEOPLE: Record<string, Lines> = {
   },
   adam: {
     pick: [
-      'Hjulet valgte Adam – {beer}! Adam-san! Halvt japansk, halvt Manchester, og helt juleølboss!',
+      'Hjulet valgte Adam – {beer}! Adam-san! Helt engelsk – men han var i Japan i april, og Adam-san passer ham perfekt! Og helt juleølboss!',
       'Adam-san med {beer}! Får ikke Adam 6 på presentasjonen, er feltet helt åpent!',
     ],
     leader: ['Adam-san tar ledelsen! Juleølbossen viser hvem som bestemmer!'],
@@ -198,10 +204,16 @@ const EN_PEOPLE: Record<string, Lines> = {
     pick: [
       'The wheel picks Nora – {beer}! Not Noora! Not «I need some space!»-Nooorra. Not Skam-Nooora who made out with William! This is a much better version: Nora!',
       'Nora with {beer}! Concise. Sharp. You can practically touch the beginner\'s luck!',
+      'Nora with {beer}! A stage veteran from the school revue – it was in the local paper! Now a new stage awaits!',
+      'Nora with {beer}! She has trekked the Manaslu region in Nepal – a beer presentation is nothing after the Himalayas?!',
     ],
     leader: ['Nora takes the lead! Beginner\'s luck strikes – concise, sharp and in front!'],
   },
-  aurora: { pick: ['The wheel picks Aurora – {beer}! A newcomer – nobody knows what to expect!'], leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!'] },
+  aurora: {
+    pick: ['The wheel picks Aurora – {beer}! Steiner school, Berkeley and a great singing voice – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!'],
+    leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!', 'Aurora in front! She\'s singing her way to the top!'],
+    pres6: ['A six for Aurora\'s presentation! That singing voice works wonders!'],
+  },
   eirik: {
     pick: ['The wheel picks Eirik – {beer}! Straight from his own NukeBrew brewery – «the essence of pure flavor»! Or will he fall on his own sword again?'],
     leader: ['Eirik takes the lead! NukeBrew in front – just don\'t fall on your own sword now!'],
@@ -223,7 +235,7 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Magnus takes the lead! Gen Z in front! The millennials are scratching their heads!'],
   },
   adam: {
-    pick: ['The wheel picks Adam – {beer}! Adam-san! Half Japanese, half Mancunian, all Christmas-beer boss!'],
+    pick: ['The wheel picks Adam – {beer}! Adam-san! English through and through – but he was in Japan in April, and Adam-san suits him perfectly! All Christmas-beer boss!'],
     leader: ['Adam-san takes the lead! The Christmas-beer boss shows who\'s in charge!'],
   },
   trondolav: {
@@ -306,12 +318,15 @@ const JA_PEOPLE: Record<string, Lines> = {
     pick: [
       'ルーレットが選んだのはノラ – {beer}！ノーラじゃない！「ちょっとスペースが欲しいの！」のノーーラでもない。ウィリアムといちゃついたSKAMのノーーラでもない！こっちはずっと良いバージョン：ノラ！',
       'ノラと{beer}！簡潔。シャープ。ビギナーズラックが手に取るようにわかる！',
+      'ノラと{beer}！学生時代のレビューで地元紙に載った舞台経験者！新しい舞台が待っている！',
+      'ノラと{beer}！ネパールのマナスル地方をトレッキングした彼女 – ヒマラヤの後ならビールのプレゼンなんて楽勝？！',
     ],
     leader: ['ノラがトップに！ビギナーズラック炸裂 – 簡潔、シャープ、そして首位！'],
   },
   aurora: {
-    pick: ['ルーレットが選んだのはアウロラ – {beer}！今年初参加、カティンカの友人 – 何が起きるか誰にもわからない！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！'],
-    leader: ['アウロラがトップに！新人がベテランたちを脅かしている！'],
+    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、バークレー、そして素晴らしい歌声 – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！'],
+    leader: ['アウロラがトップに！新人がベテランたちを脅かしている！', 'アウロラ首位！歌声でトップへ！'],
+    pres6: ['アウロラのプレゼンに6点！あの歌声は効果抜群！'],
   },
   eirik: {
     pick: [
@@ -346,7 +361,7 @@ const JA_PEOPLE: Record<string, Lines> = {
     leader: ['マグヌスがトップに！Z世代が首位！ミレニアル世代は首をかしげている！'],
   },
   adam: {
-    pick: ['ルーレットが選んだのはアダム – {beer}！アダムさん！半分日本人、半分マンチェスター人、そして完全なクリスマスビールのボス！', 'アダムさんと{beer}！プレゼンで6点を取れなければ、勝負はまったくわからない！'],
+    pick: ['ルーレットが選んだのはアダム – {beer}！アダムさん！生粋のイギリス人 – でも4月に日本に行ったので、アダムさんがぴったり！そして完全なクリスマスビールのボス！', 'アダムさんと{beer}！プレゼンで6点を取れなければ、勝負はまったくわからない！'],
     leader: ['アダムさんがトップに！クリスマスビールのボスが格の違いを見せる！'],
     pres6: ['アダムさんのプレゼンに6点！さすがクリスマスビールのボス！'],
     presLow: ['えっ？！アダムさんのプレゼンに低評価？！これで勝負はまったくわからなくなった！'],

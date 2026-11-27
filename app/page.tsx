@@ -62,6 +62,7 @@ export default function Home() {
   const [roundStarted, setRoundStarted] = useState(false);
   const [allowReveal, setAllowReveal] = useState(false);
   const [autoAllowReveal, setAutoAllowReveal] = useState(false);
+  const [autoRevealVotes, setAutoRevealVotes] = useState(false);
   const [awardUnlocked, setAwardUnlocked] = useState(false);
   const [pairTotalsMap, setPairTotalsMap] = useState<Record<string, Record<string, number>>>({});
   const [pairTotalsExtraMap, setPairTotalsExtraMap] = useState<Record<string, Record<string, number>>>({});
@@ -390,6 +391,7 @@ export default function Home() {
       setRoundStarted(Boolean(data.roundStarted));
       setAllowReveal(Boolean(data.allowReveal));
       setAutoAllowReveal(Boolean(data.autoAllowReveal));
+      setAutoRevealVotes(Boolean(data.autoRevealVotes));
       setAwardUnlocked(Boolean(data.awardUnlocked));
       // build pair totals map: from -> to -> total
       function buildPairMap(
@@ -2310,6 +2312,58 @@ export default function Home() {
               >
                 {revealingVote ? "🥁 Trommevirvel…" : "Avslør min stemme"}
               </button>
+              {isHost && (
+                <div className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">Admin</div>
+                  <button
+                    className="w-full rounded-xl bg-amber-600 px-4 py-3 text-white active:opacity-90"
+                    onClick={() =>
+                      confirmAdmin(
+                        async () => { await adminCall("/api/host/reveal-all-votes", "Alle stemmer i runden er avslørt."); },
+                        {
+                          title: "Avslør alle stemmer",
+                          message: "Avslører alle stemmer som er avgitt i denne runden – også for de som er på do eller har glemt seg bort.",
+                        },
+                      )
+                    }
+                  >
+                    Avslør alle stemmer
+                  </button>
+                  <button
+                    className={`w-full rounded-xl px-4 py-3 active:opacity-90 ${
+                      autoRevealVotes ? "bg-amber-600 text-white" : "border-2 border-amber-500 text-amber-800"
+                    }`}
+                    aria-pressed={autoRevealVotes}
+                    onClick={() =>
+                      confirmAdmin(
+                        async () => {
+                          const turnOn = !autoRevealVotes;
+                          const ok = await adminCall(
+                            "/api/host/auto-reveal-votes",
+                            turnOn
+                              ? "Auto-avslør er ON – stemmer avsløres i det de låses."
+                              : "Auto-avslør er OFF – hver deltaker avslører selv.",
+                            { on: turnOn },
+                          );
+                          if (ok) setAutoRevealVotes(turnOn);
+                        },
+                        {
+                          title: autoRevealVotes ? "Slå av auto-avslør" : "Slå på auto-avslør",
+                          message: autoRevealVotes
+                            ? "Deltakerne må igjen avsløre stemmen sin selv."
+                            : "Alle stemmer avsløres automatisk i det de låses (også de som allerede er avgitt i runden).",
+                        },
+                      )
+                    }
+                  >
+                    Auto-avslør stemmer: <span className="font-bold">{autoRevealVotes ? "ON" : "OFF"}</span>
+                  </button>
+                  <p className="text-[11px] text-zinc-500">
+                    Auto-avslør viser stemmene for alle med en gang. (Ikke det samme som «Auto-allow avslør» i Admin, som bare lar deltakerne trykke selv.)
+                  </p>
+                  {adminNotice && <div className="text-xs text-emerald-700">{adminNotice}</div>}
+                </div>
+              )}
             </div>
             {showMyReveal && (
               <div

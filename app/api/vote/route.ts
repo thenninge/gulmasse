@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { voteBodySchema } from '@/lib/schemas';
 import { supabase } from '@/lib/supabase';
+import { markRevealed } from '@/lib/reveals';
 
 async function getCurrentRound(): Promise<number> {
   const res = await supabase.from('app_state').select('int_value').eq('key','current_round').maybeSingle();
@@ -59,6 +60,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Du har allerede låst stemmen din i denne runden.' }, { status: 409 });
       }
       throw ins.error;
+    }
+    // «Auto-avslør stemmer» ON → reveal this vote right away
+    const autoRes = await supabase.from('app_state').select('bool_value').eq('key', 'auto_reveal_votes').maybeSingle();
+    if (!autoRes.error && (autoRes.data as { bool_value?: boolean } | null)?.bool_value === true) {
+      await markRevealed(round, [pin]).catch(() => {});
     }
     return NextResponse.json({ ok: true, round });
   } catch (e: any) {

@@ -95,6 +95,7 @@ export async function GET(request: Request) {
     const roundStarted = boolOf('round_started');
     // «Auto-allow avslør» ON makes reveal always allowed, every round
     const autoAllowReveal = boolOf('auto_allow_reveal');
+    const autoRevealVotes = boolOf('auto_reveal_votes');
     const allowReveal = boolOf('allow_reveal') || autoAllowReveal;
     const awardUnlocked = boolOf('award_unlocked');
 
@@ -272,6 +273,7 @@ export async function GET(request: Request) {
       roundStarted,
       allowReveal,
       autoAllowReveal,
+      autoRevealVotes,
       awardUnlocked,
       pairTotals,
       pairTotalsExtra,

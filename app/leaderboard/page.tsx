@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type Standing = {
-  place: number; pin: string; name: string; beer: string; producer: string; abv: number | null;
-  beerPoints: number; extraPoints: number; sum: number; presented: boolean;
+  place: number; pin: string; name: string; beer: string; producer: string; type?: string; abv: number | null;
+  image?: string | null; beerPoints: number; extraPoints: number; sum: number; presented: boolean;
 };
 type Presented = {
   pin: string; name: string; beer: string; votes: number;
@@ -72,6 +72,7 @@ export default function LeaderboardPage() {
   const [dice, setDice] = useState<Die[]>([]);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [confetti, setConfetti] = useState(0); // bump to fire a burst
+  const [openPin, setOpenPin] = useState<string | null>(null); // clicked participant → beer card
   const prevRef = useRef<Board | null>(null);
   const idRef = useRef(1);
 
@@ -212,6 +213,10 @@ export default function LeaderboardPage() {
       {confetti > 0 && <ConfettiBurst key={`confetti-${confetti}`} />}
       {announce && <AnnounceOverlay key={`announce-${announce.id}`} name={announce.name} beer={announce.beer} onClose={() => setAnnounce(null)} />}
       <Toasts toasts={toasts} />
+      {openPin && (() => {
+        const st = board.standings.find((x) => x.pin === openPin);
+        return st ? <BeerModal s={st} rank={board.standings.indexOf(st)} factor={board.factor} onClose={() => setOpenPin(null)} /> : null;
+      })()}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-end gap-3 sm:gap-4">
           {/* The juleølhatt – always on the page, gently rocking */}
@@ -250,16 +255,18 @@ export default function LeaderboardPage() {
         </div>
         <div className="space-y-5">
           <Card title="🏆 Hvem leder? – totalt">
-            <Standings standings={board.standings} factor={board.factor} progression={board.progression} />
+            <Standings standings={board.standings} progression={board.progression} onOpen={setOpenPin} />
           </Card>
           <div className="grid gap-5 sm:grid-cols-2">
             <Card title="🍺 Øl-poeng">
               <MiniRanking
+                onOpen={setOpenPin}
                 rows={board.standings.map((s) => ({ pin: s.pin, name: s.name, sub: s.beer, value: s.beerPoints }))}
               />
             </Card>
             <Card title="🎤 Presentasjonspoeng">
               <MiniRanking
+                onOpen={setOpenPin}
                 rows={board.standings.map((s) => ({ pin: s.pin, name: s.name, sub: s.beer, value: s.extraPoints }))}
               />
             </Card>
@@ -267,6 +274,7 @@ export default function LeaderboardPage() {
           {board.givers && board.givers.length > 0 && (
             <Card title="🎁 Hvem har gitt mest poeng?">
               <MiniRanking
+                onOpen={setOpenPin}
                 rows={board.givers.map((g) => ({
                   pin: g.pin,
                   name: g.name,
@@ -288,7 +296,7 @@ export default function LeaderboardPage() {
 
       {board.presented.length > 0 && (
         <Card title="Presentert så langt" className="mt-5">
-          <PresentedTable presented={board.presented} />
+          <PresentedTable presented={board.presented} onOpen={setOpenPin} />
         </Card>
       )}
       <footer className="mt-8 pb-6 text-center text-xs text-[#6b6b6b]">
@@ -549,15 +557,14 @@ function CountUp({ value, decimals = 1 }: { value: number; decimals?: number }) 
 
 function Standings({
   standings,
-  factor,
   progression,
+  onOpen,
 }: {
   standings: Standing[];
-  factor: number;
   progression: Board["progression"];
+  onOpen: (pin: string) => void;
 }) {
   const max = Math.max(1, ...standings.map((s) => s.sum));
-  const [hover, setHover] = useState<string | null>(null);
 
   // Places before the latest beer → ▲/▼ movement
   const prevPlace = useMemo(() => {
@@ -603,9 +610,8 @@ function Standings({
             if (el) rowRefs.current.set(s.pin, el);
             else rowRefs.current.delete(s.pin);
           }}
-          className={`relative grid grid-cols-[2rem_minmax(0,1fr)_3.5rem] items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-white/5 ${i === 0 && s.sum > 0 ? "lb-glow bg-[#f2c14e]/5" : ""}`}
-          onMouseEnter={() => setHover(s.pin)}
-          onMouseLeave={() => setHover(null)}
+          className={`relative grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)_3.5rem] items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f2c14e] ${i === 0 && s.sum > 0 ? "lb-glow bg-[#f2c14e]/5" : ""}`}
+          {...clickable(() => onOpen(s.pin), `Vis ølet til ${s.name}`)}
         >
           <span className="text-center text-base tabular-nums">{s.sum > 0 && i < 3 ? MEDALS[i] : s.place}</span>
           <div className="min-w-0">
@@ -629,14 +635,6 @@ function Standings({
               </span>
             )}
           </span>
-          {hover === s.pin && (
-            <div className="pointer-events-none absolute right-16 top-full z-10 mt-1 rounded-lg border border-white/10 bg-[#0f0f0f] px-3 py-2 text-xs shadow-xl">
-              <div className="font-semibold">{s.name}</div>
-              <div className="text-[#9c9c9c]">🍺 Øl: <span className="text-[#efefef] tabular-nums">{fmt(s.beerPoints, 0)}</span></div>
-              <div className="text-[#9c9c9c]">🎤 Presentasjon: <span className="text-[#efefef] tabular-nums">{fmt(s.extraPoints, 0)}</span> (× {fmt(factor)})</div>
-              {!s.presented && <div className="mt-1 text-[#9c9c9c]">Har ikke presentert ennå</div>}
-            </div>
-          )}
         </li>
         );
       })}
@@ -765,7 +763,13 @@ function RaceChart({ board, top }: { board: Board; top: string[] }) {
   );
 }
 
-function MiniRanking({ rows }: { rows: Array<{ pin: string; name: string; sub: string; value: number }> }) {
+function MiniRanking({
+  rows,
+  onOpen,
+}: {
+  rows: Array<{ pin: string; name: string; sub: string; value: number }>;
+  onOpen: (pin: string) => void;
+}) {
   const sorted = rows
     .slice()
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, "nb"));
@@ -777,7 +781,11 @@ function MiniRanking({ rows }: { rows: Array<{ pin: string; name: string; sub: s
       {sorted.map((r, i) => {
         const place = places[i];
         return (
-          <li key={r.pin} className="grid grid-cols-[1.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 text-sm">
+          <li
+            key={r.pin}
+            className="grid cursor-pointer grid-cols-[1.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 rounded-md text-sm hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f2c14e]"
+            {...clickable(() => onOpen(r.pin), `Vis ølet til ${r.name}`)}
+          >
             <span className="text-center tabular-nums text-[#9c9c9c]">{r.value > 0 && place <= 3 ? MEDALS[place - 1] : place}</span>
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
@@ -796,7 +804,73 @@ function MiniRanking({ rows }: { rows: Array<{ pin: string; name: string; sub: s
   );
 }
 
-function PresentedTable({ presented }: { presented: Presented[] }) {
+/** Props that make a row act like a button (click, Enter/Space, screen readers). */
+function clickable(onActivate: () => void, label: string) {
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": label,
+    onClick: onActivate,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onActivate();
+      }
+    },
+  };
+}
+
+function BeerModal({ s, rank, factor, onClose }: { s: Standing; rank: number; factor: number; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const place = s.sum > 0 && rank < 3 ? MEDALS[rank] : `${s.place}.`;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`Ølet til ${s.name}`} className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={onClose}>
+      <div
+        className="lb-pop relative flex max-h-[90dvh] w-full max-w-sm flex-col overflow-y-auto rounded-2xl border border-white/10 bg-[#191919] text-[#efefef] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 text-sm" onClick={onClose} aria-label="Lukk">
+          ✕
+        </button>
+        {s.image ? (
+          <div className="flex shrink items-center justify-center p-3">
+            {/* Fixed max height: tall, narrow photos can never push the info out */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={s.image} alt={s.beer || s.name} className="max-h-[min(50dvh,calc(90dvh-17rem))] w-auto max-w-full rounded-lg object-contain" />
+          </div>
+        ) : (
+          <div className="flex h-28 shrink-0 items-center justify-center text-6xl">🍺</div>
+        )}
+        <div className="shrink-0 px-4 pb-4 pt-1 text-center text-sm text-[#cfcfcf]">
+          <div className="text-xl font-bold text-white">{s.name}</div>
+          {s.beer && <div className="mt-0.5 text-lg font-semibold text-[#f2c14e]">{s.beer}</div>}
+          <div className="mt-1 space-y-0.5">
+            {s.producer && <div>Produsent: <span className="font-medium text-white">{s.producer}</span></div>}
+            {s.type && <div>Øltype: <span className="font-medium text-white">{s.type}</span></div>}
+            {s.abv != null && <div>ABV: <span className="font-medium text-white">{fmt(s.abv)}%</span></div>}
+          </div>
+          {s.presented ? (
+            <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-white/5 p-2">
+              <div><div className="text-[11px] text-[#9c9c9c]">Plass</div><div className="text-lg font-bold">{place}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">Totalt</div><div className="text-lg font-bold tabular-nums">{fmt(s.sum)}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">🍺 Øl</div><div className="text-lg font-bold tabular-nums">{fmt(s.beerPoints, 0)}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">🎤 Pres.</div><div className="text-lg font-bold tabular-nums">{fmt(s.extraPoints, 0)}</div></div>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl bg-white/5 p-2 text-[#9c9c9c]">Har ikke presentert ennå</div>
+          )}
+          {s.presented && <div className="mt-1 text-[10px] text-[#6b6b6b]">Totalt = øl + {fmt(factor)} × presentasjon</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PresentedTable({ presented, onOpen }: { presented: Presented[]; onOpen: (pin: string) => void }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -813,7 +887,11 @@ function PresentedTable({ presented }: { presented: Presented[] }) {
         </thead>
         <tbody>
           {presented.map((b, i) => (
-            <tr key={b.pin} className="border-t border-white/5">
+            <tr
+              key={b.pin}
+              className="cursor-pointer border-t border-white/5 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f2c14e]"
+              {...clickable(() => onOpen(b.pin), `Vis ølet til ${b.name}`)}
+            >
               <td className="py-1.5 pr-2 tabular-nums text-[#9c9c9c]">{i + 1}</td>
               <td className="py-1.5 pr-2 font-medium">{b.name}</td>
               <td className="max-w-[12rem] truncate py-1.5 pr-2 text-[#cfcfcf]">{b.beer || "—"}</td>

@@ -354,6 +354,7 @@ export default function Home() {
         setPendingVote(null);
         setPendingExtraVote(null);
         setShowMyReveal(false);
+        setHaveRevealedMyVote(false);
       }
       lastRoundRef.current = newRound;
       setRound(newRound);
@@ -708,6 +709,8 @@ export default function Home() {
   const [showLockConfirm, setShowLockConfirm] = useState(false);
   const [votedPins, setVotedPins] = useState<string[]>([]);
   const [showMyReveal, setShowMyReveal] = useState(false);
+  /** Optimistic: this device already revealed for the current round (per-user, not global). */
+  const [haveRevealedMyVote, setHaveRevealedMyVote] = useState(false);
   const [revealedVotesMap, setRevealedVotesMap] = useState<Record<string, number>>({});
   const [revealedExtraMap, setRevealedExtraMap] = useState<Record<string, number>>({});
   // If server no longer lists my pin in votedPins, unlock local vote UI (handles admin "Reset stemmer")
@@ -716,6 +719,7 @@ export default function Home() {
       setVoted(null);
       setPendingVote(null);
       setShowMyReveal(false);
+      setHaveRevealedMyVote(false);
     }
   }, [votedPins, pin, voted]);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
@@ -941,10 +945,23 @@ export default function Home() {
     setPendingExtraVote(null);
   }
   const [revealingVote, setRevealingVote] = useState(false);
+  /** True only when *this* PIN has revealed — never from someone else's reveal. */
+  const myVoteAlreadyRevealed =
+    haveRevealedMyVote ||
+    (pin.length === 4 && typeof revealedVotesMap[pin] === "number") ||
+    (pin.length === 4 && typeof revealedExtraMap[pin] === "number") ||
+    revealedRound === round;
   async function revealMyVote() {
     const hasVotedLocally = voted !== null;
     const hasVotedServer = pin.length === 4 && votedPins.includes(pin);
-    if (pin.length !== 4 || !(hasVotedLocally || hasVotedServer) || revealingVote) return;
+    if (
+      pin.length !== 4 ||
+      !(hasVotedLocally || hasVotedServer) ||
+      revealingVote ||
+      myVoteAlreadyRevealed
+    ) {
+      return;
+    }
     // Drum roll for ~1 s, then show the vote (the reveal request runs meanwhile)
     setRevealingVote(true);
     getAudio();
@@ -956,6 +973,7 @@ export default function Home() {
     }).catch(() => null);
     try {
       await Promise.all([request, new Promise((r) => setTimeout(r, 1000))]);
+      setHaveRevealedMyVote(true);
     } finally {
       stopDrumroll();
       setRevealingVote(false);
@@ -2303,11 +2321,16 @@ export default function Home() {
                 onClick={revealMyVote}
                 disabled={
                   revealingVote ||
+                  myVoteAlreadyRevealed ||
                   !((activeCount > 0 && votedCount >= activeCount) || allowReveal) ||
                   !(voted !== null || (pin && votedPins.includes(pin)))
                 }
               >
-                {revealingVote ? "🥁 Trommevirvel…" : "Avslør min stemme"}
+                {revealingVote
+                  ? "Trommevirvel…"
+                  : myVoteAlreadyRevealed
+                    ? "Stemme avslørt"
+                    : "Avslør min stemme"}
               </button>
             </div>
             {showMyReveal && (
@@ -2438,6 +2461,7 @@ export default function Home() {
                   setVoted(null);
                   setPendingVote(null);
                   setShowMyReveal(false);
+                  setHaveRevealedMyVote(false);
                   setRevealedVotesMap({});
                   setVotedPins([]);
                   stopDrumroll();
@@ -2938,6 +2962,7 @@ export default function Home() {
                         setVoted(null);
                         setPendingVote(null);
                         setShowMyReveal(false);
+                        setHaveRevealedMyVote(false);
                         setRevealedVotesMap({});
                         setVotedPins([]);
                         setPairTotalsMap({});

@@ -52,7 +52,7 @@ const useI18n = () => useContext(I18nCtx);
 
 // Events are stored as a text key + raw params and translated when shown,
 // so switching language also translates news that already happened.
-type EvParams = { name?: string; beer?: string; avg?: number | null };
+type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string };
 type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date; kind?: CommentKind };
 type Announce = { id: number; name: string; beer: string };
 type Toast = { id: number; icon: string; key: string; params: EvParams };
@@ -68,6 +68,10 @@ function feedText(i: I18n, item: FeedItem): string {
 
 function evText(i: I18n, key: string, p: EvParams): string {
   return i.t(key, {
+    from: p.from ?? "",
+    to: p.to ?? "",
+    margin: i.f(p.margin ?? null, 1),
+    second: p.second ?? "",
     name: p.name ?? "",
     beer: key === "evPick" ? (p.beer ? ` – ${p.beer}` : "") : p.beer || i.t("theBeer"),
     avg: i.f(p.avg ?? null, 2),
@@ -81,6 +85,7 @@ function detectEvents(prev: Board, next: Board) {
     pick?: { name: string; beer: string };
     leader?: string;
     allVoted?: { avg: number | null; beer: string };
+    halfway?: { avg: number | null; beer: string };
     throws: Array<[number, number]>;
   } = { throws: [] };
   const np = next.presenter;
@@ -93,6 +98,8 @@ function detectEvents(prev: Board, next: Board) {
     const before = pp.throws?.length ?? 0;
     ev.throws = (np.throws || []).slice(before);
     if (np.active > 0 && np.votes >= np.active && pp.votes < pp.active) ev.allVoted = { avg: np.avgBeer, beer: np.beer };
+    const half = Math.ceil(np.active / 2);
+    if (np.active >= 4 && pp.votes < half && np.votes >= half && np.votes < np.active) ev.halfway = { avg: np.avgBeer, beer: np.beer };
   }
   return ev;
 }
@@ -109,6 +116,8 @@ export default function LeaderboardPage() {
   const [openPin, setOpenPin] = useState<string | null>(null); // clicked participant → beer card
   const prevRef = useRef<Board | null>(null);
   const idRef = useRef(1);
+  // Places when the current beer was picked → «byks på tabellen» after the round
+  const roundStartPlacesRef = useRef<Record<string, number> | null>(null);
   const [lang, setLangState] = useState<Lang>("no");
   // ?lang=en|ja|no in the link wins, otherwise the last choice on this device
   useEffect(() => {
@@ -142,7 +151,12 @@ export default function LeaderboardPage() {
     const prev = prevRef.current;
     prevRef.current = next;
     setBoard(next);
-    if (!prev) return; // first load: no fireworks for things that already happened
+    const placesOf = (b: Board) => Object.fromEntries(b.standings.map((x) => [x.pin, x.place]));
+    if (!prev) {
+      // first load: no fireworks for things that already happened
+      if (next.presenter) roundStartPlacesRef.current = placesOf(next);
+      return;
+    }
     const ev = detectEvents(prev, next);
     const now = new Date();
     const add: FeedItem[] = [];
@@ -157,6 +171,7 @@ export default function LeaderboardPage() {
       setAnnounce({ id, name: ev.pick.name, beer: ev.pick.beer });
       window.setTimeout(() => setAnnounce((a) => (a && a.id === id ? null : a)), 6500);
       setConfetti((c) => c + 1);
+      roundStartPlacesRef.current = placesOf(next);
       add.push({ id: nid(), icon: "🎡", key: "evPick", kind: "pick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
     }
     if (ev.leader) {
@@ -181,16 +196,62 @@ export default function LeaderboardPage() {
         toast("🎲", beer6 ? "evBeer6Toast" : "evPres6Toast", { name: who });
         add.push({ id: nid(), icon: "🎲", key: beer6 ? "evBeer6" : "evPres6", kind: beer6 ? "beer6" : "pres6", params: { name: who, beer: whoBeer }, at: now });
       }
-      if (ev.throws.some(([b]) => b === 1)) add.push({ id: nid(), icon: "🥶", key: "evOne", kind: "beer1", params: { name: who, beer: whoBeer }, at: now });
-      if (ev.throws.some(([, e]) => e > 0 && e <= 2)) add.push({ id: nid(), icon: "😬", key: "evPresLow", kind: "presLow", params: { name: who, beer: whoBeer }, at: now });
+      // Graded comments, at most one positive + one negative per update (strongest wins)
+      if (!double6 && !beer6 && !pres6) {
+        const pos: Array<[boolean, CommentKind, string, string]> = [
+          [ev.throws.some(([b]) => b === 5), "beer5", "evBeer5", "🍺"],
+          [ev.throws.some(([, e]) => e === 5), "pres5", "evPres5", "🎤"],
+        ];
+        const hit = pos.find(([c]) => c);
+        if (hit) add.push({ id: nid(), icon: hit[3], key: hit[2], kind: hit[1], params: { name: who, beer: whoBeer }, at: now });
+      }
+      const neg: Array<[boolean, CommentKind, string, string]> = [
+        [ev.throws.some(([b]) => b === 1), "beer1", "evOne", "🥶"],
+        [ev.throws.some(([, e]) => e === 1), "pres1", "evPres1", "😴"],
+        [ev.throws.some(([b]) => b === 2), "beer2", "evBeer2", "😕"],
+        [ev.throws.some(([, e]) => e === 2), "presLow", "evPresLow", "😬"],
+      ];
+      const low = neg.find(([c]) => c);
+      if (low) add.push({ id: nid(), icon: low[3], key: low[2], kind: low[1], params: { name: who, beer: whoBeer }, at: now });
+    }
+    if (ev.halfway) {
+      add.push({ id: nid(), icon: "⏱️", key: "evHalfway", kind: "halfway", params: { beer: ev.halfway.beer, avg: ev.halfway.avg }, at: now });
     }
     if (ev.allVoted) {
       toast("✅", "evAllVotedToast", { avg: ev.allVoted.avg });
       add.push({ id: nid(), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: ev.allVoted.beer, avg: ev.allVoted.avg }, at: now });
+      const np = next.presenter;
+      // Record: best / worst beer average of the night so far (from the 2nd beer on)
+      const others = next.presented.filter((b) => b.pin !== np?.pin && b.votes > 0 && b.avgBeer != null);
+      const cur = ev.allVoted.avg;
+      if (np && cur != null && others.length >= 1) {
+        const best = Math.max(...others.map((b) => b.avgBeer as number));
+        const worst = Math.min(...others.map((b) => b.avgBeer as number));
+        if (cur > best) add.push({ id: nid(), icon: "🏅", key: "evRecordHigh", kind: "recordHigh", params: { name: np.name, beer: np.beer, avg: cur }, at: now });
+        else if (cur < worst) add.push({ id: nid(), icon: "📉", key: "evRecordLow", kind: "recordLow", params: { name: np.name, beer: np.beer, avg: cur }, at: now });
+      }
+      // Biggest climb / fall this round (≥ 2 places)
+      const start = roundStartPlacesRef.current;
+      if (start) {
+        const moves = next.standings
+          .filter((x) => x.sum > 0 || (start[x.pin] ?? 0) > 0)
+          .map((x) => ({ name: x.name, from: start[x.pin] ?? x.place, to: x.place }));
+        const climb = moves.filter((m) => m.from - m.to >= 2).sort((a, b) => b.from - b.to - (a.from - a.to))[0];
+        const fall = moves.filter((m) => m.to - m.from >= 2).sort((a, b) => b.to - b.from - (a.to - a.from))[0];
+        if (climb) add.push({ id: nid(), icon: "🚀", key: "evClimb", kind: "climb", params: climb, at: now });
+        if (fall) add.push({ id: nid(), icon: "🪂", key: "evFall", kind: "fall", params: fall, at: now });
+      }
+      // Standings after the round
+      const [first, second] = next.standings;
+      if (first && second && first.sum > 0) {
+        const margin = first.sum - second.sum;
+        const kind: CommentKind = margin <= 2 ? "standingClose" : margin >= 15 ? "standingBig" : "standing";
+        add.push({ id: nid(), icon: "📊", key: "evStanding", kind, params: { name: first.name, second: second.name, margin }, at: now });
+      }
     }
     if (add.length) {
       const newestFirst = add.slice().reverse();
-      setFeed((f) => [...newestFirst, ...f].slice(0, 12));
+      setFeed((f) => [...newestFirst, ...f].slice(0, 20));
     }
   }, []);
 

@@ -6,8 +6,16 @@
  */
 import type { Lang } from '@/lib/leaderboardI18n';
 
-export type CommentKind = 'pick' | 'leader' | 'beer6' | 'pres6' | 'double6' | 'beer1' | 'presLow' | 'allVoted';
-export type CommentParams = { name?: string; beer?: string; avg?: number | null };
+export type CommentKind =
+  | 'pick' | 'leader'
+  | 'double6' | 'beer6' | 'beer5' | 'beer2' | 'beer1' | 'pres6' | 'pres5' | 'presLow' | 'pres1'
+  | 'halfway' | 'allVoted' | 'recordHigh' | 'recordLow' | 'climb' | 'fall'
+  | 'standingClose' | 'standingBig' | 'standing';
+export type CommentParams = {
+  name?: string; beer?: string; avg?: number | null;
+  /** places for climb/fall, points margin + runner-up for standings */
+  from?: number; to?: number; margin?: number; second?: string;
+};
 
 type Lines = Partial<Record<CommentKind, string[]>>;
 
@@ -116,9 +124,21 @@ const NO_GENERIC: Record<CommentKind, string[]> = {
   ],
   pres6: ['Sekser på presentasjonen til {name}! Stående applaus i salen!', 'Full pott for showet! {name} leverer en 6-er-presentasjon!'],
   double6: ['DOBBEL SEKSER til {name}! Øl OG presentasjon! Dette er historisk, folkens!'],
-  beer1: ['Au! En ener på {beer}.. noen i salen er IKKE imponert!'],
+  beer5: ['Femmer på {beer}! Det lukter pallplass, folkens!', 'Sterk femmer til {name}! {beer} leverer!'],
+  beer2: ['Toer på {beer}.. Det var ikke dét {name} håpet på..', 'Uff, en toer. {beer} sliter i motbakken!'],
+  beer1: ['Au! En ener på {beer}.. noen i salen er IKKE imponert!', 'ENER! Det gjorde vondt å se. {beer} får juling!'],
+  pres5: ['Femmer på presentasjonen! {name} har salen i sin hule hånd!', 'Pitchen sitter! Femmer på showet til {name}!'],
   presLow: ['Mjaa.. litt trekk for presentasjonen til {name}.. vil det stå seg til slutt??'],
+  pres1: ['Ener på presentasjonen?! Noen sovnet visst under talen til {name}..', 'AU! Ener på showet. {name} må jobbe med retorikken!'],
+  halfway: ['Halvveis! Halvparten har stemt på {beer} – snittet ligger på {avg} så langt!', 'Pause i dysten? Neida! Halve salen har stemt – {avg} i snitt foreløpig!'],
   allVoted: ['Alle har stemt på {beer}! Snitt {avg}. {verdict}'],
+  recordHigh: ['NY REKORD! {beer} får kveldens høyeste snitt så langt: {avg}!', 'Historisk! {name} setter kveldsrekord med {avg} i snitt!'],
+  recordLow: ['Bunnrekord.. {beer} får kveldens laveste snitt hittil: {avg}. Det svir!'],
+  climb: ['BYKS PÅ TABELLEN! {name} klatrer fra {from}. til {to}. plass!', '{name} på vei oppover! Fra {from}. til {to}. plass – se opp i toppen!'],
+  fall: ['Stup! {name} faller fra {from}. til {to}. plass.. Tung kveld?', 'Au da. {name} glir ned fra {from}. til {to}. plass!'],
+  standingClose: ['NERVEPIRRENDE! {name} leder, men bare {margin} poeng foran {second}!', 'Knivskarpt i toppen! {margin} poeng skiller {name} og {second}!'],
+  standingBig: ['Knusende! {name} leder med hele {margin} poeng ned til {second}!', '{name} rømmer! {margin} poeng foran {second} – kan noen stoppe dette?!'],
+  standing: ['Stillingen: {name} leder, {margin} poeng foran {second}. Fortsatt alt å spille for!'],
 };
 
 const NO_VERDICT = (avg: number) =>
@@ -178,9 +198,21 @@ const EN_GENERIC: Record<CommentKind, string[]> = {
   beer6: ['A SIX for {name}\'s beer..!! Wow! A 6 for {beer}! Anything can happen now!'],
   pres6: ['A six for {name}\'s presentation! Standing ovation!'],
   double6: ['DOUBLE SIX for {name}! Beer AND presentation! This is historic, folks!'],
+  beer5: ['A five for {beer}! Smells like a podium finish, folks!'],
+  beer2: ['A two for {beer}.. not what {name} was hoping for..'],
   beer1: ['Ouch! A one for {beer}.. someone in the room is NOT impressed!'],
+  pres5: ['A five for the presentation! {name} has the room in the palm of their hand!'],
   presLow: ['Meh.. a low score for {name}\'s presentation.. will it hold up in the end??'],
+  pres1: ['A ONE for the presentation?! Someone fell asleep during {name}\'s speech..'],
+  halfway: ['Halfway! Half the room has voted on {beer} – {avg} average so far!'],
   allVoted: ['Everyone has voted on {beer}! Average {avg}. {verdict}'],
+  recordHigh: ['NEW RECORD! {beer} gets the highest average of the night so far: {avg}!'],
+  recordLow: ['Rock bottom.. {beer} gets the lowest average of the night so far: {avg}. Ouch!'],
+  climb: ['BIG JUMP! {name} climbs from {from} to {to}!'],
+  fall: ['Free fall! {name} drops from {from} to {to}.. tough night?'],
+  standingClose: ['NAIL-BITING! {name} leads, but only {margin} points ahead of {second}!'],
+  standingBig: ['Crushing! {name} leads by a massive {margin} points over {second}!'],
+  standing: ['Standings: {name} leads, {margin} points ahead of {second}. Still everything to play for!'],
 };
 
 const EN_VERDICT = (avg: number) =>
@@ -207,6 +239,10 @@ export function commentary(
     .replace(/\{beer\}/g, beer)
     .replace(/\{avg\}/g, formatAvg(p.avg ?? null))
     .replace(/\{verdict\}/g, p.avg != null ? verdict(p.avg) : '')
+    .replace(/\{from\}/g, String(p.from ?? ''))
+    .replace(/\{to\}/g, String(p.to ?? ''))
+    .replace(/\{margin\}/g, formatAvg(p.margin ?? null).replace(/[.,]00$/, '').replace(/([.,]\d)0$/, '$1'))
+    .replace(/\{second\}/g, p.second || '')
     .replace(/ – !/g, '!')
     .trim();
 }

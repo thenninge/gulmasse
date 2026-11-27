@@ -33,7 +33,8 @@ export async function GET(request: Request) {
     for (const r of [pRes, vRes, pkRes, sRes]) if (r.error) throw r.error;
     const participants = (pRes.data as Participant[]) || [];
     const votes = (vRes.data as Vote[]) || [];
-    const picks = ((pkRes.data as Array<{ pin: string }>) || []).map((p) => p.pin);
+    const pickRows = (pkRes.data as Array<{ pin: string; created_at: string | null }>) || [];
+    const picks = pickRows.map((p) => p.pin);
     const state = new Map(((sRes.data as StateRow[]) || []).map((r) => [r.key, r]));
     const round = Number(state.get('current_round')?.int_value ?? 1);
     const pickedRound = Number(state.get('picked_round')?.int_value ?? 0);
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
     const results = computeResults(participants, pair, extra, FACTOR);
 
     // Each presented beer, in the order the wheel picked them
-    const presented = picks.map((pin) => {
+    const presented = pickRows.map(({ pin, created_at: pickedAt }) => {
       const vs = votes.filter((v) => v.recipient_pin === pin);
       const beerSum = vs.reduce((a, v) => a + (Number(v.value) || 0), 0);
       const extraSum = vs.reduce((a, v) => a + (Number(v.extra_value) || 0), 0);
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
         avgExtra: vs.length ? extraSum / vs.length : null,
         sum: beerSum + FACTOR * extraSum,
         round: vs.length ? Math.min(...vs.map((v) => Number(v.round))) : null,
+        pickedAt,
       };
     });
 

@@ -11,7 +11,7 @@ type Standing = {
 };
 type Presented = {
   pin: string; name: string; beer: string; votes: number;
-  avgBeer: number | null; avgExtra: number | null; sum: number; round: number | null;
+  avgBeer: number | null; avgExtra: number | null; sum: number; round: number | null; pickedAt?: string | null;
 };
 type Board = {
   factor: number;
@@ -112,6 +112,51 @@ function detectEvents(prev: Board, next: Board) {
   return ev;
 }
 
+/**
+ * Rebuild the evening's story from stored data, so someone opening the page
+ * later can scroll back: per beer the pick, the result (verdict + records),
+ * leader changes and the standings. Ids are negative (stable seeds for the
+ * commentator, no clash with live events). Returned oldest first.
+ */
+function buildHistory(board: Board): FeedItem[] {
+  const out: FeedItem[] = [];
+  const names = Object.fromEntries(board.standings.map((s) => [s.pin, s.name]));
+  let prevLeader: string | null = null;
+  const doneAvgs: number[] = [];
+  board.presented.forEach((b, i) => {
+    const at = b.pickedAt ? new Date(b.pickedAt) : new Date(board.updatedAt);
+    const id = (k: number) => -(i * 20 + k + 1);
+    out.push({ id: id(0), icon: "🎡", key: "evPick", kind: "pick", params: { name: b.name, beer: b.beer }, at });
+    const live = board.presenter?.pin === b.pin && board.presenter.votes < board.presenter.active;
+    if (live || b.votes === 0 || b.avgBeer == null) return; // round still in progress
+    out.push({ id: id(1), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: b.beer, avg: b.avgBeer }, at });
+    if (doneAvgs.length >= 1) {
+      if (b.avgBeer > Math.max(...doneAvgs)) out.push({ id: id(2), icon: "🏅", key: "evRecordHigh", kind: "recordHigh", params: { name: b.name, beer: b.beer, avg: b.avgBeer }, at });
+      else if (b.avgBeer < Math.min(...doneAvgs)) out.push({ id: id(2), icon: "📉", key: "evRecordLow", kind: "recordLow", params: { name: b.name, beer: b.beer, avg: b.avgBeer }, at });
+    }
+    doneAvgs.push(b.avgBeer);
+    const step = board.progression[i];
+    if (!step) return;
+    const ranked = Object.entries(step.totals).sort((x, y) => y[1] - x[1]);
+    const [first, second] = ranked;
+    if (first && first[1] > 0 && first[0] !== prevLeader && !(second && second[1] === first[1])) {
+      out.push({ id: id(3), icon: "👑", key: "evLeader", kind: "leader", params: { name: names[first[0]] }, at });
+      prevLeader = first[0];
+    }
+    if (first && second && first[1] > 0 && i >= 1) {
+      const margin = first[1] - second[1];
+      const kind: CommentKind = margin <= 2 ? "standingClose" : margin >= 15 ? "standingBig" : "standing";
+      out.push({ id: id(4), icon: "📊", key: "evStanding", kind, params: { name: names[first[0]], second: names[second[0]], margin }, at });
+    }
+  });
+  if (board.awardUnlocked) {
+    const at = new Date(board.updatedAt);
+    out.push({ id: -100001, icon: "🏆", key: "evAward", kind: "award", params: {}, at });
+    out.push({ id: -100002, icon: "🥁", key: "evAwardCta", kind: "awardCta", params: {}, at });
+  }
+  return out;
+}
+
 export default function LeaderboardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [denied, setDenied] = useState(false);
@@ -166,6 +211,8 @@ export default function LeaderboardPage() {
     if (!prev) {
       // first load: no fireworks for things that already happened
       if (next.presenter) roundStartPlacesRef.current = placesOf(next);
+      // late visitors get the story so far (newest first)
+      setFeed(buildHistory(next).reverse());
       return;
     }
     const ev = detectEvents(prev, next);
@@ -276,7 +323,7 @@ export default function LeaderboardPage() {
     }
     if (add.length) {
       const newestFirst = add.slice().reverse();
-      setFeed((f) => [...newestFirst, ...f].slice(0, 20));
+      setFeed((f) => [...newestFirst, ...f].slice(0, 300));
     }
   }, []);
 
@@ -343,7 +390,7 @@ export default function LeaderboardPage() {
             {feed.length === 0 ? (
               <div className="text-sm text-[#9c9c9c]">{t("newsEmpty")}</div>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="max-h-[26rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1" aria-label={t("news")}>
                 {feed.map((item, i) => (
                   <li key={item.id} className={`flex items-start gap-2 text-sm ${i === 0 ? "lb-pop" : ""}`}>
                     <span className="w-5 shrink-0 text-center">{item.icon}</span>

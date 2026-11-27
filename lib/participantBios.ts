@@ -21,8 +21,9 @@ const PROFILES: Record<string, Profile> = {
       'Mannen bak Gulmasse – vertskap og oppfinner. 6. året nå. Aldri vunnet. En evig taper? Vi får se..',
       'Historisk sett gir Tomas alltid sitt eget øl en sekser. Sneaky – men helt innenfor regelboka!',
       'I 2021 stilte han Père Noël: 3. på smak, men bare 6. offisielt.',
+      'Årets øl, TTTDOP, er – helt seriøst – kjøpt i Kyiv og smuglet forbi både polske og moldovske grensevakter! Det må jo gi uttelling på presentasjonen?',
     ],
-    facts: ['6. året i konkurransen', 'Aldri vunnet', 'Gir alltid eget øl 6 poeng'],
+    facts: ['6. året i konkurransen', 'Aldri vunnet', 'Gir alltid eget øl 6 poeng', 'Øl kjøpt i Kyiv', 'Smuglet forbi to grenser'],
   },
   kathinka: {
     emoji: '🧦',
@@ -48,9 +49,10 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Ny i år! Skallamann nr. 4 – etter Tomas, Adam og Magnus.',
       'Vegetarianer – vi vet ikke hvordan det slår ut på stemmene. Og passer ølsmaken hans om han ikke har ganen full av ribbefett??',
+      'Han har jobbet som snømåker i Oslo – med traktor og full pakke! Og etter endt vakt pleide han å spise kebab. En vegetarianer og kebab? Her står spørsmålene i kø..',
       'Han stiller Père Noël – et øl med historie: 3. på smak da Tomas stilte den i 2021, men sist da Eirik stilte den i 2022. Tredje gang god?',
     ],
-    facts: ['Debutant', 'Skallamann nr. 4', 'Vegetarianer', 'Père Noël: 3. på smak 2021, sist 2022'],
+    facts: ['Debutant', 'Skallamann nr. 4', 'Vegetarianer', 'Snømåker i Oslo (traktor!)', 'Kebab etter vakta', 'Père Noël: 3. på smak 2021, sist 2022'],
   },
   eirik: {
     emoji: '☢️',

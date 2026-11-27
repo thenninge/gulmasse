@@ -58,11 +58,14 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Carl Petter – {beer}. Carl Petter altså.. ny i gamet i år. Vil det trekke ned at han er vegetarianer..? Spenningen er til å ta og føle på!',
       'Carl Petter med {beer}! Skallamann nr. 4 – etter Tomas, Adam og Magnus! Holder ganen uten ribbefett mål?!',
+      'Carl Petter med {beer}! Han har måkt snø i Oslo med traktor og full pakke – nå skal han rydde vei til toppen!',
+      'Carl Petter med {beer}! Snømåker med traktor, og kebab etter endt vakt. Vegetarianer altså.. Her er det mye vi ikke forstår!',
       'Carl Petter med {beer}! Kjenner vi den igjen? JA – Eirik stilte med Père Noël i 2022! Gjør den det bedre i nye hender?!',
     ],
     leader: [
       'Carl Petter tar ledelsen. Jøjje meg! Han er i tet, dere! En vegetarianer i tet!',
       'Skallamann nr. 4 i tet!! Carl Petter tar ledelsen – og det uten en eneste ribbebit!',
+      'Carl Petter brøyter seg forbi alle! Snømåkeren med traktor har tatt ledelsen – det blir kebab i kveld!',
     ],
   },
   nora: {
@@ -98,6 +101,7 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Tomas – {beer}! Verten og oppfinneren selv! 6. året nå. Aldri vunnet. En evig taper? Vi får se..',
       'Vertskapet på banen! Tomas med {beer} – er det NÅ det endelig skjer?!',
+      'Tomas med {beer}! Helt seriøst kjøpt i Kyiv – og smuglet forbi både polske OG moldovske grensevakter! Hvis ikke DET gir sekser på presentasjonen, hva gjør da?!',
     ],
     leader: ['Tomas tar ledelsen!! Verten i tet! 6 år uten seier – er forbannelsen brutt?!'],
     selfSix: ['Aiai! 6-er til Tomas – FRA Tomas! Like sneaky i år som foregående år.. men det er lov ihht regelboka!'],
@@ -198,9 +202,11 @@ const EN_PEOPLE: Record<string, Lines> = {
   carlpetter: {
     pick: [
       'The wheel picks Carl Petter – {beer}. New to the game this year – will being a vegetarian hold him back..? The tension is unbearable!',
+      'Carl Petter with {beer}! He has cleared snow in Oslo with a tractor and the full kit – now he\'s clearing a path to the top!',
+      'Carl Petter with {beer}! Snow plough driver, and a kebab after every shift. A vegetarian, mind you.. So many questions!',
       'Carl Petter with {beer}! Familiar? YES – Eirik brought Père Noël back in 2022! Will it do better in new hands?!',
     ],
-    leader: ['Carl Petter takes the lead. Good heavens! A vegetarian in front!'],
+    leader: ['Carl Petter takes the lead. Good heavens! A vegetarian in front!', 'Carl Petter ploughs past everyone! The snow-clearing tractor man takes the lead – kebab tonight!'],
   },
   nora: {
     pick: [
@@ -222,7 +228,10 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Eirik takes the lead! NukeBrew in front – just don\'t fall on your own sword now!'],
   },
   tomas: {
-    pick: ['The wheel picks Tomas – {beer}! The host and inventor himself! 6th year, never won. Eternal loser? We\'ll see..'],
+    pick: [
+      'The wheel picks Tomas – {beer}! The host and inventor himself! 6th year, never won. Eternal loser? We\'ll see..',
+      'Tomas with {beer}! Seriously bought in Kyiv – and smuggled past both Polish AND Moldovan border guards! If THAT doesn\'t earn a six for the presentation, what will?!',
+    ],
     leader: ['Tomas takes the lead!! The host in front! Is the curse finally broken?!'],
     selfSix: ['Oh my! A 6 for Tomas – FROM Tomas! As sneaky this year as every year before.. but it\'s within the rules!'],
   },
@@ -313,9 +322,11 @@ const JA_PEOPLE: Record<string, Lines> = {
     pick: [
       'ルーレットが選んだのはカール・ペッター – {beer}。今年初参加！ベジタリアンなのは不利になるのか…？緊張感がすごい！',
       'カール・ペッターと{beer}！トーマス、アダム、マグヌスに続く、スキンヘッド4号！リブの脂なしで味覚は大丈夫か？！',
+      'カール・ペッターと{beer}！オスロでトラクターとフル装備で除雪していた男 – 今度は頂点への道を切り開く！',
+      'カール・ペッターと{beer}！除雪作業員、仕事の後はいつもケバブ。ベジタリアンなのに…謎は深まる！',
       'カール・ペッターと{beer}！見覚えある？そう – エイリクが2022年に持ってきたペール・ノエルだ！新しい手で結果は変わるか？！',
     ],
-    leader: ['カール・ペッターがトップに。なんてこった！ベジタリアンが首位だ！', 'スキンヘッド4号が首位！！リブを一口も食べずにトップに立った！'],
+    leader: ['カール・ペッターがトップに。なんてこった！ベジタリアンが首位だ！', 'スキンヘッド4号が首位！！リブを一口も食べずにトップに立った！', 'カール・ペッターが全員を除雪して首位に！今夜はケバブだ！'],
   },
   nora: {
     pick: [
@@ -345,6 +356,7 @@ const JA_PEOPLE: Record<string, Lines> = {
     pick: [
       'ルーレットが選んだのはトーマス – {beer}！主催者にして発明者本人！今年で6年目。優勝経験なし。永遠の敗者？さてどうなる…',
       '主催者の登場！トーマスと{beer} – ついに今年こそ？！',
+      'トーマスと{beer}！本当にキーウで買って、ポーランドとモルドバの国境警備隊の目をくぐり抜けて持ち込んだ！これでプレゼン6点じゃなかったら何なんだ？！',
     ],
     leader: ['トーマスがトップに！！主催者が首位！6年間未勝利 – ついに呪いが解けるか？！'],
     selfSix: ['おやおや！トーマスに6点 – トーマスから！例年どおりちゃっかりしてる…でもルール上はOK！'],

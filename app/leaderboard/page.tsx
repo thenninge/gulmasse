@@ -420,8 +420,9 @@ export default function LeaderboardPage() {
   }
 
   const top = board.standings.slice(0, 3).map((s) => s.pin);
-  // «Best so far» + news feed: left column on desktop, below the rankings on mobile
-  const extras = (
+  // «Best so far» + news feed: left column on desktop. On mobile the news feed
+  // comes right under «Presenterer nå», «best so far» below the rankings.
+  const bestCard = (
     <>
           {board.best && (
             <Card title={t("bestSoFar")}>
@@ -433,11 +434,14 @@ export default function LeaderboardPage() {
               </div>
             </Card>
           )}
+    </>
+  );
+  const newsCard = (
           <Card title={t("news")}>
             {feed.length === 0 ? (
               <div className="text-sm text-[#9c9c9c]">{t("newsEmpty")}</div>
             ) : (
-              <ul className="max-h-[26rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1" aria-label={t("news")}>
+              <ul className="max-h-[18rem] lg:max-h-[26rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1" aria-label={t("news")}>
                 {feed.map((item, i) => (
                   <li key={item.id} className={`flex items-start gap-2 text-sm ${i === 0 ? "lb-pop" : ""}`}>
                     <span className="w-5 shrink-0 text-center">{item.icon}</span>
@@ -450,7 +454,6 @@ export default function LeaderboardPage() {
               </ul>
             )}
           </Card>
-    </>
   );
   return wrap(
     <Shell>
@@ -527,7 +530,8 @@ export default function LeaderboardPage() {
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <div className="space-y-5">
           <NowCard board={board} dice={dice} />
-          <div className="hidden space-y-5 lg:block">{extras}</div>
+          <div className="lg:hidden">{newsCard}</div>
+          <div className="hidden space-y-5 lg:block">{bestCard}{newsCard}</div>
         </div>
         <div className="space-y-5">
           <Card title={t("whoLeads")}>
@@ -561,7 +565,7 @@ export default function LeaderboardPage() {
             </Card>
           )}
         </div>
-        <div className="space-y-5 lg:hidden">{extras}</div>
+        <div className="space-y-5 lg:hidden">{bestCard}</div>
       </div>
 
       {board.progression.length > 0 && (

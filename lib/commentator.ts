@@ -15,7 +15,9 @@ export type CommentKind =
   /** «we miss the veterans» filler: quiet moments, a stumble, a strong result */
   | 'missIdle' | 'missStumble' | 'missStrong'
   /** the beer has been in Gulmasse before – its story (from lib/beerHistory) */
-  | 'beerHistory';
+  | 'beerHistory'
+  /** a vote of 1 + 1 */
+  | 'snakeEyes';
 export type CommentParams = {
   name?: string; beer?: string; avg?: number | null;
   /** places for climb/fall, points margin + runner-up for standings */
@@ -84,6 +86,8 @@ const NO_PEOPLE: Record<string, Lines> = {
       'Hjulet valgte Aurora – {beer}! Steinerskolen, Berkeley og en flott sangstemme – blir det SANG på presentasjonen?!',
       'Aurora med {beer}! På med hatten! Ny i år, venninne av Kathinka – ingen vet hva vi har i vente!',
       'Aurora med {beer}! Hun har danset med Michael Jackson på Valle Hovin – blir det moonwalk på presentasjonen?!',
+      'Aurora med TOMASmesse?! Når verten heter TOMAS?! Her lukter det smisk lang vei – får vi se om verten lar seg bestikke!',
+      'Aurora stiller Tomasmesse – til en konkurranse arrangert av Tomas. Tilfeldig? Vi tror IKKE det! Smiskefaktor: 11 av 10!',
     ],
     leader: ['Aurora tar ledelsen! Nykommeren gir veteranene kamp til døra!', 'Aurora i tet! Nå synger hun seg til topps!', 'Aurora tar ledelsen! Hun har danset med Michael Jackson – nå moonwalker hun forbi hele feltet!'],
     pres6: ['Sekser på presentasjonen til Aurora! Den sangstemmen gjør susen!'],
@@ -152,7 +156,8 @@ const NO_GENERIC: Record<CommentKind, string[]> = {
     'SEKSER! {beer} treffer blink! {name} jubler!',
   ],
   pres6: ['Sekser på presentasjonen til {name}! Stående applaus i salen!', 'Full pott for showet! {name} leverer en 6-er-presentasjon!'],
-  double6: ['DOBBEL SEKSER til {name}! Øl OG presentasjon! Dette er historisk, folkens!'],
+  double6: ['YATZEE!! VI HAR EN YATZEE!!! Dobbel sekser til {name} – øl OG presentasjon!'],
+  snakeEyes: ['SNAKE EYES!! Det er virkelig det laveste vi har sett her, folkens.. Jeg håper {name} snakker mandarin, for det hullet er dypt..'],
   beer5: ['Femmer på {beer}! Det lukter pallplass, folkens!', 'Sterk femmer til {name}! {beer} leverer!'],
   beer2: ['Toer på {beer}.. Det var ikke dét {name} håpet på..', 'Uff, en toer. {beer} sliter i motbakken!'],
   beer1: ['Au! En ener på {beer}.. noen i salen er IKKE imponert!', 'ENER! Det gjorde vondt å se. {beer} får juling!'],
@@ -220,7 +225,7 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Nora takes the lead! Beginner\'s luck strikes – concise, sharp and in front!'],
   },
   aurora: {
-    pick: ['The wheel picks Aurora – {beer}! Steiner school, Berkeley and a great singing voice – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!', 'Aurora with {beer}! She has danced with Michael Jackson at Valle Hovin – moonwalk in the presentation?!'],
+    pick: ['The wheel picks Aurora – {beer}! Steiner school, Berkeley and a great singing voice – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!', 'Aurora with {beer}! She has danced with Michael Jackson at Valle Hovin – moonwalk in the presentation?!', 'Aurora brings TOMASmesse?! When the host is called TOMAS?! Smells like sucking up from miles away – let\'s see if the host can be bribed!'],
     leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!', 'Aurora in front! She\'s singing her way to the top!', 'Aurora takes the lead! She danced with Michael Jackson – now she\'s moonwalking past the whole field!'],
     pres6: ['A six for Aurora\'s presentation! That singing voice works wonders!'],
   },
@@ -262,7 +267,8 @@ const EN_GENERIC: Record<CommentKind, string[]> = {
   leader: ['{name} takes the lead! The room is on fire!'],
   beer6: ['A SIX for {name}\'s beer..!! Wow! A 6 for {beer}! Anything can happen now!'],
   pres6: ['A six for {name}\'s presentation! Standing ovation!'],
-  double6: ['DOUBLE SIX for {name}! Beer AND presentation! This is historic, folks!'],
+  double6: ['YATZEE!! WE HAVE A YATZEE!!! Double six for {name} – beer AND presentation!'],
+  snakeEyes: ['SNAKE EYES!! That\'s really the lowest we\'ve ever seen here, guys.. I hope {name} speaks Mandarin, because that hole is deep..'],
   beer5: ['A five for {beer}! Smells like a podium finish, folks!'],
   beer2: ['A two for {beer}.. not what {name} was hoping for..'],
   beer1: ['Ouch! A one for {beer}.. someone in the room is NOT impressed!'],
@@ -340,7 +346,7 @@ const JA_PEOPLE: Record<string, Lines> = {
     leader: ['ノラがトップに！ビギナーズラック炸裂 – 簡潔、シャープ、そして首位！'],
   },
   aurora: {
-    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、バークレー、そして素晴らしい歌声 – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！', 'アウロラと{beer}！ヴァッレ・ホーヴィンでマイケル・ジャクソンと踊った彼女 – プレゼンでムーンウォーク？！'],
+    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、バークレー、そして素晴らしい歌声 – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！', 'アウロラと{beer}！ヴァッレ・ホーヴィンでマイケル・ジャクソンと踊った彼女 – プレゼンでムーンウォーク？！', 'アウロラが「トーマスメッセ」を？！主催者の名前はトーマス！ゴマすりの匂いがプンプンする – 主催者は買収されるのか？！'],
     leader: ['アウロラがトップに！新人がベテランたちを脅かしている！', 'アウロラ首位！歌声でトップへ！', 'アウロラがトップに！マイケル・ジャクソンと踊った彼女 – ムーンウォークで全員を抜き去る！'],
     pres6: ['アウロラのプレゼンに6点！あの歌声は効果抜群！'],
   },
@@ -397,7 +403,8 @@ const JA_GENERIC: Record<CommentKind, string[]> = {
   leader: ['{name}がトップに！会場が沸いている！', '{name}が首位！しっかりつかまって！'],
   beer6: ['{name}のビールに6点…！！すごい！{beer}に6点！これで何でも起こりうる！', '6点！{beer}がど真ん中！{name}大喜び！'],
   pres6: ['{name}のプレゼンに6点！スタンディングオベーション！', 'ショーに満点！{name}、6点のプレゼン！'],
-  double6: ['{name}にダブル6！ビールもプレゼンも！これは歴史的瞬間だ！'],
+  double6: ['ヤッツィー！！ヤッツィーが出たぞ！！！{name}にダブル6 – ビールもプレゼンも！'],
+  snakeEyes: ['スネークアイズ！！ここで見た中で本当に最低の目だ、みんな…{name}が中国語を話せるといいね、その穴は深いから…'],
   beer5: ['{beer}に5点！表彰台の香りがする！', '{name}に力強い5点！{beer}、いい仕事！'],
   beer2: ['{beer}に2点…{name}が望んでいたのはこれじゃない…', 'うーん、2点。{beer}、上り坂で苦戦！'],
   beer1: ['痛い！{beer}に1点…会場の誰かは全然納得していない！', '1点！見ていて辛い。{beer}、ボコボコだ！'],

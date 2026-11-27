@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
 import { commentary, vetFor, type CommentKind } from "@/lib/commentator";
 import { getBeerHistory } from "@/lib/beerHistory";
+import { abvKind, abvText } from "@/lib/abvComment";
 import { buildInfoQueue, infoShown, infoText, type InfoItem } from "@/lib/presenterInfo";
 import { playFanfare } from "@/lib/fanfare";
 
@@ -57,7 +58,7 @@ const useI18n = () => useContext(I18nCtx);
 
 // Events are stored as a text key + raw params and translated when shown,
 // so switching language also translates news that already happened.
-type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string; info?: InfoItem };
+type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string; info?: InfoItem; abv?: number | null };
 type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date; kind?: CommentKind };
 type Announce = { id: number; name: string; beer: string };
 type Toast = { id: number; icon: string; key: string; params: EvParams };
@@ -65,6 +66,7 @@ type Toast = { id: number; icon: string; key: string; params: EvParams };
 /** News feed line: the sports commentator where available, else the plain text. */
 function feedText(i: I18n, item: FeedItem): string {
   if (item.key === "evInfo" && item.params.info) return infoText(i.lang, item.params.info, i.f);
+  if (item.key === "evAbv" && item.params.abv != null) return abvText(i.lang, item.params.abv, (n) => i.f(n, 1)) || "";
   if (item.kind) {
     const line = commentary(i.lang, item.kind, item.params, item.id, (n) => i.f(n, 2));
     if (line) return line;
@@ -134,6 +136,8 @@ function buildHistory(board: Board): FeedItem[] {
     const id = (k: number) => -(i * 20 + k + 1);
     out.push({ id: id(0), icon: "🎡", key: "evPick", kind: "pick", params: { name: b.name, beer: b.beer }, at });
     if (getBeerHistory(b.beer)) out.push({ id: id(6), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: b.name, beer: b.beer }, at });
+    const abvH = board.standings.find((s) => s.pin === b.pin)?.abv ?? null;
+    if (abvKind(abvH)) out.push({ id: id(7), icon: abvKind(abvH) === "abvLow" ? "🥤" : "🔥", key: "evAbv", params: { name: b.name, abv: abvH }, at });
     const live = board.presenter?.pin === b.pin && board.presenter.votes < board.presenter.active;
     if (live || b.votes === 0 || b.avgBeer == null) return; // round still in progress
     out.push({ id: id(1), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: b.beer, avg: b.avgBeer }, at });
@@ -260,6 +264,9 @@ export default function LeaderboardPage() {
       add.push({ id: nid(), icon: "🎡", key: "evPick", kind: "pick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
       // the beer has been here before → the commentator tells its story
       if (getBeerHistory(ev.pick.beer)) add.push({ id: nid(), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
+      // strength remark: under 6 % or 10 % and up
+      const abvP = next.presenter?.abv ?? null;
+      if (abvKind(abvP)) add.push({ id: nid(), icon: abvKind(abvP) === "abvLow" ? "🥤" : "🔥", key: "evAbv", params: { name: ev.pick.name, abv: abvP }, at: now });
     }
     if (ev.leader) {
       toast("👑", "evLeaderToast", { name: ev.leader });
@@ -302,12 +309,14 @@ export default function LeaderboardPage() {
         if (hit) add.push({ id: nid(), icon: hit[3], key: hit[2], kind: hit[1], params: { name: who, beer: whoBeer }, at: now });
       }
       const neg: Array<[boolean, CommentKind, string, string]> = [
+        [ev.throws.some(([b, e]) => b === 1 && e === 1), "snakeEyes", "evSnakeEyes", "🐍"],
         [ev.throws.some(([b]) => b === 1), "beer1", "evOne", "🥶"],
         [ev.throws.some(([, e]) => e === 1), "pres1", "evPres1", "😴"],
         [ev.throws.some(([b]) => b === 2), "beer2", "evBeer2", "😕"],
         [ev.throws.some(([, e]) => e === 2), "presLow", "evPresLow", "😬"],
       ];
       const low = neg.find(([c]) => c);
+      if (low && low[1] === "snakeEyes") toast("🐍", "evSnakeEyesToast", { name: who });
       if (low) add.push({ id: nid(), icon: low[3], key: low[2], kind: low[1], params: { name: who, beer: whoBeer }, at: now });
     }
     if (ev.award) {

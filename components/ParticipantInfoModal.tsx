@@ -2,6 +2,7 @@
 
 import { getProfile } from "@/lib/participantBios";
 import { getBeerHistory } from "@/lib/beerHistory";
+import { abvText } from "@/lib/abvComment";
 
 type Props = {
   name: string;
@@ -24,6 +25,8 @@ export default function ParticipantInfoModal({ name, beerName, producer, beerTyp
   const bio = profile?.bio ?? [`${name} er med på Gulmasse i år! Vi vet ikke så mye ennå – men stemmene vil avsløre alt.`];
   const facts = profile?.facts ?? [];
   const history = getBeerHistory(beerName);
+  const abvNum = abv ? Number(abv) : NaN;
+  const strength = beerName && Number.isFinite(abvNum) ? abvText("no", abvNum, (n) => n.toFixed(1).replace(".", ",")) : null;
 
   return (
     <div
@@ -91,6 +94,12 @@ export default function ParticipantInfoModal({ name, beerName, producer, beerTyp
             </div>
           ) : (
             <div className="text-sm text-zinc-500">Ikke registrert ennå – hemmelig?</div>
+          )}
+          {strength && (
+            <p className="mt-2 text-sm italic text-zinc-700 [overflow-wrap:anywhere]" data-testid="beer-strength">
+              {abvNum < 6 ? "🥤 " : "🔥 "}
+              {strength}
+            </p>
           )}
           {history && (
             <div className="mt-3 border-t border-zinc-200 pt-3" data-testid="beer-history">

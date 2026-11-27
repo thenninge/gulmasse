@@ -121,8 +121,9 @@ const PROFILES: Record<string, Profile> = {
       'Ny i år – venninne av Kathinka.',
       'Steinerskolen, Berkeley – og en flott sangstemme! Får vi en presentasjon med sang i år? I så fall kan presentasjonsterningen trille rett på seksern!',
       'Og hold dere fast: Aurora har danset med Michael Jackson på Valle Hovin! Blir det moonwalk på presentasjonen?',
+      'Og ølvalget? TOMASmesse. På en konkurranse der verten heter … Tomas. Smisk? Bestikkelse? Et forsøk på å kjøpe seg en sekser fra verten? Juryen noterer seg dette!',
     ],
-    facts: ['Debutant', 'Steinerskolen', 'Berkeley', 'Flott sangstemme', 'Danset med Michael Jackson', 'Venninne av Kathinka'],
+    facts: ['Debutant', 'Steinerskolen', 'Berkeley', 'Flott sangstemme', 'Danset med Michael Jackson', 'Stiller TOMASmesse (!)', 'Venninne av Kathinka'],
   },
 };
 

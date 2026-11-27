@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
 
 type Standing = {
   place: number; pin: string; name: string; beer: string; producer: string; type?: string; abv: number | null;
@@ -33,12 +34,35 @@ const OTHER = "#4b4b4b";
 const BAR = "#d28e05";
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-const fmt = (n: number | null | undefined, d = 1) =>
-  n == null || !Number.isFinite(n) ? "—" : n.toFixed(d).replace(".", ",");
+type I18n = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+  f: (n: number | null | undefined, decimals?: number) => string;
+};
+const makeI18n = (lang: Lang, setLang: (l: Lang) => void): I18n => ({
+  lang,
+  setLang,
+  t: (key, params) => translate(lang, key, params),
+  f: (n, decimals = 1) => formatNumber(lang, n, decimals),
+});
+const I18nCtx = createContext<I18n>(makeI18n("no", () => {}));
+const useI18n = () => useContext(I18nCtx);
 
-type FeedItem = { id: number; icon: string; text: string; at: Date };
+// Events are stored as a text key + raw params and translated when shown,
+// so switching language also translates news that already happened.
+type EvParams = { name?: string; beer?: string; avg?: number | null };
+type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date };
 type Announce = { id: number; name: string; beer: string };
-type Toast = { id: number; icon: string; text: string };
+type Toast = { id: number; icon: string; key: string; params: EvParams };
+
+function evText(i: I18n, key: string, p: EvParams): string {
+  return i.t(key, {
+    name: p.name ?? "",
+    beer: key === "evPick" ? (p.beer ? ` – ${p.beer}` : "") : p.beer || i.t("theBeer"),
+    avg: i.f(p.avg ?? null, 2),
+  });
+}
 type Die = { id: number; beer: number; extra: number; x: number };
 
 /** Compare two consecutive polls and describe what just happened. */
@@ -75,6 +99,34 @@ export default function LeaderboardPage() {
   const [openPin, setOpenPin] = useState<string | null>(null); // clicked participant → beer card
   const prevRef = useRef<Board | null>(null);
   const idRef = useRef(1);
+  const [lang, setLangState] = useState<Lang>("no");
+  // ?lang=en|ja|no in the link wins, otherwise the last choice on this device
+  useEffect(() => {
+    let initial: Lang | null = null;
+    const q = new URLSearchParams(window.location.search).get("lang");
+    if (isLang(q)) initial = q;
+    else {
+      try {
+        const saved = localStorage.getItem("lbLang");
+        if (isLang(saved)) initial = saved;
+      } catch {
+        // storage unavailable
+      }
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- URL/localStorage only exist client-side
+    if (initial) setLangState(initial);
+  }, []);
+  const setLang = useCallback((l: Lang) => {
+    setLangState(l);
+    try {
+      localStorage.setItem("lbLang", l);
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+  const i18n = useMemo(() => makeI18n(lang, setLang), [lang, setLang]);
+  const { t, f } = i18n;
+  const wrap = (node: React.ReactNode) => <I18nCtx.Provider value={i18n}>{node}</I18nCtx.Provider>;
 
   const handleUpdate = useCallback((next: Board) => {
     const prev = prevRef.current;
@@ -85,9 +137,9 @@ export default function LeaderboardPage() {
     const now = new Date();
     const add: FeedItem[] = [];
     const nid = () => idRef.current++;
-    const toast = (icon: string, text: string) => {
+    const toast = (icon: string, key: string, params: EvParams) => {
       const id = nid();
-      setToasts((t) => [...t.slice(-2), { id, icon, text }]);
+      setToasts((t) => [...t.slice(-2), { id, icon, key, params }]);
       window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
     };
     if (ev.pick) {
@@ -95,12 +147,12 @@ export default function LeaderboardPage() {
       setAnnounce({ id, name: ev.pick.name, beer: ev.pick.beer });
       window.setTimeout(() => setAnnounce((a) => (a && a.id === id ? null : a)), 6500);
       setConfetti((c) => c + 1);
-      add.push({ id: nid(), icon: "🎡", text: `Hjulet valgte ${ev.pick.name}${ev.pick.beer ? ` – ${ev.pick.beer}` : ""}`, at: now });
+      add.push({ id: nid(), icon: "🎡", key: "evPick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
     }
     if (ev.leader) {
-      toast("👑", `${ev.leader} tar ledelsen!`);
+      toast("👑", "evLeaderToast", { name: ev.leader });
       if (!ev.pick) setConfetti((c) => c + 1);
-      add.push({ id: nid(), icon: "👑", text: `${ev.leader} tar ledelsen`, at: now });
+      add.push({ id: nid(), icon: "👑", key: "evLeader", params: { name: ev.leader }, at: now });
     }
     if (ev.throws.length) {
       const fresh = ev.throws.map(([beer, extra], i) => ({ id: nid(), beer, extra, x: 8 + ((i * 29 + Math.random() * 40) % 70) }));
@@ -111,18 +163,18 @@ export default function LeaderboardPage() {
       const beer6 = ev.throws.filter(([b, e]) => b === 6 && e !== 6).length;
       const pres6 = ev.throws.filter(([b, e]) => e === 6 && b !== 6).length;
       if (double6) {
-        toast("🎲🎲", `DOBBEL SEKSER til ${who}!`);
+        toast("🎲🎲", "evDouble6Toast", { name: who });
         setConfetti((c) => c + 1);
-        add.push({ id: nid(), icon: "🎲", text: `Dobbel sekser (øl + presentasjon) til ${who}`, at: now });
+        add.push({ id: nid(), icon: "🎲", key: "evDouble6", params: { name: who }, at: now });
       } else if (beer6 || pres6) {
-        toast("🎲", beer6 ? `Sekser på ølen til ${who}!` : `Sekser på presentasjonen til ${who}!`);
-        add.push({ id: nid(), icon: "🎲", text: beer6 ? `Sekser på ølen til ${who}` : `Sekser på presentasjonen til ${who}`, at: now });
+        toast("🎲", beer6 ? "evBeer6Toast" : "evPres6Toast", { name: who });
+        add.push({ id: nid(), icon: "🎲", key: beer6 ? "evBeer6" : "evPres6", params: { name: who }, at: now });
       }
-      if (ev.throws.some(([b]) => b === 1)) add.push({ id: nid(), icon: "🥶", text: `Au – en ener på ølen til ${who}`, at: now });
+      if (ev.throws.some(([b]) => b === 1)) add.push({ id: nid(), icon: "🥶", key: "evOne", params: { name: who }, at: now });
     }
     if (ev.allVoted) {
-      toast("✅", `Alle har stemt! Snitt ${fmt(ev.allVoted.avg, 2)}`);
-      add.push({ id: nid(), icon: "✅", text: `Alle har stemt på ${ev.allVoted.beer || "ølen"} – snitt ${fmt(ev.allVoted.avg, 2)}`, at: now });
+      toast("✅", "evAllVotedToast", { avg: ev.allVoted.avg });
+      add.push({ id: nid(), icon: "✅", key: "evAllVoted", params: { beer: ev.allVoted.beer, avg: ev.allVoted.avg }, at: now });
     }
     if (add.length) {
       const newestFirst = add.slice().reverse();
@@ -157,21 +209,21 @@ export default function LeaderboardPage() {
   }, [handleUpdate]);
 
   if (denied) {
-    return (
+    return wrap(
       <Shell>
         <div className="mx-auto mt-24 max-w-md rounded-2xl bg-[#191919] p-6 text-center">
           <div className="text-4xl">🔒</div>
-          <h1 className="mt-3 text-xl font-semibold">Ugyldig eller utløpt lenke</h1>
-          <p className="mt-2 text-sm text-[#9c9c9c]">Be verten om en ny lenke til Live Leaderboard.</p>
+          <h1 className="mt-3 text-xl font-semibold">{t("denied")}</h1>
+          <p className="mt-2 text-sm text-[#9c9c9c]">{t("deniedHelp")}</p>
         </div>
-      </Shell>
+      </Shell>,
     );
   }
   if (!board) {
-    return (
+    return wrap(
       <Shell>
-        <div className="mt-24 text-center text-[#9c9c9c]">Laster ledertavla…</div>
-      </Shell>
+        <div className="mt-24 text-center text-[#9c9c9c]">{t("loading")}</div>
+      </Shell>,
     );
   }
 
@@ -180,26 +232,26 @@ export default function LeaderboardPage() {
   const extras = (
     <>
           {board.best && (
-            <Card title="Høyest rangerte øl så langt">
+            <Card title={t("bestSoFar")}>
               <div className="text-lg font-semibold">{board.best.beer || "—"}</div>
               <div className="text-sm text-[#9c9c9c]">{board.best.name}</div>
               <div className="mt-2 flex gap-6 text-sm">
-                <div><div className="text-[#9c9c9c]">🍺 Snitt øl</div><div className="text-2xl font-bold tabular-nums">{fmt(board.best.avgBeer, 2)}</div></div>
-                <div><div className="text-[#9c9c9c]">🎤 Snitt presentasjon</div><div className="text-2xl font-bold tabular-nums">{fmt(board.best.avgExtra, 2)}</div></div>
+                <div><div className="text-[#9c9c9c]">{t("avgBeer")}</div><div className="text-2xl font-bold tabular-nums">{f(board.best.avgBeer, 2)}</div></div>
+                <div><div className="text-[#9c9c9c]">{t("avgPres")}</div><div className="text-2xl font-bold tabular-nums">{f(board.best.avgExtra, 2)}</div></div>
               </div>
             </Card>
           )}
-          <Card title="Siste nytt">
+          <Card title={t("news")}>
             {feed.length === 0 ? (
-              <div className="text-sm text-[#9c9c9c]">Følg med – her dukker det opp nyheter fra kvelden 🍻</div>
+              <div className="text-sm text-[#9c9c9c]">{t("newsEmpty")}</div>
             ) : (
               <ul className="space-y-1.5">
-                {feed.map((f, i) => (
-                  <li key={f.id} className={`flex items-start gap-2 text-sm ${i === 0 ? "lb-pop" : ""}`}>
-                    <span className="w-5 shrink-0 text-center">{f.icon}</span>
-                    <span className="min-w-0 flex-1">{f.text}</span>
+                {feed.map((item, i) => (
+                  <li key={item.id} className={`flex items-start gap-2 text-sm ${i === 0 ? "lb-pop" : ""}`}>
+                    <span className="w-5 shrink-0 text-center">{item.icon}</span>
+                    <span className="min-w-0 flex-1">{evText(i18n, item.key, item.params)}</span>
                     <span className="shrink-0 text-xs tabular-nums text-[#6b6b6b]">
-                      {f.at.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}
+                      {item.at.toLocaleTimeString(LOCALE[lang], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </li>
                 ))}
@@ -208,7 +260,7 @@ export default function LeaderboardPage() {
           </Card>
     </>
   );
-  return (
+  return wrap(
     <Shell>
       {confetti > 0 && <ConfettiBurst key={`confetti-${confetti}`} />}
       {announce && <AnnounceOverlay key={`announce-${announce.id}`} name={announce.name} beer={announce.beer} onClose={() => setAnnounce(null)} />}
@@ -223,7 +275,7 @@ export default function LeaderboardPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/img/mcga.png"
-            alt="Juleølhatten"
+            alt={t("hatAlt")}
             className="lb-rock h-16 w-16 shrink-0 drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] sm:h-24 sm:w-24"
           />
         <div>
@@ -232,18 +284,15 @@ export default function LeaderboardPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
             </span>
-            Live
+            {t("live")}
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Gulmasse &apos;26</h1>
         </div>
         </div>
         <div className="text-left text-sm sm:text-right text-[#9c9c9c]">
-          <div>
-            <span className="text-[#efefef] font-semibold tabular-nums">{board.counts.presented}</span> av{" "}
-            <span className="tabular-nums">{board.counts.participants}</span> øl presentert
-          </div>
+          <div>{t("presentedCount", { n: board.counts.presented, total: board.counts.participants })}</div>
           <div className="text-xs">
-            {offline ? "⚠︎ mister forbindelsen – prøver igjen" : `Oppdatert ${new Date(board.updatedAt).toLocaleTimeString("nb-NO")}`}
+            {offline ? t("offline") : t("updated", { time: new Date(board.updatedAt).toLocaleTimeString(LOCALE[lang]) })}
           </div>
         </div>
       </header>
@@ -254,17 +303,17 @@ export default function LeaderboardPage() {
           <div className="hidden space-y-5 lg:block">{extras}</div>
         </div>
         <div className="space-y-5">
-          <Card title="🏆 Hvem leder? – totalt">
+          <Card title={t("whoLeads")}>
             <Standings standings={board.standings} progression={board.progression} onOpen={setOpenPin} />
           </Card>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Card title="🍺 Øl-poeng">
+            <Card title={t("beerPoints")}>
               <MiniRanking
                 onOpen={setOpenPin}
                 rows={board.standings.map((s) => ({ pin: s.pin, name: s.name, sub: s.beer, value: s.beerPoints }))}
               />
             </Card>
-            <Card title="🎤 Presentasjonspoeng">
+            <Card title={t("presPoints")}>
               <MiniRanking
                 onOpen={setOpenPin}
                 rows={board.standings.map((s) => ({ pin: s.pin, name: s.name, sub: s.beer, value: s.extraPoints }))}
@@ -272,13 +321,13 @@ export default function LeaderboardPage() {
             </Card>
           </div>
           {board.givers && board.givers.length > 0 && (
-            <Card title="🎁 Hvem har gitt mest poeng?">
+            <Card title={t("givers")}>
               <MiniRanking
                 onOpen={setOpenPin}
                 rows={board.givers.map((g) => ({
                   pin: g.pin,
                   name: g.name,
-                  sub: `🍺 ${g.beerGiven} · 🎤 ${g.extraGiven} · snitt ${fmt(g.votes ? g.total / g.votes / 2 : null, 2)}`,
+                  sub: `🍺 ${g.beerGiven} · 🎤 ${g.extraGiven} · ${t("avgShort", { v: f(g.votes ? g.total / g.votes / 2 : null, 2) })}`,
                   value: g.total,
                 }))}
               />
@@ -289,20 +338,20 @@ export default function LeaderboardPage() {
       </div>
 
       {board.progression.length > 0 && (
-        <Card title="Kampen om toppen – poeng etter hver øl" className="mt-5">
+        <Card title={t("race")} className="mt-5">
           <RaceChart board={board} top={top} />
         </Card>
       )}
 
       {board.presented.length > 0 && (
-        <Card title="Presentert så langt" className="mt-5">
+        <Card title={t("presentedSoFar")} className="mt-5">
           <PresentedTable presented={board.presented} onOpen={setOpenPin} />
         </Card>
       )}
       <footer className="mt-8 pb-6 text-center text-xs text-[#6b6b6b]">
-        Poeng = øl-terning + {fmt(board.factor)} × presentasjon-terning · oppdateres automatisk
+        {t("footer", { f: f(board.factor) })}
       </footer>
-    </Shell>
+    </Shell>,
   );
 }
 
@@ -388,6 +437,7 @@ function ConfettiBurst() {
 }
 
 function AnnounceOverlay({ name, beer, onClose }: { name: string; beer: string; onClose: () => void }) {
+  const { t } = useI18n();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm"
@@ -396,7 +446,7 @@ function AnnounceOverlay({ name, beer, onClose }: { name: string; beer: string; 
       aria-live="assertive"
     >
       <div className="lb-zoom text-center">
-        <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[#f2c14e] sm:text-base">🎡 Hjulet har valgt</div>
+        <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[#f2c14e] sm:text-base">{t("wheelChose")}</div>
         <div className="relative mx-auto mt-24 inline-block sm:mt-32">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -408,19 +458,20 @@ function AnnounceOverlay({ name, beer, onClose }: { name: string; beer: string; 
           <div className="text-5xl font-black tracking-tight text-white drop-shadow-[0_4px_24px_rgba(242,193,78,0.45)] sm:text-7xl">{name}</div>
         </div>
         {beer && <div className="mt-4 text-2xl font-bold text-[#f2c14e] sm:text-3xl">{beer}</div>}
-        <div className="mt-6 text-sm text-[#cfcfcf]">Skål! 🍻</div>
+        <div className="mt-6 text-sm text-[#cfcfcf]">{t("cheers")}</div>
       </div>
     </div>
   );
 }
 
 function Toasts({ toasts }: { toasts: Toast[] }) {
+  const i18n = useI18n();
   return (
     <div className="pointer-events-none fixed inset-x-0 top-3 z-40 flex flex-col items-center gap-2 px-3" aria-live="polite">
-      {toasts.map((t) => (
-        <div key={t.id} className="lb-toast rounded-full border border-[#f2c14e]/40 bg-[#1d1608]/95 px-5 py-2.5 text-base font-semibold text-[#f7d98a] shadow-2xl sm:text-lg">
-          <span className="mr-2">{t.icon}</span>
-          {t.text}
+      {toasts.map((toast) => (
+        <div key={toast.id} className="lb-toast rounded-full border border-[#f2c14e]/40 bg-[#1d1608]/95 px-5 py-2.5 text-base font-semibold text-[#f7d98a] shadow-2xl sm:text-lg">
+          <span className="mr-2">{toast.icon}</span>
+          {evText(i18n, toast.key, toast.params)}
         </div>
       ))}
     </div>
@@ -432,7 +483,33 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="relative min-h-dvh w-full overflow-x-hidden bg-[radial-gradient(ellipse_at_top,#3a0f12_0%,#120b0b_55%,#0b0b0b_100%)] text-[#efefef]">
       <style>{STYLES}</style>
       <Snow />
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</div>
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <div className="mb-2 flex justify-end">
+          <LangSwitch />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function LangSwitch() {
+  const { lang, setLang, t } = useI18n();
+  return (
+    <div role="group" aria-label={t("language")} className="inline-flex overflow-hidden rounded-full border border-white/15 bg-black/30 text-xs font-semibold">
+      {LANGS.map((l) => (
+        <button
+          key={l.code}
+          type="button"
+          lang={l.code}
+          title={l.name}
+          aria-pressed={lang === l.code}
+          onClick={() => setLang(l.code)}
+          className={`px-3 py-1.5 transition-colors ${lang === l.code ? "bg-[#f2c14e] text-[#1d1608]" : "text-[#cfcfcf] hover:bg-white/10"}`}
+        >
+          {l.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -457,29 +534,31 @@ function DieFace({ value, label, small = false }: { value: number; label: string
 }
 
 function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
+  const { t, f } = useI18n();
   const p = board.presenter;
+  const counts = { n: board.counts.presented, total: board.counts.participants };
   if (!p) {
     const msg =
-      board.status === "spinning" ? "Hjulet snurrer – hvem er neste?" :
-      board.status === "waiting" ? "Konkurransen har ikke startet ennå" :
-      board.counts.presented >= board.counts.participants ? "Alle øl er presentert – venter på premieutdeling 🏆" :
-      "Pause før neste runde";
+      board.status === "spinning" ? t("spinning") :
+      board.status === "waiting" ? t("notStarted") :
+      board.counts.presented >= board.counts.participants ? t("allDone") :
+      t("pause");
     return (
-      <Card title={`Neste øl · ${board.counts.presented} av ${board.counts.participants} presentert`}>
+      <Card title={t("nextBeer", counts)}>
         <div className="py-6 text-center text-lg text-[#cfcfcf]">{msg}</div>
       </Card>
     );
   }
   const pct = p.active > 0 ? Math.min(100, Math.round((p.votes / p.active) * 100)) : 0;
   return (
-    <Card title={`Presenterer nå · øl ${board.counts.presented} av ${board.counts.participants}`}>
+    <Card title={t("presentingNow", counts)}>
       <div className="relative">
         {/* Freshly locked votes float up: both dice per vote */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-0" aria-hidden>
           {dice.map((d) => (
             <div key={d.id} className="lb-rise absolute bottom-0 flex gap-1 rounded-xl bg-black/50 px-2 py-1 backdrop-blur-sm" style={{ left: `${d.x}%` }}>
-              <DieFace value={d.beer} label="Øl" small />
-              {d.extra > 0 && <DieFace value={d.extra} label="Pres." small />}
+              <DieFace value={d.beer} label={t("dieBeer")} small />
+              {d.extra > 0 && <DieFace value={d.extra} label={t("diePres")} small />}
             </div>
           ))}
         </div>
@@ -499,13 +578,13 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
           </div>
           <div className="mt-1 text-lg font-semibold text-[#f2c14e]">{p.beer || "—"}</div>
           <div className="mt-1 text-sm text-[#9c9c9c]">
-            {[p.producer, p.type, p.abv != null ? `${fmt(p.abv)} %` : ""].filter(Boolean).join(" · ")}
+            {[p.producer, p.type, p.abv != null ? `${f(p.abv)} %` : ""].filter(Boolean).join(" · ")}
           </div>
         </div>
       </div>
       <div className="mt-4">
         <div className="flex justify-between text-sm">
-          <span className="text-[#9c9c9c]">Stemmer avgitt</span>
+          <span className="text-[#9c9c9c]">{t("votesCast")}</span>
           <span className="tabular-nums"><b>{p.votes}</b> / {p.active}</span>
         </div>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={p.votes} aria-valuemax={p.active}>
@@ -514,12 +593,12 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
         {p.avgBeer != null && (
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-white/5 px-3 py-2">
-              <div className="text-xs text-[#9c9c9c]">🍺 Snitt øl</div>
-              <div className="text-2xl font-bold tabular-nums">{fmt(p.avgBeer, 2)}</div>
+              <div className="text-xs text-[#9c9c9c]">{t("avgBeer")}</div>
+              <div className="text-2xl font-bold tabular-nums">{f(p.avgBeer, 2)}</div>
             </div>
             <div className="rounded-xl bg-white/5 px-3 py-2">
-              <div className="text-xs text-[#9c9c9c]">🎤 Snitt presentasjon</div>
-              <div className="text-2xl font-bold tabular-nums">{fmt(p.avgExtra ?? null, 2)}</div>
+              <div className="text-xs text-[#9c9c9c]">{t("avgPres")}</div>
+              <div className="text-2xl font-bold tabular-nums">{f(p.avgExtra ?? null, 2)}</div>
             </div>
           </div>
         )}
@@ -531,6 +610,7 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
 
 /** Number that counts smoothly to its new value. */
 function CountUp({ value, decimals = 1 }: { value: number; decimals?: number }) {
+  const { f } = useI18n();
   const [shown, setShown] = useState(value);
   const fromRef = useRef(value);
   useEffect(() => {
@@ -552,7 +632,7 @@ function CountUp({ value, decimals = 1 }: { value: number; decimals?: number }) 
       fromRef.current = value;
     };
   }, [value]);
-  return <>{fmt(shown, decimals)}</>;
+  return <>{f(shown, decimals)}</>;
 }
 
 function Standings({
@@ -564,6 +644,7 @@ function Standings({
   progression: Board["progression"];
   onOpen: (pin: string) => void;
 }) {
+  const { t, f } = useI18n();
   const max = Math.max(1, ...standings.map((s) => s.sum));
 
   // Places before the latest beer → ▲/▼ movement
@@ -611,14 +692,14 @@ function Standings({
             else rowRefs.current.delete(s.pin);
           }}
           className={`relative grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)_3.5rem] items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f2c14e] ${i === 0 && s.sum > 0 ? "lb-glow bg-[#f2c14e]/5" : ""}`}
-          {...clickable(() => onOpen(s.pin), `Vis ølet til ${s.name}`)}
+          {...clickable(() => onOpen(s.pin), t("showBeer", { name: s.name }))}
         >
           <span className="text-center text-base tabular-nums">{s.sum > 0 && i < 3 ? MEDALS[i] : s.place}</span>
           <div className="min-w-0">
             <div className="flex items-baseline gap-2">
               <span className="truncate font-semibold">{s.name}</span>
               <span className="hidden truncate text-xs text-[#9c9c9c] sm:inline">{s.beer}</span>
-              <span className="ml-auto shrink-0 text-[11px] tabular-nums text-[#9c9c9c]">🍺 {fmt(s.beerPoints, 0)} · 🎤 {fmt(s.extraPoints, 0)}</span>
+              <span className="ml-auto shrink-0 text-[11px] tabular-nums text-[#9c9c9c]">🍺 {f(s.beerPoints, 0)} · 🎤 {f(s.extraPoints, 0)}</span>
             </div>
             <div className="mt-1 h-2 rounded bg-white/5">
               <div
@@ -643,6 +724,7 @@ function Standings({
 }
 
 function RaceChart({ board, top }: { board: Board; top: string[] }) {
+  const { t, f } = useI18n();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(700);
   const [hi, setHi] = useState<number | null>(null);
@@ -688,14 +770,14 @@ function RaceChart({ board, top }: { board: Board; top: string[] }) {
         ))}
         <span className="flex items-center gap-1.5 text-[#9c9c9c]">
           <span className="inline-block h-[2px] w-4 rounded" style={{ backgroundColor: OTHER }} />
-          Øvrige
+          {t("others")}
         </span>
       </div>
       <svg
         width={w}
         height={h}
         role="img"
-        aria-label="Poeng etter hver presenterte øl"
+        aria-label={t("chartAria")}
         onMouseLeave={() => setHi(null)}
         onMouseMove={(e) => {
           const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
@@ -740,7 +822,7 @@ function RaceChart({ board, top }: { board: Board; top: string[] }) {
           className="pointer-events-none absolute top-8 z-10 rounded-lg border border-white/10 bg-[#0f0f0f] px-3 py-2 text-xs shadow-xl"
           style={{ left: Math.min(Math.max(0, x(hi) + 12), w - 170) }}
         >
-          <div className="mb-1 font-semibold">Etter {steps[hi].label}</div>
+          <div className="mb-1 font-semibold">{t("after", { name: steps[hi].label })}</div>
           {pins
             .map((pin) => ({ pin, v: steps[hi].totals[pin] ?? 0 }))
             .sort((a, b) => b.v - a.v)
@@ -753,7 +835,7 @@ function RaceChart({ board, top }: { board: Board; top: string[] }) {
                     <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: ti >= 0 ? TOP_COLORS[ti] : OTHER }} />
                     {nameOf[pin]}
                   </span>
-                  <span className="tabular-nums">{fmt(v)}</span>
+                  <span className="tabular-nums">{f(v)}</span>
                 </div>
               );
             })}
@@ -770,6 +852,7 @@ function MiniRanking({
   rows: Array<{ pin: string; name: string; sub: string; value: number }>;
   onOpen: (pin: string) => void;
 }) {
+  const { t } = useI18n();
   const sorted = rows
     .slice()
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, "nb"));
@@ -784,7 +867,7 @@ function MiniRanking({
           <li
             key={r.pin}
             className="grid cursor-pointer grid-cols-[1.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 rounded-md text-sm hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f2c14e]"
-            {...clickable(() => onOpen(r.pin), `Vis ølet til ${r.name}`)}
+            {...clickable(() => onOpen(r.pin), t("showBeer", { name: r.name }))}
           >
             <span className="text-center tabular-nums text-[#9c9c9c]">{r.value > 0 && place <= 3 ? MEDALS[place - 1] : place}</span>
             <div className="min-w-0">
@@ -821,6 +904,7 @@ function clickable(onActivate: () => void, label: string) {
 }
 
 function BeerModal({ s, rank, factor, onClose }: { s: Standing; rank: number; factor: number; onClose: () => void }) {
+  const { t, f } = useI18n();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -828,12 +912,12 @@ function BeerModal({ s, rank, factor, onClose }: { s: Standing; rank: number; fa
   }, [onClose]);
   const place = s.sum > 0 && rank < 3 ? MEDALS[rank] : `${s.place}.`;
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Ølet til ${s.name}`} className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label={t("beerOf", { name: s.name })} className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={onClose}>
       <div
         className="lb-pop relative flex max-h-[90dvh] w-full max-w-sm flex-col overflow-y-auto rounded-2xl border border-white/10 bg-[#191919] text-[#efefef] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <button className="absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 text-sm" onClick={onClose} aria-label="Lukk">
+        <button className="absolute right-2 top-2 z-10 rounded-md bg-black/60 px-2 py-1 text-sm" onClick={onClose} aria-label={t("close")}>
           ✕
         </button>
         {s.image ? (
@@ -849,21 +933,21 @@ function BeerModal({ s, rank, factor, onClose }: { s: Standing; rank: number; fa
           <div className="text-xl font-bold text-white">{s.name}</div>
           {s.beer && <div className="mt-0.5 text-lg font-semibold text-[#f2c14e]">{s.beer}</div>}
           <div className="mt-1 space-y-0.5">
-            {s.producer && <div>Produsent: <span className="font-medium text-white">{s.producer}</span></div>}
-            {s.type && <div>Øltype: <span className="font-medium text-white">{s.type}</span></div>}
-            {s.abv != null && <div>ABV: <span className="font-medium text-white">{fmt(s.abv)}%</span></div>}
+            {s.producer && <div>{t("producer")}: <span className="font-medium text-white">{s.producer}</span></div>}
+            {s.type && <div>{t("style")}: <span className="font-medium text-white">{s.type}</span></div>}
+            {s.abv != null && <div>{t("abv")}: <span className="font-medium text-white">{f(s.abv)}%</span></div>}
           </div>
           {s.presented ? (
             <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-white/5 p-2">
-              <div><div className="text-[11px] text-[#9c9c9c]">Plass</div><div className="text-lg font-bold">{place}</div></div>
-              <div><div className="text-[11px] text-[#9c9c9c]">Totalt</div><div className="text-lg font-bold tabular-nums">{fmt(s.sum)}</div></div>
-              <div><div className="text-[11px] text-[#9c9c9c]">🍺 Øl</div><div className="text-lg font-bold tabular-nums">{fmt(s.beerPoints, 0)}</div></div>
-              <div><div className="text-[11px] text-[#9c9c9c]">🎤 Pres.</div><div className="text-lg font-bold tabular-nums">{fmt(s.extraPoints, 0)}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">{t("place")}</div><div className="text-lg font-bold">{place}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">{t("total")}</div><div className="text-lg font-bold tabular-nums">{f(s.sum)}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">{t("beerShort")}</div><div className="text-lg font-bold tabular-nums">{f(s.beerPoints, 0)}</div></div>
+              <div><div className="text-[11px] text-[#9c9c9c]">{t("presShort")}</div><div className="text-lg font-bold tabular-nums">{f(s.extraPoints, 0)}</div></div>
             </div>
           ) : (
-            <div className="mt-3 rounded-xl bg-white/5 p-2 text-[#9c9c9c]">Har ikke presentert ennå</div>
+            <div className="mt-3 rounded-xl bg-white/5 p-2 text-[#9c9c9c]">{t("notPresented")}</div>
           )}
-          {s.presented && <div className="mt-1 text-[10px] text-[#6b6b6b]">Totalt = øl + {fmt(factor)} × presentasjon</div>}
+          {s.presented && <div className="mt-1 text-[10px] text-[#6b6b6b]">{t("totalFormula", { f: f(factor) })}</div>}
         </div>
       </div>
     </div>
@@ -871,18 +955,19 @@ function BeerModal({ s, rank, factor, onClose }: { s: Standing; rank: number; fa
 }
 
 function PresentedTable({ presented, onOpen }: { presented: Presented[]; onOpen: (pin: string) => void }) {
+  const { t, f } = useI18n();
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-[#9c9c9c]">
             <th className="py-1 pr-2 font-medium">#</th>
-            <th className="py-1 pr-2 font-medium">Presentert av</th>
-            <th className="py-1 pr-2 font-medium">Øl</th>
-            <th className="py-1 pr-2 text-right font-medium">Stemmer</th>
-            <th className="py-1 pr-2 text-right font-medium">Snitt øl</th>
-            <th className="py-1 pr-2 text-right font-medium">Snitt pres.</th>
-            <th className="py-1 text-right font-medium">Poeng</th>
+            <th className="py-1 pr-2 font-medium">{t("thBy")}</th>
+            <th className="py-1 pr-2 font-medium">{t("thBeer")}</th>
+            <th className="py-1 pr-2 text-right font-medium">{t("thVotes")}</th>
+            <th className="py-1 pr-2 text-right font-medium">{t("thAvgBeer")}</th>
+            <th className="py-1 pr-2 text-right font-medium">{t("thAvgPres")}</th>
+            <th className="py-1 text-right font-medium">{t("thPoints")}</th>
           </tr>
         </thead>
         <tbody>
@@ -890,15 +975,15 @@ function PresentedTable({ presented, onOpen }: { presented: Presented[]; onOpen:
             <tr
               key={b.pin}
               className="cursor-pointer border-t border-white/5 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f2c14e]"
-              {...clickable(() => onOpen(b.pin), `Vis ølet til ${b.name}`)}
+              {...clickable(() => onOpen(b.pin), t("showBeer", { name: b.name }))}
             >
               <td className="py-1.5 pr-2 tabular-nums text-[#9c9c9c]">{i + 1}</td>
               <td className="py-1.5 pr-2 font-medium">{b.name}</td>
               <td className="max-w-[12rem] truncate py-1.5 pr-2 text-[#cfcfcf]">{b.beer || "—"}</td>
               <td className="py-1.5 pr-2 text-right tabular-nums">{b.votes}</td>
-              <td className="py-1.5 pr-2 text-right tabular-nums">{fmt(b.avgBeer, 2)}</td>
-              <td className="py-1.5 pr-2 text-right tabular-nums">{fmt(b.avgExtra, 2)}</td>
-              <td className="py-1.5 text-right font-semibold tabular-nums">{fmt(b.sum)}</td>
+              <td className="py-1.5 pr-2 text-right tabular-nums">{f(b.avgBeer, 2)}</td>
+              <td className="py-1.5 pr-2 text-right tabular-nums">{f(b.avgExtra, 2)}</td>
+              <td className="py-1.5 text-right font-semibold tabular-nums">{f(b.sum)}</td>
             </tr>
           ))}
         </tbody>

@@ -875,9 +875,20 @@ export default function Home() {
     const ctx = getAudio();
     if (ctx) playFunSound(ctx, id);
   }
+  // Test: a random sound of the five on every die tap (never the same twice in a row).
+  // Set to false to go back to each player's own choice on Brukerside.
+  const RANDOM_DICE_SOUNDS = true;
+  const lastRandomSoundRef = useRef<FunSoundId | null>(null);
   function playDiceSound(die: number) {
     const ctx = getAudio();
-    if (ctx) playFunSound(ctx, diceSound, pitchForDie(die));
+    if (!ctx) return;
+    let id: FunSoundId = diceSound;
+    if (RANDOM_DICE_SOUNDS) {
+      const options = FUN_SOUNDS.map((x) => x.id).filter((x) => x !== lastRandomSoundRef.current);
+      id = options[Math.floor(Math.random() * options.length)];
+      lastRandomSoundRef.current = id;
+    }
+    playFunSound(ctx, id, pitchForDie(die));
   }
 
   function playFanfare() {
@@ -1434,6 +1445,7 @@ export default function Home() {
                   JPEG/PNG/WebP, max 5 MB. Vises i lobby og ved presentasjon.
                 </p>
               </div>
+              {!RANDOM_DICE_SOUNDS && (
               <div className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                 <p className="text-sm font-medium text-zinc-800">Velg din terninglyd</p>
                 <p className="text-[11px] text-zinc-500">
@@ -1460,6 +1472,7 @@ export default function Home() {
                   })}
                 </div>
               </div>
+              )}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   className="rounded-xl bg-zinc-900 px-4 py-3 text-white active:opacity-90"

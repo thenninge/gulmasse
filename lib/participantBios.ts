@@ -107,8 +107,9 @@ const PROFILES: Record<string, Profile> = {
       'Dette er nemlig en mye bedre utgave: Nora. Konsis. Skarp. Nybegynnerflaksen er til å ta og føle på!',
       'Ny i år – venninne av Kathinka. Og her har vi gravd i arkivene: Nora er nevnt i en eldre artikkel i Tønsbergs Blad, i forbindelse med russerevy. Scenevant, med andre ord – det kan bli farlig på presentasjonen!',
       'I oktober 2026 fikk hun en velkomsthilsen fra Top Himalaya guides, på fottur i Manaslu-regionen i Nepal. Hun har altså gått i Himalaya – da er vel en juleølkonkurranse en lett tur i parken?',
+      'Og så har hun selv uttalt at hun får sine beste ideer på polet. Da må vel årets øl være en av dem?',
     ],
-    facts: ['Debutant', 'Ikke Noora', 'Konsis og skarp', 'Russerevy (Tønsbergs Blad)', 'Manaslu, Nepal 2026', 'Venninne av Kathinka'],
+    facts: ['Debutant', 'Ikke Noora', 'Konsis og skarp', 'Russerevy (Tønsbergs Blad)', 'Manaslu, Nepal 2026', 'Beste ideer: på polet', 'Venninne av Kathinka'],
   },
   aurora: {
     emoji: '🎤',
@@ -116,8 +117,9 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Ny i år – venninne av Kathinka.',
       'Steinerskolen, Berkeley – og en flott sangstemme! Får vi en presentasjon med sang i år? I så fall kan presentasjonsterningen trille rett på seksern!',
+      'Og hold dere fast: Aurora har danset med Michael Jackson på Valle Hovin! Blir det moonwalk på presentasjonen?',
     ],
-    facts: ['Debutant', 'Steinerskolen', 'Berkeley', 'Flott sangstemme', 'Venninne av Kathinka'],
+    facts: ['Debutant', 'Steinerskolen', 'Berkeley', 'Flott sangstemme', 'Danset med Michael Jackson', 'Venninne av Kathinka'],
   },
 };
 

@@ -72,15 +72,17 @@ const NO_PEOPLE: Record<string, Lines> = {
       'Nykommer Nora med {beer}! På med hatten! Og husk: det er NORA, ikke Noora!',
       'Nora med {beer}! Scenevant fra russerevyen – det sto i Tønsbergs Blad! Nå venter en ny scene!',
       'Nora med {beer}! Hun har gått i Manaslu-regionen i Nepal – en øl-presentasjon er vel ingen sak etter Himalaya?!',
+      'Nora med {beer}! Hun får jo sine beste ideer på polet – var {beer} en av dem?!',
     ],
-    leader: ['Nora tar ledelsen! Nybegynnerflaksen slår til – konsis, skarp og i tet!', 'Nora i tet! Ikke Noora – NORA! Den mye bedre utgaven!'],
+    leader: ['Nora tar ledelsen! Nybegynnerflaksen slår til – konsis, skarp og i tet!', 'Nora i tet! Ikke Noora – NORA! Den mye bedre utgaven!', 'Nora tar ledelsen! Beste ideer på polet – og det lønner seg, folkens!'],
   },
   aurora: {
     pick: [
       'Hjulet valgte Aurora – {beer}! Steinerskolen, Berkeley og en flott sangstemme – blir det SANG på presentasjonen?!',
       'Aurora med {beer}! På med hatten! Ny i år, venninne av Kathinka – ingen vet hva vi har i vente!',
+      'Aurora med {beer}! Hun har danset med Michael Jackson på Valle Hovin – blir det moonwalk på presentasjonen?!',
     ],
-    leader: ['Aurora tar ledelsen! Nykommeren gir veteranene kamp til døra!', 'Aurora i tet! Nå synger hun seg til topps!'],
+    leader: ['Aurora tar ledelsen! Nykommeren gir veteranene kamp til døra!', 'Aurora i tet! Nå synger hun seg til topps!', 'Aurora tar ledelsen! Hun har danset med Michael Jackson – nå moonwalker hun forbi hele feltet!'],
     pres6: ['Sekser på presentasjonen til Aurora! Den sangstemmen gjør susen!'],
   },
   eirik: {
@@ -206,12 +208,13 @@ const EN_PEOPLE: Record<string, Lines> = {
       'Nora with {beer}! Concise. Sharp. You can practically touch the beginner\'s luck!',
       'Nora with {beer}! A stage veteran from the school revue – it was in the local paper! Now a new stage awaits!',
       'Nora with {beer}! She has trekked the Manaslu region in Nepal – a beer presentation is nothing after the Himalayas?!',
+      'Nora with {beer}! She gets her best ideas at the liquor store – was {beer} one of them?!',
     ],
     leader: ['Nora takes the lead! Beginner\'s luck strikes – concise, sharp and in front!'],
   },
   aurora: {
-    pick: ['The wheel picks Aurora – {beer}! Steiner school, Berkeley and a great singing voice – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!'],
-    leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!', 'Aurora in front! She\'s singing her way to the top!'],
+    pick: ['The wheel picks Aurora – {beer}! Steiner school, Berkeley and a great singing voice – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!', 'Aurora with {beer}! She has danced with Michael Jackson at Valle Hovin – moonwalk in the presentation?!'],
+    leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!', 'Aurora in front! She\'s singing her way to the top!', 'Aurora takes the lead! She danced with Michael Jackson – now she\'s moonwalking past the whole field!'],
     pres6: ['A six for Aurora\'s presentation! That singing voice works wonders!'],
   },
   eirik: {
@@ -320,12 +323,13 @@ const JA_PEOPLE: Record<string, Lines> = {
       'ノラと{beer}！簡潔。シャープ。ビギナーズラックが手に取るようにわかる！',
       'ノラと{beer}！学生時代のレビューで地元紙に載った舞台経験者！新しい舞台が待っている！',
       'ノラと{beer}！ネパールのマナスル地方をトレッキングした彼女 – ヒマラヤの後ならビールのプレゼンなんて楽勝？！',
+      'ノラと{beer}！最高のアイデアは酒屋で浮かぶという彼女 – {beer}もその一つ？！',
     ],
     leader: ['ノラがトップに！ビギナーズラック炸裂 – 簡潔、シャープ、そして首位！'],
   },
   aurora: {
-    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、バークレー、そして素晴らしい歌声 – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！'],
-    leader: ['アウロラがトップに！新人がベテランたちを脅かしている！', 'アウロラ首位！歌声でトップへ！'],
+    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、バークレー、そして素晴らしい歌声 – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！', 'アウロラと{beer}！ヴァッレ・ホーヴィンでマイケル・ジャクソンと踊った彼女 – プレゼンでムーンウォーク？！'],
+    leader: ['アウロラがトップに！新人がベテランたちを脅かしている！', 'アウロラ首位！歌声でトップへ！', 'アウロラがトップに！マイケル・ジャクソンと踊った彼女 – ムーンウォークで全員を抜き去る！'],
     pres6: ['アウロラのプレゼンに6点！あの歌声は効果抜群！'],
   },
   eirik: {

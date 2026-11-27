@@ -940,17 +940,25 @@ export default function Home() {
     setPendingVote(null);
     setPendingExtraVote(null);
   }
+  const [revealingVote, setRevealingVote] = useState(false);
   async function revealMyVote() {
     const hasVotedLocally = voted !== null;
     const hasVotedServer = pin.length === 4 && votedPins.includes(pin);
-    if (pin.length !== 4 || !(hasVotedLocally || hasVotedServer)) return;
+    if (pin.length !== 4 || !(hasVotedLocally || hasVotedServer) || revealingVote) return;
+    // Drum roll for ~1 s, then show the vote (the reveal request runs meanwhile)
+    setRevealingVote(true);
+    getAudio();
+    startDrumroll();
+    const request = fetch("/api/reveal-my-vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    }).catch(() => null);
     try {
-      await fetch("/api/reveal-my-vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
+      await Promise.all([request, new Promise((r) => setTimeout(r, 1000))]);
     } finally {
+      stopDrumroll();
+      setRevealingVote(false);
       setShowMyReveal(true);
       fetchStatus();
     }
@@ -2294,11 +2302,12 @@ export default function Home() {
                 className="w-full rounded-xl bg-zinc-900 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={revealMyVote}
                 disabled={
+                  revealingVote ||
                   !((activeCount > 0 && votedCount >= activeCount) || allowReveal) ||
                   !(voted !== null || (pin && votedPins.includes(pin)))
                 }
               >
-                Avslør min stemme
+                {revealingVote ? "🥁 Trommevirvel…" : "Avslør min stemme"}
               </button>
             </div>
             {showMyReveal && (

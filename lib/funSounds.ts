@@ -223,3 +223,25 @@ export function playFunSound(ctx: BaseAudioContext, id: FunSoundId, pitch = 1, w
   const out = outChain(ctx, 0.9);
   PLAYERS[id](ctx, when, pitch, out);
 }
+
+/** ✅ «Pling-pling» when a vote is locked – the same for everyone. */
+export function playConfirmSound(ctx: BaseAudioContext, when = ctx.currentTime + 0.01) {
+  const out = outChain(ctx, 0.8);
+  // two bright bell notes going up (E6 → B6), with a soft octave shimmer
+  [[1318.51, 0], [1975.53, 0.11]].forEach(([f, dt]) => {
+    const t = when + dt;
+    const g = ctx.createGain();
+    env(g, t, 0.35, 0.004, 0.02, 0.45);
+    g.connect(out);
+    for (const [mult, lvl, type] of [[1, 1, 'sine'], [2, 0.18, 'sine'], [3.01, 0.06, 'triangle']] as const) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = f * mult;
+      const og = ctx.createGain();
+      og.gain.value = lvl;
+      o.connect(og).connect(g);
+      o.start(t);
+      o.stop(t + 0.5);
+    }
+  });
+}

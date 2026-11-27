@@ -7,7 +7,7 @@ import { resolveBeerImage } from "@/lib/beerImages";
 import { shrinkImageForUpload } from "@/lib/resizeImage";
 import { buildResultsCsv } from "@/lib/exportCsv";
 import { playFanfare as playFanfareSound } from "@/lib/fanfare";
-import { DEFAULT_FUN_SOUND, FUN_SOUNDS, isFunSoundId, pitchForDie, playFunSound, type FunSoundId } from "@/lib/funSounds";
+import { DEFAULT_FUN_SOUND, FUN_SOUNDS, isFunSoundId, pitchForDie, playConfirmSound, playFunSound, type FunSoundId } from "@/lib/funSounds";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -627,11 +627,11 @@ export default function Home() {
     }
   }
 
-  async function castVote(value: number, extra: number) {
+  async function castVote(value: number, extra: number): Promise<boolean> {
     setError(null);
     if (pin.length !== 4) {
       setError("Du må være innlogget");
-      return;
+      return false;
     }
     try {
       const res = await fetch("/api/vote", {
@@ -642,12 +642,14 @@ export default function Home() {
       if (!res.ok) {
         const { error: msg } = await res.json().catch(() => ({ error: "Kunne ikke lagre stemme" }));
         setError(msg || "Kunne ikke lagre stemme");
-        return;
+        return false;
       }
       setVoted(value);
       fetchStatus();
+      return true;
     } catch {
       setError("Nettverksfeil");
+      return false;
     }
   }
 
@@ -922,7 +924,12 @@ export default function Home() {
 
   async function confirmLockVote() {
     if (pendingVote == null || pendingExtraVote == null) return;
-    await castVote(pendingVote, pendingExtraVote);
+    const saved = await castVote(pendingVote, pendingExtraVote);
+    // Same «pling-pling» for everyone – only when the vote is really stored
+    if (saved) {
+      const ctx = getAudio();
+      if (ctx) playConfirmSound(ctx);
+    }
     setShowLockConfirm(false);
     setPendingVote(null);
     setPendingExtraVote(null);
@@ -2424,6 +2431,13 @@ export default function Home() {
                   fetchStatus();
                 }}
               />
+              {/* Right under the wheel so nobody has to scroll to find it */}
+              <button
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-white active:opacity-90"
+                onClick={() => setView("voting")}
+              >
+                Til Votéring!
+              </button>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="text-xs font-medium text-zinc-600 mb-1">Gjenstående deltakere</div>
@@ -2475,14 +2489,6 @@ export default function Home() {
                   </button>
                 </div>
               )}
-              <div className="pt-2">
-                <button
-                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-white active:opacity-90"
-                  onClick={() => setView("voting")}
-                >
-                  Til Votéring!
-                </button>
-              </div>
               {showCelebration && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-white/85 backdrop-blur-sm">
                   <div className="rounded-2xl border border-emerald-300 bg-white px-6 py-5 pt-16 text-center shadow-xl relative">

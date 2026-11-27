@@ -924,12 +924,7 @@ export default function Home() {
 
   async function confirmLockVote() {
     if (pendingVote == null || pendingExtraVote == null) return;
-    const saved = await castVote(pendingVote, pendingExtraVote);
-    // Same «pling-pling» for everyone – only when the vote is really stored
-    if (saved) {
-      const ctx = getAudio();
-      if (ctx) playConfirmSound(ctx);
-    }
+    await castVote(pendingVote, pendingExtraVote);
     setShowLockConfirm(false);
     setPendingVote(null);
     setPendingExtraVote(null);
@@ -2115,7 +2110,12 @@ export default function Home() {
               <div>
                 <button
                   className="w-full rounded-xl bg-blue-600 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
-                  onClick={() => setShowLockConfirm(true)}
+                  onClick={() => {
+                    // Same «pling-pling» for everyone when pressing «Lås poeng»
+                    const ctx = getAudio();
+                    if (ctx) playConfirmSound(ctx);
+                    setShowLockConfirm(true);
+                  }}
                   disabled={!(pickedRound === round && Boolean(selected)) || pendingVote == null || pendingExtraVote == null}
                 >
                   Lås poeng
@@ -2431,10 +2431,13 @@ export default function Home() {
                   fetchStatus();
                 }}
               />
-              {/* Right under the wheel so nobody has to scroll to find it */}
+              {/* Right under the wheel so nobody has to scroll to find it.
+                  Grey until someone is actually picked in this round. */}
               <button
-                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-white active:opacity-90"
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-white active:opacity-90 disabled:bg-zinc-400 disabled:opacity-70"
                 onClick={() => setView("voting")}
+                disabled={pickedRound !== round}
+                title={pickedRound !== round ? "Snurr hjulet først" : undefined}
               >
                 Til Votéring!
               </button>

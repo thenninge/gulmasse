@@ -39,6 +39,7 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Carl Petter – {beer}. Carl Petter altså.. ny i gamet i år. Vil det trekke ned at han er vegetarianer..? Spenningen er til å ta og føle på!',
       'Carl Petter med {beer}! Skallamann nr. 4 – etter Tomas, Adam og Magnus! Holder ganen uten ribbefett mål?!',
+      'Carl Petter med {beer}! Kjenner vi den igjen? JA – Eirik stilte med Père Noël i 2022! Gjør den det bedre i nye hender?!',
     ],
     leader: [
       'Carl Petter tar ledelsen. Jøjje meg! Han er i tet, dere! En vegetarianer i tet!',
@@ -57,6 +58,7 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Eirik – {beer}! Rett fra hans eget bryggeri NukeBrew – «the essence of pure flavor»! Eller faller han for eget sverd igjen?',
       'NukeBrew på scenen! Eirik med {beer} – egenkomponert og fryktløs!',
+      'Eirik med {beer}! I 2022 stilte han Père Noël – i år brygger han selv. Modig. Eller dumdristig?!',
     ],
     leader: ['Eirik tar ledelsen! NukeBrew i tet – nå gjelder det bare å ikke falle for eget sverd!'],
     beer1: ['Au! En ener på {beer}.. Falt Eirik for eget sverd igjen?!'],
@@ -72,8 +74,13 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Kathinka – {beer}! Vinneren fra 2021 – da ble det dansing og sokkeskli! Gjør klar sokkene!',
       'Kathinka med {beer}! St. Bernardus vant det aller første året, i 2020 – kan hun ta tilbake tronen?!',
+      'Kathinka med {beer} – samme øl som hun stilte i 2022! Da ble det 9. plass, nest sist.. REVANSJ eller ny nedtur?!',
+      'Kathinka og {beer}! Vinnerøl i 2020, nest sist i 2022 – hvilken versjon får vi i kveld?! Spenningen er ULIDELIG!',
     ],
-    leader: ['Kathinka tar ledelsen! Sokkeskli-alarm! 2021-vinneren er tilbake i tet!'],
+    leader: [
+      'Kathinka tar ledelsen! Sokkeskli-alarm! 2021-vinneren er tilbake i tet!',
+      'Kathinka i tet! Nest sist med samme øl i 2022 – nå på toppen! For en snuoperasjon!',
+    ],
   },
   magnus: {
     pick: [
@@ -128,7 +135,10 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Claus takes the lead! A seasoned veteran who has never quite reached the top of the podium. Is tonight the night?!'],
   },
   carlpetter: {
-    pick: ['The wheel picks Carl Petter – {beer}. New to the game this year – will being a vegetarian hold him back..? The tension is unbearable!'],
+    pick: [
+      'The wheel picks Carl Petter – {beer}. New to the game this year – will being a vegetarian hold him back..? The tension is unbearable!',
+      'Carl Petter with {beer}! Familiar? YES – Eirik brought Père Noël back in 2022! Will it do better in new hands?!',
+    ],
     leader: ['Carl Petter takes the lead. Good heavens! A vegetarian in front!'],
   },
   nora: { pick: ['The wheel picks Nora – {beer}! Hat on, Nora! Into battle!'], leader: ['Nora takes the lead! The newcomer is in front – who saw THAT coming?!'] },
@@ -142,7 +152,10 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Tomas takes the lead!! The host in front! Is the curse finally broken?!'],
   },
   kathinka: {
-    pick: ['The wheel picks Kathinka – {beer}! The 2021 winner – there was dancing and sock-sliding! Get your socks ready!'],
+    pick: [
+      'The wheel picks Kathinka – {beer}! The 2021 winner – there was dancing and sock-sliding! Get your socks ready!',
+      'Kathinka with {beer} – the same beer she brought in 2022, when it finished 9th, second to last.. REVENGE or another letdown?!',
+    ],
     leader: ['Kathinka takes the lead! Sock-slide alert! The 2021 champion is back in front!'],
   },
   magnus: {

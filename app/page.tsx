@@ -6,6 +6,7 @@ import HostParticipantEditor from "@/components/HostParticipantEditor";
 import { resolveBeerImage } from "@/lib/beerImages";
 import { shrinkImageForUpload } from "@/lib/resizeImage";
 import { buildResultsCsv } from "@/lib/exportCsv";
+import { playFanfare as playFanfareSound } from "@/lib/fanfare";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -853,25 +854,8 @@ export default function Home() {
   function playFanfare() {
     const ctx = getAudio();
     if (!ctx) return;
-    const notes = [
-      { t: 0,    f: 523.25 }, // C5
-      { t: 0.08, f: 659.25 }, // E5
-      { t: 0.16, f: 783.99 }, // G5
-      { t: 0.28, f: 1046.5 }, // C6
-    ];
-    for (const n of notes) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = n.f;
-      const start = ctx.currentTime + n.t;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.4);
-    }
+    // Full brass fanfare with timpani, cymbal and reverb (lib/fanfare)
+    playFanfareSound(ctx);
   }
 
   function goToLogin() {

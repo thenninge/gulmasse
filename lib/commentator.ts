@@ -83,7 +83,7 @@ const NO_PEOPLE: Record<string, Lines> = {
   },
   aurora: {
     pick: [
-      'Hjulet valgte Aurora – {beer}! Steinerskolen, Berkeley og en flott sangstemme – blir det SANG på presentasjonen?!',
+      'Hjulet valgte Aurora – {beer}! Steinerskolen, Berkeley – eller var det Berklee?! Avhandling eller ballade – blir det SANG på presentasjonen?!',
       'Aurora med {beer}! På med hatten! Ny i år, venninne av Kathinka – ingen vet hva vi har i vente!',
       'Aurora med {beer}! Hun har danset med Michael Jackson på Valle Hovin – blir det moonwalk på presentasjonen?!',
       'Aurora med TOMASmesse?! Når verten heter TOMAS?! Her lukter det smisk lang vei – får vi se om verten lar seg bestikke!',
@@ -225,7 +225,7 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Nora takes the lead! Beginner\'s luck strikes – concise, sharp and in front!'],
   },
   aurora: {
-    pick: ['The wheel picks Aurora – {beer}! Steiner school, Berkeley and a great singing voice – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!', 'Aurora with {beer}! She has danced with Michael Jackson at Valle Hovin – moonwalk in the presentation?!', 'Aurora brings TOMASmesse?! When the host is called TOMAS?! Smells like sucking up from miles away – let\'s see if the host can be bribed!'],
+    pick: ['The wheel picks Aurora – {beer}! Steiner school, then Berkeley – or was it Berklee?! Thesis or ballad – will there be SINGING in the presentation?!', 'Aurora with {beer}! A newcomer – nobody knows what to expect!', 'Aurora with {beer}! She has danced with Michael Jackson at Valle Hovin – moonwalk in the presentation?!', 'Aurora brings TOMASmesse?! When the host is called TOMAS?! Smells like sucking up from miles away – let\'s see if the host can be bribed!'],
     leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!', 'Aurora in front! She\'s singing her way to the top!', 'Aurora takes the lead! She danced with Michael Jackson – now she\'s moonwalking past the whole field!'],
     pres6: ['A six for Aurora\'s presentation! That singing voice works wonders!'],
   },
@@ -346,7 +346,7 @@ const JA_PEOPLE: Record<string, Lines> = {
     leader: ['ノラがトップに！ビギナーズラック炸裂 – 簡潔、シャープ、そして首位！'],
   },
   aurora: {
-    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、バークレー、そして素晴らしい歌声 – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！', 'アウロラと{beer}！ヴァッレ・ホーヴィンでマイケル・ジャクソンと踊った彼女 – プレゼンでムーンウォーク？！', 'アウロラが「トーマスメッセ」を？！主催者の名前はトーマス！ゴマすりの匂いがプンプンする – 主催者は買収されるのか？！'],
+    pick: ['ルーレットが選んだのはアウロラ – {beer}！シュタイナー学校、そしてバークレー – それともバークリー？！論文かバラードか – プレゼンで歌が聴ける？！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！', 'アウロラと{beer}！ヴァッレ・ホーヴィンでマイケル・ジャクソンと踊った彼女 – プレゼンでムーンウォーク？！', 'アウロラが「トーマスメッセ」を？！主催者の名前はトーマス！ゴマすりの匂いがプンプンする – 主催者は買収されるのか？！'],
     leader: ['アウロラがトップに！新人がベテランたちを脅かしている！', 'アウロラ首位！歌声でトップへ！', 'アウロラがトップに！マイケル・ジャクソンと踊った彼女 – ムーンウォークで全員を抜き去る！'],
     pres6: ['アウロラのプレゼンに6点！あの歌声は効果抜群！'],
   },

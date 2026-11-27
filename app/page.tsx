@@ -1561,7 +1561,15 @@ export default function Home() {
 
         {view === "lobby" && (
           <section className="space-y-5">
-            <h2 className="text-xl font-semibold">Lobby</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Lobby</h2>
+              {/* The juleølhatt, gently rocking – lined up with the Podium button below */}
+              <img
+                src="/img/mcga.png"
+                alt="Juleølhatten"
+                className="animate-hatrock mr-[17px] h-12 w-12 drop-shadow-md"
+              />
+            </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-zinc-500">

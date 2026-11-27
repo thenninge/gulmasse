@@ -48,3 +48,16 @@ body {
   animation-name: confetti-fall;
   animation-timing-function: linear;
 }
+
+/* Juleølhatten in the lobby: gentle rocking */
+@keyframes hatrock {
+  0%, 100% { rotate: -9deg; }
+  50% { rotate: 9deg; }
+}
+.animate-hatrock {
+  animation: hatrock 3.2s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-hatrock { animation: none; }
+}

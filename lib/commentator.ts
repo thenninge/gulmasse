@@ -10,7 +10,7 @@ export type CommentKind =
   | 'pick' | 'leader'
   | 'double6' | 'beer6' | 'beer5' | 'beer2' | 'beer1' | 'pres6' | 'pres5' | 'presLow' | 'pres1'
   | 'halfway' | 'allVoted' | 'recordHigh' | 'recordLow' | 'climb' | 'fall'
-  | 'standingClose' | 'standingBig' | 'standing';
+  | 'standingClose' | 'standingBig' | 'standing' | 'selfSix';
 export type CommentParams = {
   name?: string; beer?: string; avg?: number | null;
   /** places for climb/fall, points margin + runner-up for standings */
@@ -77,6 +77,7 @@ const NO_PEOPLE: Record<string, Lines> = {
       'Vertskapet på banen! Tomas med {beer} – er det NÅ det endelig skjer?!',
     ],
     leader: ['Tomas tar ledelsen!! Verten i tet! 6 år uten seier – er forbannelsen brutt?!'],
+    selfSix: ['Aiai! 6-er til Tomas – FRA Tomas! Like sneaky i år som foregående år.. men det er lov ihht regelboka!'],
   },
   kathinka: {
     pick: [
@@ -139,6 +140,7 @@ const NO_GENERIC: Record<CommentKind, string[]> = {
   standingClose: ['NERVEPIRRENDE! {name} leder, men bare {margin} poeng foran {second}!', 'Knivskarpt i toppen! {margin} poeng skiller {name} og {second}!'],
   standingBig: ['Knusende! {name} leder med hele {margin} poeng ned til {second}!', '{name} rømmer! {margin} poeng foran {second} – kan noen stoppe dette?!'],
   standing: ['Stillingen: {name} leder, {margin} poeng foran {second}. Fortsatt alt å spille for!'],
+  selfSix: ['Selvtillit! {name} gir sin egen {beer} en sekser! Helt lovlig – men vi la merke til det!'],
 };
 
 const NO_VERDICT = (avg: number) =>
@@ -170,6 +172,7 @@ const EN_PEOPLE: Record<string, Lines> = {
   tomas: {
     pick: ['The wheel picks Tomas – {beer}! The host and inventor himself! 6th year, never won. Eternal loser? We\'ll see..'],
     leader: ['Tomas takes the lead!! The host in front! Is the curse finally broken?!'],
+    selfSix: ['Oh my! A 6 for Tomas – FROM Tomas! As sneaky this year as every year before.. but it\'s within the rules!'],
   },
   kathinka: {
     pick: [
@@ -213,6 +216,7 @@ const EN_GENERIC: Record<CommentKind, string[]> = {
   standingClose: ['NAIL-BITING! {name} leads, but only {margin} points ahead of {second}!'],
   standingBig: ['Crushing! {name} leads by a massive {margin} points over {second}!'],
   standing: ['Standings: {name} leads, {margin} points ahead of {second}. Still everything to play for!'],
+  selfSix: ['Confidence! {name} gives their own {beer} a six! Perfectly legal – but we noticed!'],
 };
 
 const EN_VERDICT = (avg: number) =>

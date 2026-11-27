@@ -86,6 +86,7 @@ const no: Dict = {
   evClimb: '{name} klatrer fra {from}. til {to}. plass',
   evFall: '{name} faller fra {from}. til {to}. plass',
   evStanding: '{name} leder med {margin} poeng foran {second}',
+  evSelfSix: '{name} ga sin egen øl en sekser',
   theBeer: 'ølen',
 };
 
@@ -167,6 +168,7 @@ const en: Dict = {
   evClimb: '{name} climbs from {from} to {to}',
   evFall: '{name} drops from {from} to {to}',
   evStanding: '{name} leads by {margin} points over {second}',
+  evSelfSix: '{name} gave their own beer a six',
   theBeer: 'the beer',
 };
 
@@ -248,6 +250,7 @@ const ja: Dict = {
   evClimb: '{name}が{from}位から{to}位に浮上',
   evFall: '{name}が{from}位から{to}位に後退',
   evStanding: '{name}が{second}に{margin}点差で首位',
+  evSelfSix: '{name}が自分のビールに6',
   theBeer: 'ビール',
 };
 

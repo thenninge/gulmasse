@@ -2301,6 +2301,15 @@ export default function Home() {
               )}
             </div>
             <div>
+              {/* Once my vote is revealed (by me or the host) the button becomes «Til Lobby» */}
+              {!revealingVote && pin.length === 4 && typeof revealedVotesMap[pin] === "number" ? (
+                <button
+                  className="w-full rounded-xl bg-purple-600 px-4 py-4 text-white active:opacity-90"
+                  onClick={() => setView("lobby")}
+                >
+                  Til Lobby
+                </button>
+              ) : (
               <button
                 className="w-full rounded-xl bg-zinc-900 px-4 py-4 text-white active:opacity-90 disabled:opacity-50"
                 onClick={revealMyVote}
@@ -2312,6 +2321,7 @@ export default function Home() {
               >
                 {revealingVote ? "🥁 Trommevirvel…" : "Avslør min stemme"}
               </button>
+              )}
               {isHost && (
                 <div className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                   <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">Admin</div>

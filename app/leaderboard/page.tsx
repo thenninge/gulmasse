@@ -19,6 +19,7 @@ type Board = {
   presenter: null | {
     pin: string; name: string; beer: string; producer: string; type: string; abv: number | null; image: string | null;
     votes: number; active: number; avgBeer: number | null; avgExtra?: number | null; throws?: Array<[number, number]>;
+    selfVote?: [number, number] | null;
   };
   standings: Standing[];
   presented: Presented[];
@@ -86,6 +87,7 @@ function detectEvents(prev: Board, next: Board) {
     leader?: string;
     allVoted?: { avg: number | null; beer: string };
     halfway?: { avg: number | null; beer: string };
+    selfSix?: { name: string; beer: string };
     throws: Array<[number, number]>;
   } = { throws: [] };
   const np = next.presenter;
@@ -98,6 +100,8 @@ function detectEvents(prev: Board, next: Board) {
     const before = pp.throws?.length ?? 0;
     ev.throws = (np.throws || []).slice(before);
     if (np.active > 0 && np.votes >= np.active && pp.votes < pp.active) ev.allVoted = { avg: np.avgBeer, beer: np.beer };
+    // presenter just gave their own beer a six
+    if (!pp.selfVote && np.selfVote && np.selfVote[0] === 6) ev.selfSix = { name: np.name, beer: np.beer };
     const half = Math.ceil(np.active / 2);
     if (np.active >= 4 && pp.votes < half && np.votes >= half && np.votes < np.active) ev.halfway = { avg: np.avgBeer, beer: np.beer };
   }
@@ -213,6 +217,9 @@ export default function LeaderboardPage() {
       ];
       const low = neg.find(([c]) => c);
       if (low) add.push({ id: nid(), icon: low[3], key: low[2], kind: low[1], params: { name: who, beer: whoBeer }, at: now });
+    }
+    if (ev.selfSix) {
+      add.push({ id: nid(), icon: "😏", key: "evSelfSix", kind: "selfSix", params: { name: ev.selfSix.name, beer: ev.selfSix.beer }, at: now });
     }
     if (ev.halfway) {
       add.push({ id: nid(), icon: "⏱️", key: "evHalfway", kind: "halfway", params: { beer: ev.halfway.beer, avg: ev.halfway.avg }, at: now });

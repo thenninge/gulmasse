@@ -123,6 +123,11 @@ export async function GET(request: Request) {
               // Each locked vote this round as [øl, presentasjon], oldest first – anonymous.
               // Lets the page animate new throws (both dice) as they come in.
               throws: votesThisRound.map((v) => [Number(v.value) || 0, Number(v.extra_value) || 0]),
+              // The presenter's vote on their OWN beer (for «6-er til Tomas – FRA Tomas!»); other votes stay anonymous
+              selfVote: (() => {
+                const own = votesThisRound.find((v) => v.pin === presenter.pin);
+                return own ? [Number(own.value) || 0, Number(own.extra_value) || 0] : null;
+              })(),
               avgExtra: votesThisRound.length
                 ? votesThisRound.reduce((a, v) => a + (Number(v.extra_value) || 0), 0) / votesThisRound.length
                 : null,

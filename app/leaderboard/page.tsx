@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
-import { commentary, type CommentKind } from "@/lib/commentator";
+import { commentary, vetFor, type CommentKind } from "@/lib/commentator";
 import { playFanfare } from "@/lib/fanfare";
 
 type Standing = {
@@ -55,7 +55,7 @@ const useI18n = () => useContext(I18nCtx);
 
 // Events are stored as a text key + raw params and translated when shown,
 // so switching language also translates news that already happened.
-type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string };
+type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string };
 type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date; kind?: CommentKind };
 type Announce = { id: number; name: string; beer: string };
 type Toast = { id: number; icon: string; key: string; params: EvParams };
@@ -75,6 +75,7 @@ function evText(i: I18n, key: string, p: EvParams): string {
     to: p.to ?? "",
     margin: i.f(p.margin ?? null, 1),
     second: p.second ?? "",
+    vet: p.vet ?? "",
     name: p.name ?? "",
     beer: key === "evPick" ? (p.beer ? ` – ${p.beer}` : "") : p.beer || i.t("theBeer"),
     avg: i.f(p.avg ?? null, 2),
@@ -122,6 +123,7 @@ function buildHistory(board: Board): FeedItem[] {
   const out: FeedItem[] = [];
   const names = Object.fromEntries(board.standings.map((s) => [s.pin, s.name]));
   let prevLeader: string | null = null;
+  let lastMiss = -9; // «we miss the veterans» at most every other beer
   const doneAvgs: number[] = [];
   board.presented.forEach((b, i) => {
     const at = b.pickedAt ? new Date(b.pickedAt) : new Date(board.updatedAt);
@@ -131,8 +133,15 @@ function buildHistory(board: Board): FeedItem[] {
     if (live || b.votes === 0 || b.avgBeer == null) return; // round still in progress
     out.push({ id: id(1), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: b.beer, avg: b.avgBeer }, at });
     if (doneAvgs.length >= 1) {
-      if (b.avgBeer > Math.max(...doneAvgs)) out.push({ id: id(2), icon: "🏅", key: "evRecordHigh", kind: "recordHigh", params: { name: b.name, beer: b.beer, avg: b.avgBeer }, at });
-      else if (b.avgBeer < Math.min(...doneAvgs)) out.push({ id: id(2), icon: "📉", key: "evRecordLow", kind: "recordLow", params: { name: b.name, beer: b.beer, avg: b.avgBeer }, at });
+      const high = b.avgBeer > Math.max(...doneAvgs);
+      const low = !high && b.avgBeer < Math.min(...doneAvgs);
+      if (high) out.push({ id: id(2), icon: "🏅", key: "evRecordHigh", kind: "recordHigh", params: { name: b.name, beer: b.beer, avg: b.avgBeer }, at });
+      else if (low) out.push({ id: id(2), icon: "📉", key: "evRecordLow", kind: "recordLow", params: { name: b.name, beer: b.beer, avg: b.avgBeer }, at });
+      if ((high || low) && i - lastMiss >= 2) {
+        lastMiss = i;
+        const kind: CommentKind = high ? "missStrong" : "missStumble";
+        out.push({ id: id(5), icon: "🕯️", key: high ? "evMissStrong" : "evMissStumble", kind, params: { name: b.name, vet: vetFor(id(5)) }, at });
+      }
     }
     doneAvgs.push(b.avgBeer);
     const step = board.progression[i];
@@ -172,6 +181,8 @@ export default function LeaderboardPage() {
   const [showAward, setShowAward] = useState(false);
   const prevRef = useRef<Board | null>(null);
   const idRef = useRef(1);
+  const lastMissRef = useRef(-9); // presented-count when we last missed the veterans
+  const lastFeedAtRef = useRef(0); // for the pause filler
   // Places when the current beer was picked → «byks på tabellen» after the round
   const roundStartPlacesRef = useRef<Record<string, number> | null>(null);
   const [lang, setLangState] = useState<Lang>("no");
@@ -213,6 +224,7 @@ export default function LeaderboardPage() {
       if (next.presenter) roundStartPlacesRef.current = placesOf(next);
       // late visitors get the story so far (newest first)
       setFeed(buildHistory(next).reverse());
+      lastFeedAtRef.current = Date.now();
       return;
     }
     const ev = detectEvents(prev, next);
@@ -294,13 +306,19 @@ export default function LeaderboardPage() {
       add.push({ id: nid(), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: ev.allVoted.beer, avg: ev.allVoted.avg }, at: now });
       const np = next.presenter;
       // Record: best / worst beer average of the night so far (from the 2nd beer on)
+      let miss: { kind: CommentKind; name: string } | null = null;
       const others = next.presented.filter((b) => b.pin !== np?.pin && b.votes > 0 && b.avgBeer != null);
       const cur = ev.allVoted.avg;
       if (np && cur != null && others.length >= 1) {
         const best = Math.max(...others.map((b) => b.avgBeer as number));
         const worst = Math.min(...others.map((b) => b.avgBeer as number));
-        if (cur > best) add.push({ id: nid(), icon: "🏅", key: "evRecordHigh", kind: "recordHigh", params: { name: np.name, beer: np.beer, avg: cur }, at: now });
-        else if (cur < worst) add.push({ id: nid(), icon: "📉", key: "evRecordLow", kind: "recordLow", params: { name: np.name, beer: np.beer, avg: cur }, at: now });
+        if (cur > best) {
+          add.push({ id: nid(), icon: "🏅", key: "evRecordHigh", kind: "recordHigh", params: { name: np.name, beer: np.beer, avg: cur }, at: now });
+          miss = { kind: "missStrong", name: np.name };
+        } else if (cur < worst) {
+          add.push({ id: nid(), icon: "📉", key: "evRecordLow", kind: "recordLow", params: { name: np.name, beer: np.beer, avg: cur }, at: now });
+          miss = { kind: "missStumble", name: np.name };
+        }
       }
       // Biggest climb / fall this round (≥ 2 places)
       const start = roundStartPlacesRef.current;
@@ -312,6 +330,15 @@ export default function LeaderboardPage() {
         const fall = moves.filter((m) => m.to - m.from >= 2).sort((a, b) => b.to - b.from - (a.to - a.from))[0];
         if (climb) add.push({ id: nid(), icon: "🚀", key: "evClimb", kind: "climb", params: climb, at: now });
         if (fall) add.push({ id: nid(), icon: "🪂", key: "evFall", kind: "fall", params: fall, at: now });
+        if (!miss && climb) miss = { kind: "missStrong", name: climb.name };
+        if (!miss && fall) miss = { kind: "missStumble", name: fall.name };
+      }
+      // «We miss the veterans» – at most every other beer, so it stays fun
+      const count = next.presented.length;
+      if (miss && count - lastMissRef.current >= 2) {
+        lastMissRef.current = count;
+        const id = nid();
+        add.push({ id, icon: "🕯️", key: miss.kind === "missStrong" ? "evMissStrong" : "evMissStumble", kind: miss.kind, params: { name: miss.name, vet: vetFor(id) }, at: now });
       }
       // Standings after the round
       const [first, second] = next.standings;
@@ -322,9 +349,25 @@ export default function LeaderboardPage() {
       }
     }
     if (add.length) {
+      lastFeedAtRef.current = Date.now();
       const newestFirst = add.slice().reverse();
       setFeed((f) => [...newestFirst, ...f].slice(0, 300));
     }
+  }, []);
+
+  // Pause entertainment: after a quiet spell the commentator misses the veterans
+  useEffect(() => {
+    const QUIET_MS = 150_000;
+    const t = window.setInterval(() => {
+      const b = prevRef.current;
+      if (!b || b.awardUnlocked || !lastFeedAtRef.current) return;
+      if (Date.now() - lastFeedAtRef.current < QUIET_MS) return;
+      lastFeedAtRef.current = Date.now();
+      const id = idRef.current++;
+      const item: FeedItem = { id, icon: "🕯️", key: "evMissIdle", kind: "missIdle", params: { vet: vetFor(id) }, at: new Date() };
+      setFeed((f) => [item, ...f].slice(0, 300));
+    }, 10_000);
+    return () => window.clearInterval(t);
   }, []);
 
   useEffect(() => {

@@ -20,6 +20,7 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Mannen bak Gulmasse – vertskap og oppfinner. 6. året nå. Aldri vunnet. En evig taper? Vi får se..',
       'Historisk sett gir Tomas alltid sitt eget øl en sekser. Sneaky – men helt innenfor regelboka!',
+      'I 2021 stilte han Père Noël: 3. på smak, men bare 6. offisielt.',
     ],
     facts: ['6. året i konkurransen', 'Aldri vunnet', 'Gir alltid eget øl 6 poeng'],
   },
@@ -28,18 +29,18 @@ const PROFILES: Record<string, Profile> = {
     tagline: 'Vinneren fra 2021',
     bio: [
       'Vant i 2021 med Delirium Christmas – da ble det dansing og sokkeskli!',
-      'I år stiller hun St. Bernardus – ølet som vant det aller første året konkurransen gikk av stabelen, i 2020. Men da hun stilte samme øl i 2022, ble det 9. plass, nest sist. Vinnerøl eller nedtur – hvilken versjon får vi i år?',
+      'I år stiller hun St. Bernardus – ølet som vant det aller første året, i 2020, stilt av Hans Magnus. Men da hun selv stilte den i 2022 – som «Sgt. Bernadousis» – ble det 7. på smak og 9. offisielt, nest sist. Vinnerøl eller nedtur – hvilken versjon får vi i år?',
     ],
-    facts: ['Vinner 2021 (Delirium Christmas)', 'St. Bernardus vant i 2020', 'Samme øl i 2022: 9. plass, nest sist'],
+    facts: ['Vinner 2021 (Delirium Christmas)', 'St. Bernardus vant i 2020', '«Sgt. Bernadousis» 2022: 9. plass'],
   },
   claus: {
     emoji: '🦊',
     tagline: 'Ringreven',
     bio: [
       'Han er blitt en ringrev nå, Claus – men har aldri nådd helt opp på toppen av podiet.',
-      'I år stiller han Delirium Christmas. Delirium har vunnet før, i 2021, men et par år etter kom den til kort. Revansj i år?',
+      'I år stiller han Delirium Christmas – vinnerølet fra 2021 (Kathinka). Men da Adam stilte den i 2022, ble det bare 5. plass. Revansj i år?',
     ],
-    facts: ['Aldri på toppen av podiet', 'Delirium Christmas vant i 2021'],
+    facts: ['Aldri på toppen av podiet', 'Delirium Christmas: 1. i 2021, 5. i 2022'],
   },
   carlpetter: {
     emoji: '🥕',
@@ -47,9 +48,9 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Ny i år! Skallamann nr. 4 – etter Tomas, Adam og Magnus.',
       'Vegetarianer – vi vet ikke hvordan det slår ut på stemmene. Og passer ølsmaken hans om han ikke har ganen full av ribbefett??',
-      'Han stiller Père Noël – samme øl som Eirik stilte i 2022.',
+      'Han stiller Père Noël – et øl med historie: 3. på smak da Tomas stilte den i 2021, men sist da Eirik stilte den i 2022. Tredje gang god?',
     ],
-    facts: ['Debutant', 'Skallamann nr. 4', 'Vegetarianer', 'Père Noël – stilt av Eirik i 2022'],
+    facts: ['Debutant', 'Skallamann nr. 4', 'Vegetarianer', 'Père Noël: 3. på smak 2021, sist 2022'],
   },
   eirik: {
     emoji: '☢️',
@@ -57,9 +58,9 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Kjent for å falle for eget sverd.',
       'I år stiller han en egenkomponert ICBM fra sitt eget bryggeri NukeBrew. I dråpene skal det visstnok være «the essence of pure flavor»..',
-      'I 2022 stilte han Père Noël.',
+      'I 2022 stilte han Père Noël – den ble 10. og sist offisielt. Nå satser han på egenbrygg i stedet!',
     ],
-    facts: ['Eget bryggeri: NukeBrew', 'Faller gjerne for eget sverd', 'Stilte Père Noël i 2022'],
+    facts: ['Eget bryggeri: NukeBrew', 'Faller gjerne for eget sverd', 'Père Noël 2022: sist'],
   },
   magnus: {
     emoji: '🃏',
@@ -76,8 +77,9 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Halvt japansk, halvt manchesterianer, og helt juleølboss!',
       'Om ikke Adam får 6 på presentasjonen, så er feltet helt åpent!',
+      'I 2022 stilte han Delirium Christmas – fjorårsvinneren den gang – og fikk 5. plass.',
     ],
-    facts: ['Halvt japansk, halvt Manchester', 'Juleølboss', 'Presentasjonsfavoritt'],
+    facts: ['Halvt japansk, halvt Manchester', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass'],
   },
   martin: {
     emoji: '🏆',
@@ -99,9 +101,13 @@ const PROFILES: Record<string, Profile> = {
   },
   nora: {
     emoji: '✨',
-    tagline: 'Nykommer',
-    bio: ['Ny i år – venninne av Kathinka. Vi vet lite om henne ennå, så hun er et helt ukjent kort i stokken!'],
-    facts: ['Debutant', 'Venninne av Kathinka'],
+    tagline: 'Nora – ikke Noora!',
+    bio: [
+      'Nora. Ikke Noora! Ikke «jeg trenger litt spæis!»-Nooorra. Ikke Skam-Nooora som klina med William!',
+      'Dette er nemlig en mye bedre utgave: Nora. Konsis. Skarp. Nybegynnerflaksen er til å ta og føle på!',
+      'Ny i år – venninne av Kathinka.',
+    ],
+    facts: ['Debutant', 'Ikke Noora', 'Konsis og skarp', 'Venninne av Kathinka'],
   },
   aurora: {
     emoji: '🌌',

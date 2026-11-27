@@ -5,6 +5,7 @@
  * so a line doesn't change when the page re-renders.
  */
 import type { Lang } from '@/lib/leaderboardI18n';
+import { getBeerHistory } from '@/lib/beerHistory';
 
 export type CommentKind =
   | 'pick' | 'leader'
@@ -12,7 +13,9 @@ export type CommentKind =
   | 'halfway' | 'allVoted' | 'recordHigh' | 'recordLow' | 'climb' | 'fall'
   | 'standingClose' | 'standingBig' | 'standing' | 'selfSix' | 'award' | 'awardCta'
   /** «we miss the veterans» filler: quiet moments, a stumble, a strong result */
-  | 'missIdle' | 'missStumble' | 'missStrong';
+  | 'missIdle' | 'missStumble' | 'missStrong'
+  /** the beer has been in Gulmasse before – its story (from lib/beerHistory) */
+  | 'beerHistory';
 export type CommentParams = {
   name?: string; beer?: string; avg?: number | null;
   /** places for climb/fall, points margin + runner-up for standings */
@@ -44,7 +47,7 @@ const NO_PEOPLE: Record<string, Lines> = {
   },
   claus: {
     pick: [
-      'Hjulet valgte Claus – {beer}. Delirium har vunnet før, i 2021, men et par år etter kom den til kort. Revansj i kveld?!',
+      'Hjulet valgte Claus – {beer}. Delirium vant i 2021, men ble bare nr. 5 da Adam stilte den i 2022. Revansj i kveld?!',
       'Claus med {beer}! Ringreven er klar – men toppen av podiet har han aldri nådd. Er det I ÅR det skjer?!',
     ],
     leader: [
@@ -63,8 +66,12 @@ const NO_PEOPLE: Record<string, Lines> = {
     ],
   },
   nora: {
-    pick: ['Hjulet valgte Nora – {beer}! På med hatten til Nora! Ut i dyst!', 'Nykommer Nora med {beer}! Kathinkas venninne – et helt ukjent kort i stokken!'],
-    leader: ['Nora tar ledelsen! Nykommeren i tet – hvem hadde sett DEN komme?!'],
+    pick: [
+      'Hjulet valgte Nora – {beer}! Ikke Noora! Ikke «jeg trenger litt spæis!»-Nooorra. Ikke Skam-Nooora som klina med William! Dette er nemlig en mye bedre utgave: Nora!',
+      'Nora med {beer}! Konsis. Skarp. Nybegynnerflaksen er til å ta og føle på!',
+      'Nykommer Nora med {beer}! På med hatten! Og husk: det er NORA, ikke Noora!',
+    ],
+    leader: ['Nora tar ledelsen! Nybegynnerflaksen slår til – konsis, skarp og i tet!', 'Nora i tet! Ikke Noora – NORA! Den mye bedre utgaven!'],
   },
   aurora: {
     pick: ['Hjulet valgte Aurora – {beer}! Ny i år, venninne av Kathinka – ingen vet hva vi har i vente!', 'Aurora med {beer}! På med hatten! Ut i dyst!'],
@@ -160,6 +167,7 @@ const NO_GENERIC: Record<CommentKind, string[]> = {
     'Ja, der ser vi det altså, uten at {vet} er på deltakerlisten så er det noe snubling i feltet..',
     '{name} snubler.. Og hvem ville ha stått klar med et klapp på skulderen og en reserveøl? {vet}, selvsagt. Savnet!',
   ],
+  beerHistory: [],
   missStrong: [
     'Åhoi! En såpass sterk plassering fra {name}! Spørs om det samme hadde skjedd om {vet} hadde sittet rundt ølbordet i år. Spesielt pitchen er gjerne bedre hos en veteran enn hos en nybegynner.',
     'Sterkt levert av {name}! Men vi må jo spørre oss: hadde {vet} latt det skje? Det får vi aldri vite i år..',
@@ -176,7 +184,7 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Martin takes the lead! Can the defending champion keep the trophy?!'],
   },
   claus: {
-    pick: ['The wheel picks Claus – {beer}. Delirium won back in 2021, then fell short a few years later. Revenge tonight?!'],
+    pick: ['The wheel picks Claus – {beer}. Delirium won in 2021, but only came 5th when Adam brought it in 2022. Revenge tonight?!'],
     leader: ['Claus takes the lead! A seasoned veteran who has never quite reached the top of the podium. Is tonight the night?!'],
   },
   carlpetter: {
@@ -186,7 +194,13 @@ const EN_PEOPLE: Record<string, Lines> = {
     ],
     leader: ['Carl Petter takes the lead. Good heavens! A vegetarian in front!'],
   },
-  nora: { pick: ['The wheel picks Nora – {beer}! Hat on, Nora! Into battle!'], leader: ['Nora takes the lead! The newcomer is in front – who saw THAT coming?!'] },
+  nora: {
+    pick: [
+      'The wheel picks Nora – {beer}! Not Noora! Not «I need some space!»-Nooorra. Not Skam-Nooora who made out with William! This is a much better version: Nora!',
+      'Nora with {beer}! Concise. Sharp. You can practically touch the beginner\'s luck!',
+    ],
+    leader: ['Nora takes the lead! Beginner\'s luck strikes – concise, sharp and in front!'],
+  },
   aurora: { pick: ['The wheel picks Aurora – {beer}! A newcomer – nobody knows what to expect!'], leader: ['Aurora takes the lead! The newcomer is giving the veterans a run for their money!'] },
   eirik: {
     pick: ['The wheel picks Eirik – {beer}! Straight from his own NukeBrew brewery – «the essence of pure flavor»! Or will he fall on his own sword again?'],
@@ -251,6 +265,7 @@ const EN_GENERIC: Record<CommentKind, string[]> = {
     'And there you have it – without {vet} on the list, the field is stumbling a bit..',
     '{name} stumbles.. And who would have been there with a pat on the back and a spare beer? {vet}, of course. Missed!',
   ],
+  beerHistory: [],
   missStrong: [
     'Ahoy! Such a strong placing from {name}! Would it have happened if {vet} had been sitting at the beer table this year? The pitch is usually better from a veteran than from a beginner.',
     'Strong stuff from {name}! But we have to ask: would {vet} have let that happen? We\'ll never know this year..',
@@ -274,7 +289,7 @@ const JA_PEOPLE: Record<string, Lines> = {
   },
   claus: {
     pick: [
-      'ルーレットが選んだのはクラウス – {beer}。デリリウムは2021年に優勝したが、数年後には届かなかった。今夜はリベンジなるか？！',
+      'ルーレットが選んだのはクラウス – {beer}。デリリウムは2021年に優勝、でも2022年にアダムが持ってきた時は5位。今夜はリベンジなるか？！',
       'クラウスと{beer}！百戦錬磨のベテラン – でも表彰台の頂点にはまだ立ったことがない。今年こそ？！',
     ],
     leader: ['クラウスがトップに！すっかりベテランだが、表彰台の頂点はまだ未経験。今夜がその夜か？！'],
@@ -288,8 +303,11 @@ const JA_PEOPLE: Record<string, Lines> = {
     leader: ['カール・ペッターがトップに。なんてこった！ベジタリアンが首位だ！', 'スキンヘッド4号が首位！！リブを一口も食べずにトップに立った！'],
   },
   nora: {
-    pick: ['ルーレットが選んだのはノラ – {beer}！ノラに帽子を！いざ勝負！', '新人ノラと{beer}！カティンカの友人 – まったく読めないダークホースだ！'],
-    leader: ['ノラがトップに！新人が首位 – 誰が予想できた？！'],
+    pick: [
+      'ルーレットが選んだのはノラ – {beer}！ノーラじゃない！「ちょっとスペースが欲しいの！」のノーーラでもない。ウィリアムといちゃついたSKAMのノーーラでもない！こっちはずっと良いバージョン：ノラ！',
+      'ノラと{beer}！簡潔。シャープ。ビギナーズラックが手に取るようにわかる！',
+    ],
+    leader: ['ノラがトップに！ビギナーズラック炸裂 – 簡潔、シャープ、そして首位！'],
   },
   aurora: {
     pick: ['ルーレットが選んだのはアウロラ – {beer}！今年初参加、カティンカの友人 – 何が起きるか誰にもわからない！', 'アウロラと{beer}！帽子をかぶって、いざ勝負！'],
@@ -375,6 +393,7 @@ const JA_GENERIC: Record<CommentKind, string[]> = {
     'ほら、見てのとおり。{vet}が参加者リストにいないと、みんなちょっとつまずき気味…',
     '{name}がつまずいた…肩をたたいて予備のビールを差し出してくれたのは誰？もちろん{vet}だ。寂しい！',
   ],
+  beerHistory: [],
   missStrong: [
     'おーい！{name}がこんなに好成績！もし{vet}が今年ビールのテーブルにいたら、同じ結果になったかな。特にプレゼンは、初心者よりベテランの方がうまいものだから。',
     '{name}、お見事！でも聞かずにはいられない：{vet}がいたら、これを許したかな？今年は永遠の謎…',
@@ -395,8 +414,14 @@ export function commentary(
   const people = lang === 'no' ? NO_PEOPLE : lang === 'ja' ? JA_PEOPLE : EN_PEOPLE;
   const generic = lang === 'no' ? NO_GENERIC : lang === 'ja' ? JA_GENERIC : EN_GENERIC;
   const verdict = lang === 'no' ? NO_VERDICT : lang === 'ja' ? JA_VERDICT : EN_VERDICT;
-  const personal = people[keyOf(p.name || '')]?.[kind];
-  const pool = personal && personal.length ? personal : generic[kind];
+  let pool: string[] | undefined;
+  if (kind === 'beerHistory') {
+    pool = getBeerHistory(p.beer || '')?.pick[lang];
+    if (!pool?.length) return null;
+  } else {
+    const personal = people[keyOf(p.name || '')]?.[kind];
+    pool = personal && personal.length ? personal : generic[kind];
+  }
   const line = pool[Math.abs(seed) % pool.length];
   const vet = p.vet || vetFor(seed);
   const beer = (p.beer || '').trim() || (lang === 'no' ? 'ølen' : lang === 'ja' ? 'ビール' : 'the beer');

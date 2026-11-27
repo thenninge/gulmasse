@@ -1,6 +1,7 @@
 "use client";
 
 import { getProfile } from "@/lib/participantBios";
+import { getBeerHistory } from "@/lib/beerHistory";
 
 type Props = {
   name: string;
@@ -22,6 +23,7 @@ export default function ParticipantInfoModal({ name, beerName, producer, beerTyp
   const tagline = profile?.tagline ?? "Deltaker";
   const bio = profile?.bio ?? [`${name} er med på Gulmasse i år! Vi vet ikke så mye ennå – men stemmene vil avsløre alt.`];
   const facts = profile?.facts ?? [];
+  const history = getBeerHistory(beerName);
 
   return (
     <div
@@ -89,6 +91,20 @@ export default function ParticipantInfoModal({ name, beerName, producer, beerTyp
             </div>
           ) : (
             <div className="text-sm text-zinc-500">Ikke registrert ennå – hemmelig?</div>
+          )}
+          {history && (
+            <div className="mt-3 border-t border-zinc-200 pt-3" data-testid="beer-history">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">📜 Vært med før</div>
+              <p className="mb-2 text-sm [overflow-wrap:anywhere]">{history.summary.no}</p>
+              <ul className="space-y-1 text-xs text-zinc-700">
+                {history.rows.map((r) => (
+                  <li key={r.year} className="flex gap-2">
+                    <span className="shrink-0 font-semibold tabular-nums">{r.year}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{r.place.no} · stilt av {r.by}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
 import { commentary, vetFor, type CommentKind } from "@/lib/commentator";
+import { getBeerHistory } from "@/lib/beerHistory";
 import { playFanfare } from "@/lib/fanfare";
 
 type Standing = {
@@ -129,6 +130,7 @@ function buildHistory(board: Board): FeedItem[] {
     const at = b.pickedAt ? new Date(b.pickedAt) : new Date(board.updatedAt);
     const id = (k: number) => -(i * 20 + k + 1);
     out.push({ id: id(0), icon: "🎡", key: "evPick", kind: "pick", params: { name: b.name, beer: b.beer }, at });
+    if (getBeerHistory(b.beer)) out.push({ id: id(6), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: b.name, beer: b.beer }, at });
     const live = board.presenter?.pin === b.pin && board.presenter.votes < board.presenter.active;
     if (live || b.votes === 0 || b.avgBeer == null) return; // round still in progress
     out.push({ id: id(1), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: b.beer, avg: b.avgBeer }, at });
@@ -243,6 +245,8 @@ export default function LeaderboardPage() {
       setConfetti((c) => c + 1);
       roundStartPlacesRef.current = placesOf(next);
       add.push({ id: nid(), icon: "🎡", key: "evPick", kind: "pick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
+      // the beer has been here before → the commentator tells its story
+      if (getBeerHistory(ev.pick.beer)) add.push({ id: nid(), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
     }
     if (ev.leader) {
       toast("👑", "evLeaderToast", { name: ev.leader });

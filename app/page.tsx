@@ -7,6 +7,7 @@ import { resolveBeerImage } from "@/lib/beerImages";
 import { shrinkImageForUpload } from "@/lib/resizeImage";
 import { buildResultsCsv } from "@/lib/exportCsv";
 import { playFanfare as playFanfareSound } from "@/lib/fanfare";
+import { DEFAULT_FUN_SOUND, FUN_SOUNDS, isFunSoundId, pitchForDie, playFunSound, type FunSoundId } from "@/lib/funSounds";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
 
@@ -851,6 +852,32 @@ export default function Home() {
       drumRef.current = null;
     }
   }
+  // «Velg din terninglyd»: chosen silly sound, remembered on this phone
+  const [diceSound, setDiceSound] = useState<FunSoundId>(DEFAULT_FUN_SOUND);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("diceSound");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage only exists client-side
+      if (isFunSoundId(saved)) setDiceSound(saved);
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+  function chooseDiceSound(id: FunSoundId) {
+    setDiceSound(id);
+    try {
+      localStorage.setItem("diceSound", id);
+    } catch {
+      // storage unavailable
+    }
+    const ctx = getAudio();
+    if (ctx) playFunSound(ctx, id);
+  }
+  function playDiceSound(die: number) {
+    const ctx = getAudio();
+    if (ctx) playFunSound(ctx, diceSound, pitchForDie(die));
+  }
+
   function playFanfare() {
     const ctx = getAudio();
     if (!ctx) return;
@@ -1404,6 +1431,32 @@ export default function Home() {
                 <p className="text-[11px] text-zinc-500">
                   JPEG/PNG/WebP, max 5 MB. Vises i lobby og ved presentasjon.
                 </p>
+              </div>
+              <div className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                <p className="text-sm font-medium text-zinc-800">Velg din terninglyd</p>
+                <p className="text-[11px] text-zinc-500">
+                  Trykk for å høre. Lyden du trykket sist, spilles når du velger terning i voteringen.
+                </p>
+                <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label="Velg din terninglyd">
+                  {FUN_SOUNDS.map((snd) => {
+                    const active = diceSound === snd.id;
+                    return (
+                      <button
+                        key={snd.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => chooseDiceSound(snd.id)}
+                        className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-center active:scale-95 transition ${
+                          active ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-400" : "border-zinc-300 bg-white"
+                        }`}
+                      >
+                        <span className="text-2xl leading-none">{snd.emoji}</span>
+                        <span className="text-[10px] font-medium leading-tight text-zinc-700">{snd.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
@@ -2002,6 +2055,7 @@ export default function Home() {
                     onClick={() => {
                       if (!canVoteNow || alreadyVoted) return;
                       setPendingVote(n);
+                      playDiceSound(n);
                     }}
                     aria-label={`Gi ${n} poeng`}
                     disabled={!canVoteNow || alreadyVoted}
@@ -2034,6 +2088,7 @@ export default function Home() {
                       onClick={() => {
                         if (!canVoteNow || alreadyVoted) return;
                         setPendingExtraVote(n);
+                        playDiceSound(n);
                       }}
                       aria-label={`Ekstra ${n} poeng`}
                       disabled={!canVoteNow || alreadyVoted}

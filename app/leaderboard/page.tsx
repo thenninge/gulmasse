@@ -19,7 +19,7 @@ type Board = {
   factor: number;
   round: number;
   awardUnlocked?: boolean;
-  status: "voting" | "spinning" | "waiting" | "between";
+  status: "voting" | "spinning" | "ready" | "waiting" | "between";
   presenter: null | {
     pin: string; name: string; beer: string; producer: string; type: string; abv: number | null; image: string | null;
     votes: number; active: number; avgBeer: number | null; avgExtra?: number | null; throws?: Array<[number, number]>;
@@ -84,7 +84,8 @@ function evText(i: I18n, key: string, p: EvParams): string {
     avg: i.f(p.avg ?? null, 2),
   });
 }
-type Die = { id: number; beer: number; extra: number; x: number };
+/** One floating die: the beer die first, the presentation die a moment later */
+type Die = { id: number; kind: "beer" | "extra"; value: number; x: number };
 
 /** Compare two consecutive polls and describe what just happened. */
 function detectEvents(prev: Board, next: Board) {
@@ -266,9 +267,18 @@ export default function LeaderboardPage() {
       add.push({ id: nid(), icon: "👑", key: "evLeader", kind: "leader", params: { name: ev.leader }, at: now });
     }
     if (ev.throws.length) {
-      const fresh = ev.throws.map(([beer, extra], i) => ({ id: nid(), beer, extra, x: 8 + ((i * 29 + Math.random() * 40) % 70) }));
-      setDice((d) => [...d, ...fresh]);
-      window.setTimeout(() => setDice((d) => d.filter((x) => !fresh.some((f) => f.id === x.id))), 3400);
+      // Each vote: 🍺 beer die first, then 🎤 presentation die 0.6 s later – easier to follow.
+      // Several votes in one update are spaced out too.
+      const VOTE_GAP = 1300, PRES_DELAY = 600;
+      const show = (die: Die, delay: number) => {
+        window.setTimeout(() => setDice((d) => [...d, die]), delay);
+        window.setTimeout(() => setDice((d) => d.filter((x) => x.id !== die.id)), delay + 3400);
+      };
+      ev.throws.forEach(([beer, extra], i) => {
+        const x = 6 + ((i * 29 + Math.random() * 40) % 60);
+        if (beer > 0) show({ id: nid(), kind: "beer", value: beer, x }, i * VOTE_GAP);
+        if (extra > 0) show({ id: nid(), kind: "extra", value: extra, x: x + 14 }, i * VOTE_GAP + PRES_DELAY);
+      });
       const who = next.presenter?.name || "";
       const whoBeer = next.presenter?.beer || "";
       const double6 = ev.throws.filter(([b, e]) => b === 6 && e === 6).length;
@@ -893,12 +903,12 @@ function Card({ title, children, className = "" }: { title: string; children: Re
   );
 }
 
-function DieFace({ value, label, small = false }: { value: number; label: string; small?: boolean }) {
+function DieFace({ value, label, small = false, tone }: { value: number; label: string; small?: boolean; tone?: "beer" | "extra" }) {
   return (
     <div className="flex flex-col items-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={`/img/${value}.png`} alt={`${label}: ${value}`} className={small ? "h-9 w-9" : "h-11 w-11"} />
-      <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f7d98a] drop-shadow">{label}</span>
+      <span className={`mt-0.5 text-[10px] font-semibold uppercase tracking-wide drop-shadow ${tone === "extra" ? "text-[#8cc4ff]" : "text-[#f7d98a]"}`}>{label}</span>
     </div>
   );
 }
@@ -910,6 +920,7 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
   if (!p) {
     const msg =
       board.status === "spinning" ? t("spinning") :
+      board.status === "ready" ? t("readyToSpin") :
       board.status === "waiting" ? t("notStarted") :
       board.counts.presented >= board.counts.participants ? t("allDone") :
       t("pause");
@@ -926,9 +937,15 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
         {/* Freshly locked votes float up: both dice per vote */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-0" aria-hidden>
           {dice.map((d) => (
-            <div key={d.id} className="lb-rise absolute bottom-0 flex gap-1 rounded-xl bg-black/50 px-2 py-1 backdrop-blur-sm" style={{ left: `${d.x}%` }}>
-              <DieFace value={d.beer} label={t("dieBeer")} small />
-              {d.extra > 0 && <DieFace value={d.extra} label={t("diePres")} small />}
+            <div
+              key={d.id}
+              data-die={d.kind}
+              className={`lb-rise absolute bottom-0 rounded-xl px-2 py-1 backdrop-blur-sm ring-2 ${
+                d.kind === "beer" ? "bg-[#2a1f05]/85 ring-[#f2c14e]" : "bg-[#0b1d33]/85 ring-[#338ced]"
+              }`}
+              style={{ left: `${d.x}%` }}
+            >
+              <DieFace value={d.value} label={d.kind === "beer" ? `🍺 ${t("dieBeer")}` : `🎤 ${t("diePres")}`} small tone={d.kind} />
             </div>
           ))}
         </div>

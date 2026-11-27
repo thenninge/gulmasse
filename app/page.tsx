@@ -2494,6 +2494,8 @@ export default function Home() {
                 onSpinStart={() => {
                   getAudio();
                   startDrumroll();
+                  // Live Leaderboard: «Nå snurrer hjulet!!» (fire-and-forget, never blocks the spin)
+                  fetch("/api/wheel-spin", { method: "POST" }).catch(() => {});
                 }}
                 onSpinEnd={() => {
                   stopDrumroll();

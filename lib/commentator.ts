@@ -129,9 +129,10 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Adam – {beer}! Adam-san! Helt engelsk – men han var i Japan i april, og Adam-san passer ham perfekt! Og helt juleølboss!',
       'Adam-san med {beer}! Får ikke Adam 6 på presentasjonen, er feltet helt åpent!',
+      'Adam-san med {beer}! Han har prøvesmakt 9 juleøl bare denne uken – godt trent! Men klarer han å levere innlevelse i år?!',
     ],
     leader: ['Adam-san tar ledelsen! Juleølbossen viser hvem som bestemmer!'],
-    pres6: ['Sekser på presentasjonen til Adam-san! Som forventet fra juleølbossen!'],
+    pres6: ['Sekser på presentasjonen til Adam-san! Som forventet fra juleølbossen!', 'Sekser på presentasjonen! 9 juleøl med oppvarming denne uken – og DER kom innlevelsen!'],
     presLow: ['Hæ?! Lav presentasjonskarakter til Adam-san?! Da er feltet HELT åpent!'],
   },
   trondolav: {
@@ -247,7 +248,7 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Magnus takes the lead! Gen Z in front! The millennials are scratching their heads!'],
   },
   adam: {
-    pick: ['The wheel picks Adam – {beer}! Adam-san! English through and through – but he was in Japan in April, and Adam-san suits him perfectly! All Christmas-beer boss!'],
+    pick: ['The wheel picks Adam – {beer}! Adam-san! English through and through – but he was in Japan in April, and Adam-san suits him perfectly! All Christmas-beer boss!', 'Adam-san with {beer}! He has tasted 9 Christmas beers this week alone – well trained! But can he deliver the passion this year?!'],
     leader: ['Adam-san takes the lead! The Christmas-beer boss shows who\'s in charge!'],
   },
   trondolav: {
@@ -377,7 +378,7 @@ const JA_PEOPLE: Record<string, Lines> = {
     leader: ['マグヌスがトップに！Z世代が首位！ミレニアル世代は首をかしげている！'],
   },
   adam: {
-    pick: ['ルーレットが選んだのはアダム – {beer}！アダムさん！生粋のイギリス人 – でも4月に日本に行ったので、アダムさんがぴったり！そして完全なクリスマスビールのボス！', 'アダムさんと{beer}！プレゼンで6点を取れなければ、勝負はまったくわからない！'],
+    pick: ['ルーレットが選んだのはアダム – {beer}！アダムさん！生粋のイギリス人 – でも4月に日本に行ったので、アダムさんがぴったり！そして完全なクリスマスビールのボス！', 'アダムさんと{beer}！プレゼンで6点を取れなければ、勝負はまったくわからない！', 'アダムさんと{beer}！今週だけでクリスマスビールを9本試飲 – 準備万端！でも今年は熱いプレゼンを見せられるか？！'],
     leader: ['アダムさんがトップに！クリスマスビールのボスが格の違いを見せる！'],
     pres6: ['アダムさんのプレゼンに6点！さすがクリスマスビールのボス！'],
     presLow: ['えっ？！アダムさんのプレゼンに低評価？！これで勝負はまったくわからなくなった！'],

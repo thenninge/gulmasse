@@ -11,7 +11,7 @@ const FACTOR = 0.5; // same default weighting as the lobby: terning + 0,5 × eks
 
 type Participant = ExportParticipant & { active: boolean; beer_image_url?: string | null };
 type Vote = { pin: string; recipient_pin: string | null; value: number; extra_value: number | null; round: number };
-type StateRow = { key: string; int_value: number | null; bool_value: boolean | null };
+type StateRow = { key: string; int_value: number | null; bool_value: boolean | null; text_value?: string | null };
 
 export async function GET(request: Request) {
   try {
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: true }),
       supabase.from('votes').select('pin,recipient_pin,value,extra_value,round,created_at').order('created_at', { ascending: true }),
       supabase.from('picks').select('pin,created_at').order('created_at', { ascending: true }),
-      supabase.from('app_state').select('key,int_value,bool_value').in('key', ['current_round', 'picked_round', 'round_started', 'award_unlocked']),
+      supabase.from('app_state').select('key,int_value,bool_value,text_value').in('key', ['current_round', 'picked_round', 'round_started', 'award_unlocked', 'wheel_spin_at']),
     ]);
     for (const r of [pRes, vRes, pkRes, sRes]) if (r.error) throw r.error;
     const participants = (pRes.data as Participant[]) || [];
@@ -39,6 +39,11 @@ export async function GET(request: Request) {
     const round = Number(state.get('current_round')?.int_value ?? 1);
     const pickedRound = Number(state.get('picked_round')?.int_value ?? 0);
     const roundStarted = state.get('round_started')?.bool_value === true;
+    // «Nå snurrer hjulet!!» only right after someone actually spun the official wheel
+    const spinAt = Date.parse(state.get('wheel_spin_at')?.text_value || '');
+    const lastPickAt = Date.parse(pickRows[pickRows.length - 1]?.created_at || '');
+    const spinningNow =
+      roundStarted && Number.isFinite(spinAt) && Date.now() - spinAt < 25_000 && !(Number.isFinite(lastPickAt) && lastPickAt >= spinAt);
 
     const nameOf = (pin: string) => {
       const p = participants.find((x) => x.pin === pin);
@@ -111,7 +116,7 @@ export async function GET(request: Request) {
         factor: FACTOR,
         round,
         awardUnlocked: state.get('award_unlocked')?.bool_value === true,
-        status: presenter ? 'voting' : roundStarted ? 'spinning' : picks.length === 0 ? 'waiting' : 'between',
+        status: presenter ? 'voting' : spinningNow ? 'spinning' : roundStarted ? 'ready' : picks.length === 0 ? 'waiting' : 'between',
         presenter: presenter
           ? {
               pin: presenter.pin,

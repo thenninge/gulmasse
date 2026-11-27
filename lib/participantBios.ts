@@ -80,8 +80,9 @@ const PROFILES: Record<string, Profile> = {
       'Helt engelsk – men han var i Japan i april, og Adam-san passer ham perfekt. Og helt juleølboss!',
       'Om ikke Adam får 6 på presentasjonen, så er feltet helt åpent!',
       'I 2022 stilte han Delirium Christmas – fjorårsvinneren den gang – og fikk 5. plass.',
+      'Oppladningen i år: Adam har prøvesmakt 9 juleøl bare denne uken! Godt trent – men klarer han å levere innlevelse i år?',
     ],
-    facts: ['Helt engelsk', 'Japan i april', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass'],
+    facts: ['Helt engelsk', 'Japan i april', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass', '9 juleøl smakt denne uken'],
   },
   martin: {
     emoji: '🏆',

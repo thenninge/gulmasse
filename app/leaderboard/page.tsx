@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
 import { commentary, vetFor, type CommentKind } from "@/lib/commentator";
 import { getBeerHistory } from "@/lib/beerHistory";
+import { buildInfoQueue, infoShown, infoText, type InfoItem } from "@/lib/presenterInfo";
 import { playFanfare } from "@/lib/fanfare";
 
 type Standing = {
@@ -56,13 +57,14 @@ const useI18n = () => useContext(I18nCtx);
 
 // Events are stored as a text key + raw params and translated when shown,
 // so switching language also translates news that already happened.
-type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string };
+type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string; info?: InfoItem };
 type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date; kind?: CommentKind };
 type Announce = { id: number; name: string; beer: string };
 type Toast = { id: number; icon: string; key: string; params: EvParams };
 
 /** News feed line: the sports commentator where available, else the plain text. */
 function feedText(i: I18n, item: FeedItem): string {
+  if (item.key === "evInfo" && item.params.info) return infoText(i.lang, item.params.info, i.f);
   if (item.kind) {
     const line = commentary(i.lang, item.kind, item.params, item.id, (n) => i.f(n, 2));
     if (line) return line;
@@ -185,9 +187,15 @@ export default function LeaderboardPage() {
   const idRef = useRef(1);
   const lastMissRef = useRef(-9); // presented-count when we last missed the veterans
   const lastFeedAtRef = useRef(0); // for the pause filler
+  // «Hjulet valgte …» → until the first vote, the commentator tells about the presenter
+  const infoRef = useRef<{ pin: string; items: InfoItem[]; idx: number; nextAt: number } | null>(null);
+  const langRef = useRef<Lang>("no");
   // Places when the current beer was picked → «byks på tabellen» after the round
   const roundStartPlacesRef = useRef<Record<string, number> | null>(null);
   const [lang, setLangState] = useState<Lang>("no");
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
   // ?lang=en|ja|no in the link wins, otherwise the last choice on this device
   useEffect(() => {
     let initial: Lang | null = null;
@@ -227,6 +235,9 @@ export default function LeaderboardPage() {
       // late visitors get the story so far (newest first)
       setFeed(buildHistory(next).reverse());
       lastFeedAtRef.current = Date.now();
+      if (next.presenter && next.presenter.votes === 0) {
+        infoRef.current = { pin: next.presenter.pin, items: buildInfoQueue(next), idx: 0, nextAt: Date.now() + 4000 };
+      }
       return;
     }
     const ev = detectEvents(prev, next);
@@ -244,6 +255,7 @@ export default function LeaderboardPage() {
       window.setTimeout(() => setAnnounce((a) => (a && a.id === id ? null : a)), 6500);
       setConfetti((c) => c + 1);
       roundStartPlacesRef.current = placesOf(next);
+      infoRef.current = next.presenter ? { pin: next.presenter.pin, items: buildInfoQueue(next), idx: 0, nextAt: Date.now() + 10000 } : null;
       add.push({ id: nid(), icon: "🎡", key: "evPick", kind: "pick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
       // the beer has been here before → the commentator tells its story
       if (getBeerHistory(ev.pick.beer)) add.push({ id: nid(), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
@@ -359,6 +371,32 @@ export default function LeaderboardPage() {
     }
   }, []);
 
+  // Presenter info: one line every ~14 s from the pick until the first vote arrives
+  useEffect(() => {
+    const GAP_MS = 14_000;
+    const t = window.setInterval(() => {
+      const q = infoRef.current;
+      const p = prevRef.current?.presenter;
+      if (!q) return;
+      if (!p || p.pin !== q.pin || p.votes > 0) {
+        infoRef.current = null; // votes are rolling in (or a new round) – stop
+        return;
+      }
+      if (Date.now() < q.nextAt) return;
+      while (q.idx < q.items.length && !infoShown(langRef.current, q.items[q.idx])) q.idx++;
+      if (q.idx >= q.items.length) {
+        infoRef.current = null;
+        return;
+      }
+      const info = q.items[q.idx++];
+      q.nextAt = Date.now() + GAP_MS;
+      lastFeedAtRef.current = Date.now();
+      const item: FeedItem = { id: idRef.current++, icon: "🎙️", key: "evInfo", params: { name: info.name, info }, at: new Date() };
+      setFeed((f) => [item, ...f].slice(0, 300));
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, []);
+
   // Pause entertainment: after a quiet spell the commentator misses the veterans
   useEffect(() => {
     const QUIET_MS = 150_000;
@@ -442,7 +480,7 @@ export default function LeaderboardPage() {
               <div className="text-sm text-[#9c9c9c]">{t("newsEmpty")}</div>
             ) : (
               <ul className="max-h-[18rem] lg:max-h-[26rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1" aria-label={t("news")}>
-                {feed.map((item, i) => (
+                {feed.filter((x) => !(x.key === "evInfo" && x.params.info && !infoShown(lang, x.params.info))).map((item, i) => (
                   <li key={item.id} className={`flex items-start gap-2 text-sm ${i === 0 ? "lb-pop" : ""}`}>
                     <span className="w-5 shrink-0 text-center">{item.icon}</span>
                     <span className="min-w-0 flex-1">{feedText(i18n, item)}</span>

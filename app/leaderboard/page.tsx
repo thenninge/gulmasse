@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
+import { commentary, type CommentKind } from "@/lib/commentator";
 
 type Standing = {
   place: number; pin: string; name: string; beer: string; producer: string; type?: string; abv: number | null;
@@ -52,9 +53,18 @@ const useI18n = () => useContext(I18nCtx);
 // Events are stored as a text key + raw params and translated when shown,
 // so switching language also translates news that already happened.
 type EvParams = { name?: string; beer?: string; avg?: number | null };
-type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date };
+type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date; kind?: CommentKind };
 type Announce = { id: number; name: string; beer: string };
 type Toast = { id: number; icon: string; key: string; params: EvParams };
+
+/** News feed line: the sports commentator where available, else the plain text. */
+function feedText(i: I18n, item: FeedItem): string {
+  if (item.kind) {
+    const line = commentary(i.lang, item.kind, item.params, item.id, (n) => i.f(n, 2));
+    if (line) return line;
+  }
+  return evText(i, item.key, item.params);
+}
 
 function evText(i: I18n, key: string, p: EvParams): string {
   return i.t(key, {
@@ -147,34 +157,36 @@ export default function LeaderboardPage() {
       setAnnounce({ id, name: ev.pick.name, beer: ev.pick.beer });
       window.setTimeout(() => setAnnounce((a) => (a && a.id === id ? null : a)), 6500);
       setConfetti((c) => c + 1);
-      add.push({ id: nid(), icon: "🎡", key: "evPick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
+      add.push({ id: nid(), icon: "🎡", key: "evPick", kind: "pick", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
     }
     if (ev.leader) {
       toast("👑", "evLeaderToast", { name: ev.leader });
       if (!ev.pick) setConfetti((c) => c + 1);
-      add.push({ id: nid(), icon: "👑", key: "evLeader", params: { name: ev.leader }, at: now });
+      add.push({ id: nid(), icon: "👑", key: "evLeader", kind: "leader", params: { name: ev.leader }, at: now });
     }
     if (ev.throws.length) {
       const fresh = ev.throws.map(([beer, extra], i) => ({ id: nid(), beer, extra, x: 8 + ((i * 29 + Math.random() * 40) % 70) }));
       setDice((d) => [...d, ...fresh]);
       window.setTimeout(() => setDice((d) => d.filter((x) => !fresh.some((f) => f.id === x.id))), 3400);
       const who = next.presenter?.name || "";
+      const whoBeer = next.presenter?.beer || "";
       const double6 = ev.throws.filter(([b, e]) => b === 6 && e === 6).length;
       const beer6 = ev.throws.filter(([b, e]) => b === 6 && e !== 6).length;
       const pres6 = ev.throws.filter(([b, e]) => e === 6 && b !== 6).length;
       if (double6) {
         toast("🎲🎲", "evDouble6Toast", { name: who });
         setConfetti((c) => c + 1);
-        add.push({ id: nid(), icon: "🎲", key: "evDouble6", params: { name: who }, at: now });
+        add.push({ id: nid(), icon: "🎲", key: "evDouble6", kind: "double6", params: { name: who, beer: whoBeer }, at: now });
       } else if (beer6 || pres6) {
         toast("🎲", beer6 ? "evBeer6Toast" : "evPres6Toast", { name: who });
-        add.push({ id: nid(), icon: "🎲", key: beer6 ? "evBeer6" : "evPres6", params: { name: who }, at: now });
+        add.push({ id: nid(), icon: "🎲", key: beer6 ? "evBeer6" : "evPres6", kind: beer6 ? "beer6" : "pres6", params: { name: who, beer: whoBeer }, at: now });
       }
-      if (ev.throws.some(([b]) => b === 1)) add.push({ id: nid(), icon: "🥶", key: "evOne", params: { name: who }, at: now });
+      if (ev.throws.some(([b]) => b === 1)) add.push({ id: nid(), icon: "🥶", key: "evOne", kind: "beer1", params: { name: who, beer: whoBeer }, at: now });
+      if (ev.throws.some(([, e]) => e > 0 && e <= 2)) add.push({ id: nid(), icon: "😬", key: "evPresLow", kind: "presLow", params: { name: who, beer: whoBeer }, at: now });
     }
     if (ev.allVoted) {
       toast("✅", "evAllVotedToast", { avg: ev.allVoted.avg });
-      add.push({ id: nid(), icon: "✅", key: "evAllVoted", params: { beer: ev.allVoted.beer, avg: ev.allVoted.avg }, at: now });
+      add.push({ id: nid(), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: ev.allVoted.beer, avg: ev.allVoted.avg }, at: now });
     }
     if (add.length) {
       const newestFirst = add.slice().reverse();
@@ -249,7 +261,7 @@ export default function LeaderboardPage() {
                 {feed.map((item, i) => (
                   <li key={item.id} className={`flex items-start gap-2 text-sm ${i === 0 ? "lb-pop" : ""}`}>
                     <span className="w-5 shrink-0 text-center">{item.icon}</span>
-                    <span className="min-w-0 flex-1">{evText(i18n, item.key, item.params)}</span>
+                    <span className="min-w-0 flex-1">{feedText(i18n, item)}</span>
                     <span className="shrink-0 text-xs tabular-nums text-[#6b6b6b]">
                       {item.at.toLocaleTimeString(LOCALE[lang], { hour: "2-digit", minute: "2-digit" })}
                     </span>

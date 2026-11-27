@@ -7,6 +7,7 @@ import { resolveBeerImage } from "@/lib/beerImages";
 import { shrinkImageForUpload } from "@/lib/resizeImage";
 import { buildResultsCsv } from "@/lib/exportCsv";
 import { playFanfare as playFanfareSound } from "@/lib/fanfare";
+import { playRevealDrumroll } from "@/lib/drumroll";
 import { DEFAULT_FUN_SOUND, FUN_SOUNDS, isFunSoundId, pitchForDie, playConfirmSound, playFunSound, type FunSoundId } from "@/lib/funSounds";
 
 type View = "login" | "user" | "lobby" | "voting" | "picker" | "admin" | "overview" | "wheel";
@@ -947,8 +948,9 @@ export default function Home() {
     if (pin.length !== 4 || !(hasVotedLocally || hasVotedServer) || revealingVote) return;
     // Drum roll for ~1 s, then show the vote (the reveal request runs meanwhile)
     setRevealingVote(true);
-    getAudio();
-    startDrumroll();
+    const ctx = getAudio();
+    // Real snare roll that crescendos and ends on a crash exactly when the vote shows
+    if (ctx) playRevealDrumroll(ctx, 1.0);
     const request = fetch("/api/reveal-my-vote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -957,7 +959,6 @@ export default function Home() {
     try {
       await Promise.all([request, new Promise((r) => setTimeout(r, 1000))]);
     } finally {
-      stopDrumroll();
       setRevealingVote(false);
       setShowMyReveal(true);
       fetchStatus();

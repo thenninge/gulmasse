@@ -10,7 +10,7 @@ export type CommentKind =
   | 'pick' | 'leader'
   | 'double6' | 'beer6' | 'beer5' | 'beer2' | 'beer1' | 'pres6' | 'pres5' | 'presLow' | 'pres1'
   | 'halfway' | 'allVoted' | 'recordHigh' | 'recordLow' | 'climb' | 'fall'
-  | 'standingClose' | 'standingBig' | 'standing' | 'selfSix';
+  | 'standingClose' | 'standingBig' | 'standing' | 'selfSix' | 'award' | 'awardCta';
 export type CommentParams = {
   name?: string; beer?: string; avg?: number | null;
   /** places for climb/fall, points margin + runner-up for standings */
@@ -141,6 +141,8 @@ const NO_GENERIC: Record<CommentKind, string[]> = {
   standingBig: ['Knusende! {name} leder med hele {margin} poeng ned til {second}!', '{name} rømmer! {margin} poeng foran {second} – kan noen stoppe dette?!'],
   standing: ['Stillingen: {name} leder, {margin} poeng foran {second}. Fortsatt alt å spille for!'],
   selfSix: ['Selvtillit! {name} gir sin egen {beer} en sekser! Helt lovlig – men vi la merke til det!'],
+  award: ['Nå er stemmene klare. Nå er alt avgjort! Dråpen er drukket! Terningen kastet! Stemmene talt. Det er over! Det er i land! Årets juleølkonkurranse er i mål, dere!'],
+  awardCta: ['Og vinneren av Gulmasse \'26 er… 🥁 Trykk «Show award ceremony»!'],
 };
 
 const NO_VERDICT = (avg: number) =>
@@ -217,6 +219,8 @@ const EN_GENERIC: Record<CommentKind, string[]> = {
   standingBig: ['Crushing! {name} leads by a massive {margin} points over {second}!'],
   standing: ['Standings: {name} leads, {margin} points ahead of {second}. Still everything to play for!'],
   selfSix: ['Confidence! {name} gives their own {beer} a six! Perfectly legal – but we noticed!'],
+  award: ['The votes are in. It\'s all decided! The last drop is drunk! The dice are cast! The votes are counted. It\'s over! It\'s done! This year\'s Christmas beer competition is in the books, folks!'],
+  awardCta: ['And the winner of Gulmasse \'26 is… 🥁 Press «Show award ceremony»!'],
 };
 
 const EN_VERDICT = (avg: number) =>

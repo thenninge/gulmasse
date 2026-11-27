@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
 import { commentary, type CommentKind } from "@/lib/commentator";
+import { playFanfare } from "@/lib/fanfare";
 
 type Standing = {
   place: number; pin: string; name: string; beer: string; producer: string; type?: string; abv: number | null;
@@ -15,6 +16,7 @@ type Presented = {
 type Board = {
   factor: number;
   round: number;
+  awardUnlocked?: boolean;
   status: "voting" | "spinning" | "waiting" | "between";
   presenter: null | {
     pin: string; name: string; beer: string; producer: string; type: string; abv: number | null; image: string | null;
@@ -88,10 +90,12 @@ function detectEvents(prev: Board, next: Board) {
     allVoted?: { avg: number | null; beer: string };
     halfway?: { avg: number | null; beer: string };
     selfSix?: { name: string; beer: string };
+    award?: boolean;
     throws: Array<[number, number]>;
   } = { throws: [] };
   const np = next.presenter;
   const pp = prev.presenter;
+  if (next.awardUnlocked && !prev.awardUnlocked) ev.award = true;
   if (np && np.pin !== pp?.pin) ev.pick = { name: np.name, beer: np.beer };
   const nl = next.standings[0];
   const pl = prev.standings[0];
@@ -118,6 +122,9 @@ export default function LeaderboardPage() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [confetti, setConfetti] = useState(0); // bump to fire a burst
   const [openPin, setOpenPin] = useState<string | null>(null); // clicked participant → beer card
+  const [decided, setDecided] = useState<number | null>(null); // «Konkurransen er avgjort!» overlay
+  const [showPodium, setShowPodium] = useState(false);
+  const [showAward, setShowAward] = useState(false);
   const prevRef = useRef<Board | null>(null);
   const idRef = useRef(1);
   // Places when the current beer was picked → «byks på tabellen» after the round
@@ -217,6 +224,17 @@ export default function LeaderboardPage() {
       ];
       const low = neg.find(([c]) => c);
       if (low) add.push({ id: nid(), icon: low[3], key: low[2], kind: low[1], params: { name: who, beer: whoBeer }, at: now });
+    }
+    if (ev.award) {
+      // «Unlock award ceremony» pressed: the big moment
+      const id = nid();
+      setDecided(id);
+      window.setTimeout(() => setDecided((d) => (d === id ? null : d)), 7000);
+      setConfetti((c) => c + 1);
+      window.setTimeout(() => setConfetti((c) => c + 1), 1500);
+      toast("🏆", "awardToast", {});
+      add.push({ id: nid(), icon: "🏆", key: "evAward", kind: "award", params: {}, at: now });
+      add.push({ id: nid(), icon: "🥁", key: "evAwardCta", kind: "awardCta", params: {}, at: now });
     }
     if (ev.selfSix) {
       add.push({ id: nid(), icon: "😏", key: "evSelfSix", kind: "selfSix", params: { name: ev.selfSix.name, beer: ev.selfSix.beer }, at: now });
@@ -345,6 +363,11 @@ export default function LeaderboardPage() {
       {confetti > 0 && <ConfettiBurst key={`confetti-${confetti}`} />}
       {announce && <AnnounceOverlay key={`announce-${announce.id}`} name={announce.name} beer={announce.beer} onClose={() => setAnnounce(null)} />}
       <Toasts toasts={toasts} />
+      {decided && <DecidedOverlay key={`decided-${decided}`} onClose={() => setDecided(null)} />}
+      {showPodium && <PodiumModal standings={board.standings} onClose={() => setShowPodium(false)} />}
+      {showAward && board.standings[0] && (
+        <AwardModal winner={board.standings[0]} onClose={() => setShowAward(false)} />
+      )}
       {openPin && (() => {
         const st = board.standings.find((x) => x.pin === openPin);
         return st ? <BeerModal s={st} rank={board.standings.indexOf(st)} factor={board.factor} onClose={() => setOpenPin(null)} /> : null;
@@ -376,6 +399,36 @@ export default function LeaderboardPage() {
           </div>
         </div>
       </header>
+
+      {board.awardUnlocked && (
+        <div className="lb-pop mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            className="lb-glow rounded-2xl bg-gradient-to-b from-[#f7d98a] to-[#d4a017] px-5 py-4 text-lg font-extrabold text-[#2a1a00] shadow-xl active:scale-[0.98]"
+            onClick={() => setShowPodium(true)}
+          >
+            {t("showPodium")}
+          </button>
+          <button
+            type="button"
+            className="lb-glow rounded-2xl bg-gradient-to-b from-[#f7d98a] to-[#d4a017] px-5 py-4 text-lg font-extrabold text-[#2a1a00] shadow-xl active:scale-[0.98]"
+            onClick={() => {
+              setShowAward(true);
+              setConfetti((c) => c + 1);
+              try {
+                const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                const ctx = new Ctx();
+                void ctx.resume();
+                playFanfare(ctx);
+              } catch {
+                // no audio – the show goes on
+              }
+            }}
+          >
+            {t("showAward")}
+          </button>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <div className="space-y-5">
@@ -570,6 +623,107 @@ function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
     </div>
+  );
+}
+
+function DecidedOverlay({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm" onClick={onClose} role="status" aria-live="assertive">
+      <div className="lb-zoom text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/trophy.png" alt="" className="lb-rock mx-auto h-40 w-40 object-contain sm:h-56 sm:w-56" />
+        <div className="mt-4 text-3xl font-black tracking-tight text-[#f2c14e] drop-shadow-[0_4px_24px_rgba(242,193,78,0.5)] sm:text-5xl">
+          {t("decided")}
+        </div>
+        <div className="mt-3 text-lg text-[#efefef] sm:text-xl">{t("decidedSub")}</div>
+      </div>
+    </div>
+  );
+}
+
+function ModalShell({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+  const { t } = useI18n();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <div
+        className="lb-pop relative max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#f2c14e]/30 bg-[#191919] p-5 text-[#efefef] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="absolute right-3 top-3 z-10 rounded-md bg-black/60 px-2 py-1 text-sm" onClick={onClose} aria-label={t("close")}>
+          ✕
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PodiumModal({ standings, onClose }: { standings: Standing[]; onClose: () => void }) {
+  const { t, f } = useI18n();
+  const top = standings.slice(0, 3);
+  // classic podium order: 2nd – 1st – 3rd
+  const order = [top[1], top[0], top[2]].filter(Boolean) as Standing[];
+  const heights: Record<number, string> = { 0: "h-40 sm:h-48", 1: "h-28 sm:h-36", 2: "h-20 sm:h-28" };
+  const colors: Record<number, string> = { 0: "from-[#f7d98a] to-[#d4a017]", 1: "from-[#e5e7eb] to-[#9ca3af]", 2: "from-[#f0b27a] to-[#b45309]" };
+  return (
+    <ModalShell label={t("podiumTitle")} onClose={onClose}>
+      <h2 className="mb-4 text-center text-2xl font-extrabold text-[#f2c14e]">{t("podiumTitle")}</h2>
+      <div className="grid grid-cols-3 items-end gap-2 sm:gap-3">
+        {order.map((s) => {
+          const rank = top.indexOf(s);
+          return (
+            <div key={s.pin} className="flex min-w-0 flex-col items-center text-center">
+              {s.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.image} alt={s.beer || s.name} className="mb-2 h-20 w-full rounded-lg object-contain sm:h-28" />
+              ) : (
+                <div className="mb-2 flex h-20 items-center text-4xl sm:h-28">🍺</div>
+              )}
+              <div className="text-2xl">{MEDALS[rank]}</div>
+              <div className="flex min-h-[3.75rem] w-full flex-col items-center gap-0.5">
+                <div className="w-full break-words text-sm font-bold leading-tight [overflow-wrap:anywhere] sm:text-base">{s.name}</div>
+                <div className="w-full break-words text-xs leading-tight text-[#9c9c9c] [overflow-wrap:anywhere]">{s.beer || "—"}</div>
+              </div>
+              <div
+                className={`mt-2 flex w-full items-start justify-center rounded-t-xl bg-gradient-to-b ${colors[rank]} ${heights[rank]} pt-2 text-lg font-black text-[#1d1608] sm:text-xl`}
+              >
+                {f(s.sum)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ModalShell>
+  );
+}
+
+function AwardModal({ winner, onClose }: { winner: Standing; onClose: () => void }) {
+  const { t, f } = useI18n();
+  return (
+    <ModalShell label={t("showAward")} onClose={onClose}>
+      <div className="text-center">
+        <div className="text-3xl font-black text-[#f2c14e] sm:text-4xl">{t("congrats")}</div>
+        <div className="mt-1 text-base text-[#cfcfcf] sm:text-lg">{t("trophyTo")}</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/trophy.png" alt="" className="lb-rock mx-auto my-3 h-48 w-48 object-contain sm:h-64 sm:w-64" />
+        <div className="text-4xl font-black tracking-tight text-white sm:text-5xl">{winner.name}</div>
+        {winner.beer && <div className="mt-1 text-xl font-bold text-[#f2c14e]">{winner.beer}</div>}
+        <div className="mt-1 text-sm text-[#cfcfcf]">
+          {[winner.producer, winner.abv != null ? `${t("abv")}: ${f(winner.abv)}%` : ""].filter(Boolean).join(" · ")}
+        </div>
+        <div className="mx-auto mt-4 grid max-w-sm grid-cols-3 gap-2 rounded-xl bg-white/5 p-3">
+          <div><div className="text-[11px] text-[#9c9c9c]">{t("beerShort")}</div><div className="text-xl font-bold tabular-nums">{f(winner.beerPoints, 0)}</div></div>
+          <div><div className="text-[11px] text-[#9c9c9c]">{t("presShort")}</div><div className="text-xl font-bold tabular-nums">{f(winner.extraPoints, 0)}</div></div>
+          <div><div className="text-[11px] text-[#f2c14e]">{t("sumPoints")}</div><div className="text-xl font-black tabular-nums text-[#f2c14e]">{f(winner.sum)}</div></div>
+        </div>
+      </div>
+    </ModalShell>
   );
 }
 

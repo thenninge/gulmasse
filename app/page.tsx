@@ -1919,7 +1919,7 @@ export default function Home() {
                       const crown = i === 0 ? " 👑" : "";
                       const img = t.image;
                       return (
-                        <div key={t.pin} className={`flex flex-col items-center ${orderClass}`}>
+                        <div key={t.pin} className={`flex min-w-0 flex-col items-center ${orderClass}`}>
                           <div className="w-full flex flex-col items-center">
                             {img && (
                               <img
@@ -1934,11 +1934,14 @@ export default function Home() {
                               title={`${t.received} pts`}
                             />
                           </div>
-                          <div className="mt-2 truncate text-center text-sm font-medium">
-                            {t.name}{crown}
+                          {/* Text wraps inside its own column (never into the neighbour's) */}
+                          <div className="mt-2 flex min-h-[7.5rem] w-full flex-col items-center gap-0.5 text-center">
+                            <div className="w-full break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">
+                              {t.name}{crown}
+                            </div>
+                            <div className="w-full break-words text-xs leading-tight text-zinc-600 [overflow-wrap:anywhere]">{t.beer || "—"}</div>
+                            <div className="text-xs text-zinc-700">{Number(t.received).toFixed(1)} pts</div>
                           </div>
-                          <div className="truncate text-center text-xs text-zinc-600">{t.beer || "—"}</div>
-                          <div className="text-xs text-zinc-700">{Number(t.received).toFixed(1)} pts</div>
                         </div>
                       );
                     })}

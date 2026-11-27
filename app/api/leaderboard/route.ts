@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: true }),
       supabase.from('votes').select('pin,recipient_pin,value,extra_value,round,created_at').order('created_at', { ascending: true }),
       supabase.from('picks').select('pin,created_at').order('created_at', { ascending: true }),
-      supabase.from('app_state').select('key,int_value,bool_value').in('key', ['current_round', 'picked_round', 'round_started']),
+      supabase.from('app_state').select('key,int_value,bool_value').in('key', ['current_round', 'picked_round', 'round_started', 'award_unlocked']),
     ]);
     for (const r of [pRes, vRes, pkRes, sRes]) if (r.error) throw r.error;
     const participants = (pRes.data as Participant[]) || [];
@@ -108,6 +108,7 @@ export async function GET(request: Request) {
       {
         factor: FACTOR,
         round,
+        awardUnlocked: state.get('award_unlocked')?.bool_value === true,
         status: presenter ? 'voting' : roundStarted ? 'spinning' : picks.length === 0 ? 'waiting' : 'between',
         presenter: presenter
           ? {

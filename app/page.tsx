@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PickerWheel from "@/components/PickerWheel";
 import HostParticipantEditor from "@/components/HostParticipantEditor";
+import ParticipantInfoModal from "@/components/ParticipantInfoModal";
 import { resolveBeerImage } from "@/lib/beerImages";
 import { shrinkImageForUpload } from "@/lib/resizeImage";
 import { buildResultsCsv } from "@/lib/exportCsv";
@@ -697,6 +698,7 @@ export default function Home() {
   const [showBeerImage, setShowBeerImage] = useState(false);
   const [lobbyImageSrc, setLobbyImageSrc] = useState<string | null>(null);
   const [lobbyBeerOpen, setLobbyBeerOpen] = useState(false);
+  const [infoPin, setInfoPin] = useState<string | null>(null);
   const [lobbyImageTitle, setLobbyImageTitle] = useState<string>("");
   const [lobbyImageProducer, setLobbyImageProducer] = useState<string>("");
   const [lobbyImageBeerType, setLobbyImageBeerType] = useState<string>("");
@@ -1532,6 +1534,35 @@ export default function Home() {
           </section>
         )}
 
+        {/* Lobby participant info page */}
+        {infoPin && (() => {
+          if (infoPin.startsWith("guest:")) {
+            return (
+              <ParticipantInfoModal
+                name={infoPin.slice(6)}
+                beerName="" producer="" beerType="" abv="" image={null}
+                rank={null} points={null}
+                onClose={() => setInfoPin(null)}
+              />
+            );
+          }
+          const p = participants.find((x) => x.pin === infoPin);
+          if (!p) return null;
+          const abvVal = p.abv != null ? Number(p.abv) : NaN;
+          return (
+            <ParticipantInfoModal
+              name={(p.nickname || "").trim() || "Uten navn"}
+              beerName={(p.beer_name || "").trim()}
+              producer={(p.producer || "").trim()}
+              beerType={(p.beer_type || "").trim()}
+              abv={Number.isFinite(abvVal) ? abvVal.toFixed(1) : ""}
+              image={beerImageForParticipant(p)}
+              rank={canShowScores ? (combinedRankMap[p.pin] ?? null) : null}
+              points={canShowScores ? Number(combinedReceivedByPin[p.pin] ?? 0) : null}
+              onClose={() => setInfoPin(null)}
+            />
+          );
+        })()}
         {/* Lobby beer info modal: image (if any) shrinks to fit, info always visible */}
         {lobbyBeerOpen && (
           <div
@@ -1772,7 +1803,15 @@ export default function Home() {
                         }`}
                       >
                         <div className="col-span-1 tabular-nums">{canShowScores ? rank : "—"}</div>
-                        <div className="col-span-1 truncate">{name}</div>
+                        <div className="col-span-1 truncate">
+                          <button
+                            className="max-w-full truncate text-left underline decoration-dotted underline-offset-2 hover:text-blue-700"
+                            onClick={() => setInfoPin(p.pin)}
+                            title={`Om ${name}`}
+                          >
+                            {name}
+                          </button>
+                        </div>
                         <div className="col-span-1 truncate">
                           {(() => {
                             const img = beerImageForParticipant(p);
@@ -1811,7 +1850,13 @@ export default function Home() {
                   >
                     <div className="col-span-1 tabular-nums text-zinc-400">—</div>
                     <div className="col-span-1 truncate font-medium text-zinc-800">
-                      {g.name}
+                      <button
+                        className="max-w-full truncate text-left underline decoration-dotted underline-offset-2 hover:text-blue-700"
+                        onClick={() => setInfoPin(`guest:${g.name}`)}
+                        title={`Om ${g.name}`}
+                      >
+                        {g.name}
+                      </button>
                     </div>
                     <div className="col-span-1 truncate text-xs text-amber-900/80">
                       Kommer · oppretter bruker på kvelden

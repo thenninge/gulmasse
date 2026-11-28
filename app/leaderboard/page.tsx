@@ -24,7 +24,8 @@ type Board = {
   status: "voting" | "spinning" | "ready" | "waiting" | "between";
   presenter: null | {
     pin: string; name: string; beer: string; producer: string; type: string; abv: number | null; image: string | null;
-    votes: number; active: number; avgBeer: number | null; avgExtra?: number | null; throws?: Array<[number, number]>;
+    /** votes = revealed (shown); locked = locked in the app, revealed or not */
+    votes: number; locked?: number; active: number; avgBeer: number | null; avgExtra?: number | null; throws?: Array<[number, number, string?]>;
     selfVote?: [number, number] | null;
   };
   standings: Standing[];
@@ -109,8 +110,9 @@ function detectEvents(prev: Board, next: Board) {
   const pl = prev.standings[0];
   if (nl && nl.sum > 0 && nl.pin !== pl?.pin && !(pl && pl.sum === nl.sum)) ev.leader = nl.name;
   if (np && pp && np.pin === pp.pin) {
-    const before = pp.throws?.length ?? 0;
-    ev.throws = (np.throws || []).slice(before);
+    // newly revealed votes = keys we haven't seen (a reveal can surface an older vote)
+    const seen = new Set((pp.throws || []).map((t, i) => t[2] ?? `i${i}`));
+    ev.throws = (np.throws || []).filter((t, i) => !seen.has(t[2] ?? `i${i}`)).map((t) => [t[0], t[1]] as [number, number]);
     if (np.active > 0 && np.votes >= np.active && pp.votes < pp.active) ev.allVoted = { avg: np.avgBeer, beer: np.beer };
     // presenter just gave their own beer a six
     if (!pp.selfVote && np.selfVote && np.selfVote[0] === 6) ev.selfSix = { name: np.name, beer: np.beer };
@@ -969,7 +971,9 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
       </Card>
     );
   }
-  const pct = p.active > 0 ? Math.min(100, Math.round((p.votes / p.active) * 100)) : 0;
+  const locked = Math.max(p.locked ?? p.votes, p.votes);
+  const pct = p.active > 0 ? Math.min(100, Math.round((locked / p.active) * 100)) : 0;
+  const revealedPct = p.active > 0 ? Math.min(100, Math.round((p.votes / p.active) * 100)) : 0;
   return (
     <Card title={t("presentingNow", counts)}>
       <div className="relative">
@@ -1011,11 +1015,14 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
       <div className="mt-4">
         <div className="flex justify-between text-sm">
           <span className="text-[#9c9c9c]">{t("votesCast")}</span>
-          <span className="tabular-nums"><b>{p.votes}</b> / {p.active}</span>
+          <span className="tabular-nums" data-testid="votes-cast"><b>{locked}</b> / {p.active}</span>
         </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={p.votes} aria-valuemax={p.active}>
-          <div className="h-full rounded-full bg-[#f2c14e] transition-all duration-700" style={{ width: `${pct}%` }} />
+        {/* Light bar: locked votes. Gold bar: revealed – only those count on the leaderboard */}
+        <div className="relative mt-1 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={locked} aria-valuemax={p.active}>
+          <div className="absolute inset-y-0 left-0 rounded-full bg-[#f2c14e]/30 transition-all duration-700" style={{ width: `${pct}%` }} />
+          <div className="absolute inset-y-0 left-0 rounded-full bg-[#f2c14e] transition-all duration-700" style={{ width: `${revealedPct}%` }} />
         </div>
+        <div className="mt-1 text-right text-xs text-[#9c9c9c]" data-testid="votes-revealed">{t("revealedN", { n: p.votes, total: locked })}</div>
         {p.avgBeer != null && (
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-white/5 px-3 py-2">

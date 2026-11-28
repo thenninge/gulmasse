@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getLeaderboardKey } from '@/lib/leaderboardKey';
 import { computeResults, type ExportParticipant } from '@/lib/exportCsv';
+import { loadRevealedByRound } from '@/lib/reveals';
 
 /**
  * Public Live Leaderboard data, protected by the secret ?k= key.
- * Shows ALL locked votes live (also unrevealed) – that's why it needs the key.
+ * Shows a vote only once it is revealed in the app – same rule as the app's own
+ * overview: «Avslør min stemme», «Avslør alle stemmer» or «Auto-avslør stemmer».
  */
 const FACTOR = 0.5; // same default weighting as the lobby: terning + 0,5 × ekstra
 
@@ -21,7 +23,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Ugyldig eller utløpt lenke' }, { status: 401 });
     }
 
-    const [pRes, vRes, pkRes, sRes] = await Promise.all([
+    const [pRes, vRes, pkRes, sRes, revealed] = await Promise.all([
       supabase
         .from('participants')
         .select('pin,nickname,active,beer_name,producer,beer_type,abv,beer_image_url')
@@ -29,10 +31,13 @@ export async function GET(request: Request) {
       supabase.from('votes').select('pin,recipient_pin,value,extra_value,round,created_at').order('created_at', { ascending: true }),
       supabase.from('picks').select('pin,created_at').order('created_at', { ascending: true }),
       supabase.from('app_state').select('key,int_value,bool_value,text_value').in('key', ['current_round', 'picked_round', 'round_started', 'award_unlocked', 'wheel_spin_at']),
+      loadRevealedByRound(),
     ]);
     for (const r of [pRes, vRes, pkRes, sRes]) if (r.error) throw r.error;
     const participants = (pRes.data as Participant[]) || [];
-    const votes = (vRes.data as Vote[]) || [];
+    const lockedVotes = (vRes.data as Vote[]) || [];
+    // Only votes the giver has revealed (in that round) are shown anywhere on the leaderboard
+    const votes = lockedVotes.filter((v) => revealed.get(Number(v.round))?.has(v.pin) === true);
     const pickRows = (pkRes.data as Array<{ pin: string; created_at: string | null }>) || [];
     const picks = pickRows.map((p) => p.pin);
     const state = new Map(((sRes.data as StateRow[]) || []).map((r) => [r.key, r]));
@@ -106,6 +111,7 @@ export async function GET(request: Request) {
     const presenterPin = pickedRound === round && picks.length ? picks[picks.length - 1] : null;
     const presenter = presenterPin ? participants.find((p) => p.pin === presenterPin) : null;
     const votesThisRound = votes.filter((v) => Number(v.round) === round);
+    const lockedThisRound = lockedVotes.filter((v) => Number(v.round) === round).length;
     const rated = presented.filter((b) => b.votes > 0 && b.avgBeer != null);
     const best = rated.length
       ? rated.reduce((a, b) => ((b.avgBeer ?? 0) + FACTOR * (b.avgExtra ?? 0) > (a.avgBeer ?? 0) + FACTOR * (a.avgExtra ?? 0) ? b : a))
@@ -126,11 +132,14 @@ export async function GET(request: Request) {
               type: (presenter.beer_type || '').trim(),
               abv: presenter.abv != null ? Number(presenter.abv) : null,
               image: presenter.beer_image_url || null,
-              votes: votesThisRound.length,
+              votes: votesThisRound.length, // revealed
+              locked: lockedThisRound, // locked in the app (revealed or not)
               active: activeCount,
               // Each locked vote this round as [øl, presentasjon], oldest first – anonymous.
               // Lets the page animate new throws (both dice) as they come in.
-              throws: votesThisRound.map((v) => [Number(v.value) || 0, Number(v.extra_value) || 0]),
+              // Third element: an anonymous, stable key per vote (its position among ALL locked votes), so the page
+              // can tell exactly which votes were just revealed – a reveal can surface an older vote.
+              throws: votesThisRound.map((v) => [Number(v.value) || 0, Number(v.extra_value) || 0, `${round}-${lockedVotes.indexOf(v)}`]),
               // The presenter's vote on their OWN beer (for «6-er til Tomas – FRA Tomas!»); other votes stay anonymous
               selfVote: (() => {
                 const own = votesThisRound.find((v) => v.pin === presenter.pin);
@@ -162,7 +171,7 @@ export async function GET(request: Request) {
         progression,
         givers,
         best: best ? { name: best.name, beer: best.beer, avgBeer: best.avgBeer, avgExtra: best.avgExtra } : null,
-        counts: { presented: picks.length, participants: participants.length, votes: votes.length },
+        counts: { presented: picks.length, participants: participants.length, votes: votes.length, locked: lockedVotes.length },
         updatedAt: new Date().toISOString(),
       },
       { headers: { 'Cache-Control': 'no-store' } },

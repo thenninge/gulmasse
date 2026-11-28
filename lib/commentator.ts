@@ -126,8 +126,11 @@ const NO_PEOPLE: Record<string, Lines> = {
     pick: [
       'Hjulet valgte Magnus – {beer}! Ungfolan Magnus! Vil GenZ noen gang klare å like øl? Vet de i det hele tatt hva øl er?!',
       'Magnus med {beer}! Jokeren er trukket – og hvordan stemmer egentlig den eldre garde av millennials?!',
+      'Magnus med {beer}! Ungfola? Ja – men også gründer OG veteran! Ung av år, gammel i gamet!',
+      'Magnus fra Rjukan med {beer}! Han er vokst opp der sola ikke når ned om vinteren – han trenger ikke lys, han trenger poeng!',
+      'Magnus med {beer}! Rjukan, folkens – tungtvannets hjemby! Er dette tungt nok til å sprenge skalaen, eller blir det en ny sabotasjeaksjon?!',
     ],
-    leader: ['Magnus tar ledelsen! GenZ i tet! Millennials klør seg i hodet!'],
+    leader: ['Magnus tar ledelsen! GenZ i tet! Millennials klør seg i hodet!', 'Magnus i tet! Endelig sol i Rjukan – og det helt uten speil!'],
   },
   adam: {
     pick: [
@@ -249,8 +252,8 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Kathinka takes the lead! Sock-slide alert! The 2021 champion is back in front!'],
   },
   magnus: {
-    pick: ['The wheel picks Magnus – {beer}! Young Magnus! Will Gen Z ever learn to like beer?!'],
-    leader: ['Magnus takes the lead! Gen Z in front! The millennials are scratching their heads!'],
+    pick: ['The wheel picks Magnus – {beer}! Young Magnus! Will Gen Z ever learn to like beer?!', 'Magnus with {beer}! The young one? Yes – but also a founder AND a veteran! Young in years, old in the game!', 'Magnus from Rjukan with {beer}! He grew up where the sun never reaches the valley in winter – they had to put mirrors on the mountain! He doesn\'t need light, he needs points!', 'Magnus with {beer}! Rjukan, folks – home of the heavy water! Is this heavy enough to break the scale, or is it another sabotage mission?!'],
+    leader: ['Magnus takes the lead! Gen Z in front! The millennials are scratching their heads!', 'Magnus in front! Finally some sun in Rjukan – and no mirrors needed!'],
   },
   adam: {
     pick: ['The wheel picks Adam – {beer}! Adam-san! English through and through – but he was in Japan in April, and Adam-san suits him perfectly! All Christmas-beer boss!', 'Adam-san with {beer}! He has tasted 9 Christmas beers this week alone – well trained! But can he deliver the passion this year?!'],
@@ -380,8 +383,11 @@ const JA_PEOPLE: Record<string, Lines> = {
     pick: [
       'ルーレットが選んだのはマグヌス – {beer}！若手マグヌス！Z世代はビールを好きになれるのか？そもそもビールが何か知ってる？！',
       'マグヌスと{beer}！ジョーカー登場 – ミレニアル世代のベテランたちはどう投票する？！',
+      'マグヌスと{beer}！若手？そう – でも起業家でありベテランでもある！年は若いが経験は豊富！',
+      'リューカン出身のマグヌスと{beer}！冬は谷に太陽が届かず、山に鏡を設置した町で育った – 彼に必要なのは光じゃない、点数だ！',
+      'マグヌスと{beer}！リューカン – 重水の町だ！スケールを吹き飛ばすほど重いか、それとも新たな破壊工作か？！',
     ],
-    leader: ['マグヌスがトップに！Z世代が首位！ミレニアル世代は首をかしげている！'],
+    leader: ['マグヌスがトップに！Z世代が首位！ミレニアル世代は首をかしげている！', 'マグヌス首位！ついにリューカンに太陽が – 鏡なしで！'],
   },
   adam: {
     pick: ['ルーレットが選んだのはアダム – {beer}！アダムさん！生粋のイギリス人 – でも4月に日本に行ったので、アダムさんがぴったり！そして完全なクリスマスビールのボス！', 'アダムさんと{beer}！プレゼンで6点を取れなければ、勝負はまったくわからない！', 'アダムさんと{beer}！今週だけでクリスマスビールを9本試飲 – 準備万端！でも今年は熱いプレゼンを見せられるか？！'],

@@ -70,8 +70,11 @@ const PROFILES: Record<string, Profile> = {
     bio: [
       'Ungfolan Magnus! Vil GenZ noen gang klare å like øl? Vet de hva øl er? Og vet de hvordan den eldre garde av millennials stemmer??',
       'Her er det mye usikkerhet – men han er en god joker, det skal Magnus ha.',
+      'Men ikke la deg lure av ungfole-stempelet: Magnus er både gründer og veteran! Ung av år, gammel i gamet.',
+      'Og så er han fra Rjukan! Byen der sola ikke når ned i dalen om vinteren – de måtte bokstavelig talt henge opp speil på fjellet for å få litt lys på torget. Mørkt øl skremmer altså ikke Magnus.',
+      'Rjukan er også hjemmet til tungtvannet på Vemork. Så spørsmålet er: tåler han tunge øl like godt som Rjukan tålte tungtvannet? Og blir det sabotasje i kveld?',
     ],
-    facts: ['GenZ', 'Kveldens joker'],
+    facts: ['GenZ', 'Gründer', 'Veteran', 'Kveldens joker', 'Fra Rjukan', 'Vant til mørket', 'Tungtvann-ekspert?'],
   },
   adam: {
     emoji: '🇯🇵',

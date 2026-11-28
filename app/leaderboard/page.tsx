@@ -206,6 +206,22 @@ export default function LeaderboardPage() {
   // «Hjulet valgte …» → until the first vote, the commentator tells about the presenter
   const infoRef = useRef<{ pin: string; items: InfoItem[]; idx: number; nextAt: number } | null>(null);
   const langRef = useRef<Lang>("no");
+  // «Siste nytt»: never several posts at the same moment – queue them, at least 1 s apart
+  const feedQueueRef = useRef<FeedItem[]>([]);
+  const lastPostRef = useRef(0);
+  const enqueueFeed = useCallback((items: FeedItem[]) => {
+    feedQueueRef.current.push(...items);
+  }, []);
+  useEffect(() => {
+    const FEED_GAP_MS = 1100;
+    const t = window.setInterval(() => {
+      if (!feedQueueRef.current.length || Date.now() - lastPostRef.current < FEED_GAP_MS) return;
+      const item = feedQueueRef.current.shift() as FeedItem;
+      lastPostRef.current = Date.now();
+      setFeed((f) => [{ ...item, at: new Date() }, ...f].slice(0, 300));
+    }, 200);
+    return () => window.clearInterval(t);
+  }, []);
   // Places when the current beer was picked → «byks på tabellen» after the round
   const roundStartPlacesRef = useRef<Record<string, number> | null>(null);
   const [lang, setLangState] = useState<Lang>("no");
@@ -286,9 +302,9 @@ export default function LeaderboardPage() {
       add.push({ id: nid(), icon: "👑", key: "evLeader", kind: "leader", params: { name: ev.leader }, at: now });
     }
     if (ev.throws.length) {
-      // Each vote: 🍺 beer die first, then 🎤 presentation die 0.6 s later – easier to follow.
+      // Each vote: 🍺 beer die first, then 🎤 pitch die 1.2 s later – easier to follow.
       // Several votes in one update are spaced out too.
-      const VOTE_GAP = 1300, PRES_DELAY = 600;
+      const VOTE_GAP = 2600, PRES_DELAY = 1200;
       const show = (die: Die, delay: number) => {
         window.setTimeout(() => setDice((d) => [...d, die]), delay);
         window.setTimeout(() => setDice((d) => d.filter((x) => x.id !== die.id)), delay + 3400);
@@ -397,10 +413,9 @@ export default function LeaderboardPage() {
     }
     if (add.length) {
       lastFeedAtRef.current = Date.now();
-      const newestFirst = add.slice().reverse();
-      setFeed((f) => [...newestFirst, ...f].slice(0, 300));
+      enqueueFeed(add);
     }
-  }, []);
+  }, [enqueueFeed]);
 
   // Presenter info: one line every ~14 s from the pick until the first vote arrives
   useEffect(() => {
@@ -423,10 +438,10 @@ export default function LeaderboardPage() {
       q.nextAt = Date.now() + GAP_MS;
       lastFeedAtRef.current = Date.now();
       const item: FeedItem = { id: idRef.current++, icon: "🎙️", key: "evInfo", params: { name: info.name, info }, at: new Date() };
-      setFeed((f) => [item, ...f].slice(0, 300));
+      enqueueFeed([item]);
     }, 2000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [enqueueFeed]);
 
   // Pause entertainment: after a quiet spell the commentator misses the veterans
   useEffect(() => {
@@ -438,10 +453,10 @@ export default function LeaderboardPage() {
       lastFeedAtRef.current = Date.now();
       const id = idRef.current++;
       const item: FeedItem = { id, icon: "🕯️", key: "evMissIdle", kind: "missIdle", params: { vet: vetFor(id) }, at: new Date() };
-      setFeed((f) => [item, ...f].slice(0, 300));
+      enqueueFeed([item]);
     }, 10_000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [enqueueFeed]);
 
   useEffect(() => {
     const k = new URLSearchParams(window.location.search).get("k") || "";
@@ -659,6 +674,7 @@ const STYLES = `
 @keyframes lb-snow { 0% { transform: translate3d(0,-10vh,0); } 100% { transform: translate3d(var(--drift),110vh,0); } }
 @keyframes lb-rock { 0%,100% { rotate: -9deg; } 50% { rotate: 9deg; } }
 @keyframes lb-bob { 0%,100% { rotate: -6deg; translate: 0 0; } 50% { rotate: 6deg; translate: 0 -3px; } }
+@keyframes lb-fade { 0% { opacity: 0; } 12% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes lb-rise { 0% { transform: translateY(0) scale(.6); opacity: 0; } 15% { opacity: 1; transform: translateY(-20px) scale(1.15); } 100% { transform: translateY(-170px) scale(.9) rotate(25deg); opacity: 0; } }
 @keyframes lb-pop { 0% { transform: scale(.85); opacity: 0; } 60% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1); } }
 @keyframes lb-toast { 0% { transform: translateY(-20px); opacity: 0; } 10%,85% { transform: none; opacity: 1; } 100% { transform: translateY(-10px); opacity: 0; } }
@@ -676,7 +692,9 @@ const STYLES = `
 @media (prefers-reduced-motion: reduce) {
   .lb-flake, .animate-confetti { animation: none !important; display: none; }
   .lb-bob, .lb-rock, .lb-glow { animation: none !important; }
-  .lb-rise, .lb-pop, .lb-toast, .lb-zoom, .animate-hatdrop { animation-duration: 1ms !important; }
+  .lb-pop, .lb-toast, .lb-zoom, .animate-hatdrop { animation-duration: 1ms !important; }
+  /* «Reduser bevegelse» on the phone: the dice still show for 3 s – a calm fade, no floating */
+  .lb-rise { animation: lb-fade 3s ease-out forwards !important; }
 }
 `;
 
@@ -924,11 +942,11 @@ function Card({ title, children, className = "" }: { title: string; children: Re
   );
 }
 
-function DieFace({ value, label, small = false, tone }: { value: number; label: string; small?: boolean; tone?: "beer" | "extra" }) {
+function DieFace({ value, label, small = false, tone, big = false }: { value: number; label: string; small?: boolean; tone?: "beer" | "extra"; big?: boolean }) {
   return (
     <div className="flex flex-col items-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/img/${value}.png`} alt={`${label}: ${value}`} className={small ? "h-9 w-9" : "h-11 w-11"} />
+      <img src={`/img/${value}.png`} alt={`${label}: ${value}`} className={big ? "h-9 w-9 lg:h-[4.5rem] lg:w-[4.5rem]" : small ? "h-9 w-9" : "h-11 w-11"} />
       <span className={`mt-0.5 text-[10px] font-semibold uppercase tracking-wide drop-shadow ${tone === "extra" ? "text-[#8cc4ff]" : "text-[#f7d98a]"}`}>{label}</span>
     </div>
   );
@@ -966,7 +984,7 @@ function NowCard({ board, dice = [] }: { board: Board; dice?: Die[] }) {
               }`}
               style={{ left: `${d.x}%` }}
             >
-              <DieFace value={d.value} label={d.kind === "beer" ? `🍺 ${t("dieBeer")}` : `🎤 ${t("diePres")}`} small tone={d.kind} />
+              <DieFace value={d.value} label={d.kind === "beer" ? `🍺 ${t("dieBeer")}` : `🎤 ${t("diePres")}`} small tone={d.kind} big={d.kind === "beer"} />
             </div>
           ))}
         </div>

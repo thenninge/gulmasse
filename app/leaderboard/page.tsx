@@ -4,8 +4,9 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { formatNumber, isLang, LANGS, LOCALE, translate, type Lang } from "@/lib/leaderboardI18n";
 import { commentary, vetFor, type CommentKind } from "@/lib/commentator";
 import { getBeerHistory } from "@/lib/beerHistory";
-import { abvKind, abvText } from "@/lib/abvComment";
+import { abvIcon, abvKind, abvText } from "@/lib/abvComment";
 import { buildInfoQueue, infoShown, infoText, type InfoItem } from "@/lib/presenterInfo";
+import { stageName } from "@/lib/participantBios";
 import { playFanfare } from "@/lib/fanfare";
 
 type Standing = {
@@ -58,7 +59,7 @@ const useI18n = () => useContext(I18nCtx);
 
 // Events are stored as a text key + raw params and translated when shown,
 // so switching language also translates news that already happened.
-type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string; info?: InfoItem; abv?: number | null };
+type EvParams = { name?: string; beer?: string; avg?: number | null; from?: number; to?: number; margin?: number; second?: string; vet?: string; info?: InfoItem; abv?: number | null; abvSeed?: number };
 type FeedItem = { id: number; icon: string; key: string; params: EvParams; at: Date; kind?: CommentKind };
 type Announce = { id: number; name: string; beer: string };
 type Toast = { id: number; icon: string; key: string; params: EvParams };
@@ -66,7 +67,7 @@ type Toast = { id: number; icon: string; key: string; params: EvParams };
 /** News feed line: the sports commentator where available, else the plain text. */
 function feedText(i: I18n, item: FeedItem): string {
   if (item.key === "evInfo" && item.params.info) return infoText(i.lang, item.params.info, i.f);
-  if (item.key === "evAbv" && item.params.abv != null) return abvText(i.lang, item.params.abv, (n) => i.f(n, 1)) || "";
+  if (item.key === "evAbv" && item.params.abv != null) return abvText(i.lang, item.params.abv, (n) => i.f(n, 1), item.params.abvSeed ?? 0) || "";
   if (item.kind) {
     const line = commentary(i.lang, item.kind, item.params, item.id, (n) => i.f(n, 2));
     if (line) return line;
@@ -119,6 +120,15 @@ function detectEvents(prev: Board, next: Board) {
   return ev;
 }
 
+/** How many beers of the same strength tier were presented before this one – rotates the remark so it doesn't repeat */
+function sameTierBefore(board: Board, pin: string): number {
+  const abvOf = (p: string) => board.standings.find((s) => s.pin === p)?.abv ?? null;
+  const tier = abvKind(abvOf(pin));
+  const order = board.presented.map((b) => b.pin);
+  const idx = order.indexOf(pin);
+  return order.slice(0, idx < 0 ? order.length : idx).filter((p) => abvKind(abvOf(p)) === tier).length;
+}
+
 /**
  * Rebuild the evening's story from stored data, so someone opening the page
  * later can scroll back: per beer the pick, the result (verdict + records),
@@ -137,7 +147,8 @@ function buildHistory(board: Board): FeedItem[] {
     out.push({ id: id(0), icon: "🎡", key: "evPick", kind: "pick", params: { name: b.name, beer: b.beer }, at });
     if (getBeerHistory(b.beer)) out.push({ id: id(6), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: b.name, beer: b.beer }, at });
     const abvH = board.standings.find((s) => s.pin === b.pin)?.abv ?? null;
-    if (abvKind(abvH)) out.push({ id: id(7), icon: abvKind(abvH) === "abvLow" ? "🥤" : "🔥", key: "evAbv", params: { name: b.name, abv: abvH }, at });
+    const tierH = abvKind(abvH);
+    if (tierH) out.push({ id: id(7), icon: abvIcon(tierH), key: "evAbv", params: { name: b.name, abv: abvH, abvSeed: sameTierBefore(board, b.pin) }, at });
     const live = board.presenter?.pin === b.pin && board.presenter.votes < board.presenter.active;
     if (live || b.votes === 0 || b.avgBeer == null) return; // round still in progress
     out.push({ id: id(1), icon: "✅", key: "evAllVoted", kind: "allVoted", params: { beer: b.beer, avg: b.avgBeer }, at });
@@ -256,7 +267,7 @@ export default function LeaderboardPage() {
     };
     if (ev.pick) {
       const id = nid();
-      setAnnounce({ id, name: ev.pick.name, beer: ev.pick.beer });
+      setAnnounce({ id, name: stageName(ev.pick.name), beer: ev.pick.beer });
       window.setTimeout(() => setAnnounce((a) => (a && a.id === id ? null : a)), 6500);
       setConfetti((c) => c + 1);
       roundStartPlacesRef.current = placesOf(next);
@@ -266,7 +277,8 @@ export default function LeaderboardPage() {
       if (getBeerHistory(ev.pick.beer)) add.push({ id: nid(), icon: "📜", key: "evBeerHistory", kind: "beerHistory", params: { name: ev.pick.name, beer: ev.pick.beer }, at: now });
       // strength remark: under 6 % or 10 % and up
       const abvP = next.presenter?.abv ?? null;
-      if (abvKind(abvP)) add.push({ id: nid(), icon: abvKind(abvP) === "abvLow" ? "🥤" : "🔥", key: "evAbv", params: { name: ev.pick.name, abv: abvP }, at: now });
+      const tierP = abvKind(abvP);
+      if (tierP && next.presenter) add.push({ id: nid(), icon: abvIcon(tierP), key: "evAbv", params: { name: ev.pick.name, abv: abvP, abvSeed: sameTierBefore(next, next.presenter.pin) }, at: now });
     }
     if (ev.leader) {
       toast("👑", "evLeaderToast", { name: ev.leader });

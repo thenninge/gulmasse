@@ -81,11 +81,12 @@ const PROFILES: Record<string, Profile> = {
     tagline: 'Adam-san',
     bio: [
       'Helt engelsk – men han var i Japan i april, og Adam-san passer ham perfekt. Og helt juleølboss!',
+      'Og så har han et alter ego: Mr. Fortnightly! En ganske artig fyr som dukker opp ca. annenhver uke. Når hjulet velger Adam, er det altså Mr. Fortnightly som entrer scenen!',
       'Om ikke Adam får 6 på presentasjonen, så er feltet helt åpent!',
       'I 2022 stilte han Delirium Christmas – fjorårsvinneren den gang – og fikk 5. plass.',
       'Oppladningen i år: Adam har prøvesmakt 9 juleøl bare denne uken! Godt trent – men klarer han å levere innlevelse i år?',
     ],
-    facts: ['Helt engelsk', 'Japan i april', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass', '9 juleøl smakt denne uken'],
+    facts: ['Alter ego: Mr. Fortnightly', 'Helt engelsk', 'Japan i april', 'Juleølboss', 'Presentasjonsfavoritt', 'Delirium 2022: 5. plass', '9 juleøl smakt denne uken'],
   },
   martin: {
     emoji: '🏆',
@@ -130,6 +131,10 @@ const PROFILES: Record<string, Profile> = {
     facts: ['Debutant', 'Steinerskolen', 'Berkeley? Berklee?', 'Flott sangstemme', 'Danset med Michael Jackson', 'Stiller TOMASmesse (!)', 'Venninne av Kathinka'],
   },
 };
+
+/** Stage names the wheel announces instead of the real name (Adam → Mr. Fortnightly) */
+const STAGE_NAMES: Record<string, string> = { adam: 'Mr. Fortnightly' };
+export const stageName = (name: string) => STAGE_NAMES[profileKey(name)] ?? name;
 
 export function getProfile(name: string): Profile | null {
   return PROFILES[profileKey(name)] ?? null;

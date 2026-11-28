@@ -134,11 +134,12 @@ const NO_PEOPLE: Record<string, Lines> = {
   },
   adam: {
     pick: [
-      'Hjulet valgte Adam – {beer}! Adam-san! Helt engelsk – men han var i Japan i april, og Adam-san passer ham perfekt! Og helt juleølboss!',
-      'Adam-san med {beer}! Får ikke Adam 6 på presentasjonen, er feltet helt åpent!',
-      'Adam-san med {beer}! Han har prøvesmakt 9 juleøl bare denne uken – godt trent! Men klarer han å levere innlevelse i år?!',
+      'Hjulet valgte … MR. FORTNIGHTLY! Med {beer}! Han dukker bare opp annenhver uke – og i kveld er visst en av dem! Heldige oss!',
+      'Mine damer og herrer: MR. FORTNIGHTLY! Ingen vet hvor han har vært de siste fjorten dagene – men han har med seg {beer}!',
+      'MR. FORTNIGHTLY er i huset med {beer}! 9 juleøl prøvesmakt denne uken – en travel fortnight! Men klarer han å levere innlevelse i år?!',
+      'MR. FORTNIGHTLY med {beer}! Får ikke Mr. Fortnightly 6 på presentasjonen, er feltet helt åpent!',
     ],
-    leader: ['Adam-san tar ledelsen! Juleølbossen viser hvem som bestemmer!'],
+    leader: ['Adam-san tar ledelsen! Juleølbossen viser hvem som bestemmer!', 'Mr. Fortnightly tar ledelsen! Vi ses om fjorten dager – men i kveld er han på toppen!'],
     pres6: ['Sekser på presentasjonen til Adam-san! Som forventet fra juleølbossen!', 'Sekser på presentasjonen! 9 juleøl med oppvarming denne uken – og DER kom innlevelsen!'],
     presLow: ['Hæ?! Lav presentasjonskarakter til Adam-san?! Da er feltet HELT åpent!'],
   },
@@ -256,8 +257,12 @@ const EN_PEOPLE: Record<string, Lines> = {
     leader: ['Magnus takes the lead! Gen Z in front! The millennials are scratching their heads!', 'Magnus in front! Finally some sun in Rjukan – and no mirrors needed!'],
   },
   adam: {
-    pick: ['The wheel picks Adam – {beer}! Adam-san! English through and through – but he was in Japan in April, and Adam-san suits him perfectly! All Christmas-beer boss!', 'Adam-san with {beer}! He has tasted 9 Christmas beers this week alone – well trained! But can he deliver the passion this year?!'],
-    leader: ['Adam-san takes the lead! The Christmas-beer boss shows who\'s in charge!'],
+    pick: [
+      'The wheel picks… MR. FORTNIGHTLY! With {beer}! He only shows up every other week – and tonight is apparently one of them! Lucky us!',
+      'Ladies and gentlemen: MR. FORTNIGHTLY! Nobody knows where he has been for the last fourteen days – but he has brought {beer}!',
+      'MR. FORTNIGHTLY is in the house with {beer}! 9 Christmas beers tasted this week – a busy fortnight! But can he deliver the passion this year?!',
+    ],
+    leader: ['Adam-san takes the lead! The Christmas-beer boss shows who\'s in charge!', 'Mr. Fortnightly takes the lead! See you in a fortnight – but tonight he\'s on top!'],
   },
   trondolav: {
     pick: ['The wheel picks Trond-Olav! The neighbour nobody knows will turn up – but always does! Portugal? Sardinia? Helsinki? Nobody knows!'],
@@ -390,8 +395,12 @@ const JA_PEOPLE: Record<string, Lines> = {
     leader: ['マグヌスがトップに！Z世代が首位！ミレニアル世代は首をかしげている！', 'マグヌス首位！ついにリューカンに太陽が – 鏡なしで！'],
   },
   adam: {
-    pick: ['ルーレットが選んだのはアダム – {beer}！アダムさん！生粋のイギリス人 – でも4月に日本に行ったので、アダムさんがぴったり！そして完全なクリスマスビールのボス！', 'アダムさんと{beer}！プレゼンで6点を取れなければ、勝負はまったくわからない！', 'アダムさんと{beer}！今週だけでクリスマスビールを9本試飲 – 準備万端！でも今年は熱いプレゼンを見せられるか？！'],
-    leader: ['アダムさんがトップに！クリスマスビールのボスが格の違いを見せる！'],
+    pick: [
+      'ルーレットが選んだのは… ミスター・フォートナイトリー！{beer}と共に！2週間に1度しか現れない男 – 今夜はその夜らしい！ラッキー！',
+      '皆さま：ミスター・フォートナイトリー！この14日間どこにいたのか誰も知らない – でも{beer}を持ってきた！',
+      'ミスター・フォートナイトリーが{beer}と共に登場！今週クリスマスビールを9本試飲 – 忙しい2週間！今年は熱いプレゼンを見せられるか？！',
+    ],
+    leader: ['アダムさんがトップに！クリスマスビールのボスが格の違いを見せる！', 'ミスター・フォートナイトリーが首位！また2週間後に – でも今夜は頂点に！'],
     pres6: ['アダムさんのプレゼンに6点！さすがクリスマスビールのボス！'],
     presLow: ['えっ？！アダムさんのプレゼンに低評価？！これで勝負はまったくわからなくなった！'],
   },
